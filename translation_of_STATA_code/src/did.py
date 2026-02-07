@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from scipy.optimize import minimize
 
 
 def simulate_did_panel(
@@ -472,3 +473,244 @@ def visualize_event_study(
     ax.legend()
 
     return ax
+
+
+def synthetic_control(
+    df: pd.DataFrame,
+    y: str,
+    unit: str,
+    time: str,
+    treated_unit: int | str,
+    treat_start: int,
+    predictors: list[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Implement a basic Synthetic Control Method.
+    Constructs a synthetic counterfactual for a single treated unit using a weighted combination of control units.
+    Weights are optimized to match pre-treatment outcome (and optionally predictors).
+    """
+    # 1. Separate treated and control
+    if predictors is None:
+        predictors = []
+
+    # Pre-treatment only for optimization
+    pre_df = df[df[time] < treat_start].copy()
+    
+    # Pivot to get matrices: Units x Variables (avg over pre-period) OR just Outcome time series
+    # Simple version: Match on pre-treatment outcome time series
+    
+    # Get the treated unit's pre-treatment data vector (T_pre x 1)
+    y_treated_pre = pre_df[pre_df[unit] == treated_unit].set_index(time)[y]
+    
+    # Get control units' pre-treatment data matrix (T_pre x N_control)
+    control_units = [u for u in df[unit].unique() if u != treated_unit]
+    y_control_pre = pre_df[pre_df[unit].isin(control_units)].pivot(index=time, columns=unit, values=y)
+    
+    # Align indices
+    common_times = y_treated_pre.index.intersection(y_control_pre.index)
+    target = y_treated_pre.loc[common_times].values
+    controls = y_control_pre.loc[common_times].values
+    
+    # Optimize weights: sum(w)=1, w>=0
+    def loss(w):
+        diff = target - controls @ w
+        return np.sum(diff**2)
+        
+    n_controls = controls.shape[1]
+    w0 = np.ones(n_controls) / n_controls
+    bounds = [(0, 1) for _ in range(n_controls)]
+    constraints = {"type": "eq", "fun": lambda w: np.sum(w) - 1}
+    
+    res = minimize(loss, w0, bounds=bounds, constraints=constraints, method="SLSQP")
+    weights = pd.Series(res.x, index=y_control_pre.columns)
+    
+    # 2. Construct Synthetic Comparison for ALL periods
+    full_control = df[df[unit].isin(control_units)].pivot(index=time, columns=unit, values=y)
+    synthetic_y = full_control @ weights
+    
+    # 3. Compile result
+    full_treated = df[df[unit] == treated_unit].set_index(time)[y]
+    result = pd.DataFrame({
+        "treated": full_treated,
+        "synthetic": synthetic_y,
+    })
+    result["gap"] = result["treated"] - result["synthetic"]
+    
+    return result, weights
+
+
+def visualize_synthetic_control(
+    result_df: pd.DataFrame,
+    treat_start: int,
+    title: str = "Synthetic Control Analysis",
+    ax: plt.Axes | None = None
+):
+    """
+    Plot the Treated unit vs its Synthetic Counterfactual.
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+    ax.plot(result_df.index, result_df["treated"], label="Treated Unit", linewidth=2)
+    ax.plot(result_df.index, result_df["synthetic"], label="Synthetic Control", linestyle="--", linewidth=2)
+    
+    ax.axvline(treat_start - 0.5, color="red", linestyle=":", label="Treatment Start")
+    
+    ax.set_title(title)
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Outcome")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    return ax
+
+
+def wild_cluster_bootstrap(
+    model,
+    cluster_var: str,
+    n_boot: int = 499,
+    seed: int = 42
+):
+    """
+    Run Wild Cluster Bootstrap to get a robust p-value for the 'did' coefficient.
+    Handles small number of clusters (G).
+    Note: Requires the original model to be fitted on a dataframe that is accessible.
+    """
+    rng = np.random.default_rng(seed)
+    
+    # Get original data and residuals
+    beta_hat = model.params["did"]
+    df = model.model.data.frame.copy()
+    df["resid"] = model.resid
+    
+    # Clusters
+    clusters = df[cluster_var].unique()
+    G = len(clusters)
+    
+    # Store bootstrap stats
+    boot_stats = []
+    
+    # Predicted value under H0 (remove 'did' effect)
+    pred_orig = model.fittedvalues
+    
+    for _ in range(n_boot):
+        cluster_weights = pd.Series(rng.choice([-1, 1], size=G), index=clusters)
+        df["v_g"] = df[cluster_var].map(cluster_weights)
+        
+        # Resampling residuals from full model (Wild Bootstrap)
+        # We use the simple approach of keeping X fixed and perturbing y
+        df["y_boot"] = pred_orig + df["resid"] * df["v_g"] 
+        
+        # We need to hack the formula to point to y_boot
+        # Or just rename y_boot to y temporarily
+        orig_y_name = model.model.endog_names
+        df_run = df.copy()
+        df_run[orig_y_name] = df_run["y_boot"]
+        
+        boot_res = smf.ols(model.model.formula, data=df_run).fit()
+        boot_stats.append(boot_res.params["did"])
+        
+    boot_betas = np.array(boot_stats)
+    se_boot = np.std(boot_betas)
+    ci_lower = np.percentile(boot_betas, 2.5)
+    ci_upper = np.percentile(boot_betas, 97.5)
+    
+    return {
+        "se_boot": se_boot,
+        "ci_lower": ci_lower,
+        "ci_upper": ci_upper,
+        "p_val_approx": 2 * min(np.mean(boot_betas > 0), np.mean(boot_betas < 0)) # symmetric two-sided
+    }
+
+
+def bacon_decomposition(
+    df: pd.DataFrame,
+    y: str,
+    unit: str,
+    time: str,
+    treated: str, # dummy for ever-treated
+    treat_start_col: str, # column with treatment time (inf for untreated)
+):
+    """
+    Perform a Goodman-Bacon decomposition of the two-way fixed effects estimator.
+    Decomposes the coefficient into weighted average of all 2x2 DiDs.
+    """
+    # 1. Identify groups
+    df = df.copy()
+    treat_times = sorted([t for t in df[treat_start_col].unique() if t != np.inf])
+    
+    has_never_treated = np.inf in df[treat_start_col].unique()
+    
+    comparisons = []
+    
+    # A. Comparisons between Treated Groups (Early vs Late)
+    for k in treat_times:
+        for l in treat_times:
+            if k < l:
+                # Early (k) vs Late (l)
+                # Filter data: only units in k and l, time < l
+                sub = df[df[treat_start_col].isin([k, l]) & (df[time] < l)].copy()
+                if sub.empty: continue
+                
+                if sub[treated].std() == 0: continue
+                
+                # Treat dummy: is group k
+                sub["T_2x2"] = (sub[treat_start_col] == k).astype(int)
+                sub["Post_2x2"] = (sub[time] >= k).astype(int)
+                
+                mod = smf.ols(f"{y} ~ T_2x2*Post_2x2 + C({time}) + C({unit})", data=sub).fit()
+                beta = mod.params.get("T_2x2:Post_2x2", 0)
+                
+                comparisons.append({
+                    "type": "Early vs Late (Late=Control)",
+                    "treated_group": k,
+                    "control_group": l,
+                    "weight": len(sub), # Proxy weight
+                    "beta": beta
+                })
+                
+                # Late (l) vs Early (k) (Early=Control)
+                # Sample: t > k (when k is already treated)
+                sub2 = df[df[treat_start_col].isin([k, l]) & (df[time] >= k)].copy()
+                if sub2.empty: continue
+                
+                 # Treat dummy: is group l
+                sub2["T_2x2"] = (sub2[treat_start_col] == l).astype(int)
+                sub2["Post_2x2"] = (sub2[time] >= l).astype(int)
+                
+                mod2 = smf.ols(f"{y} ~ T_2x2*Post_2x2 + C({time}) + C({unit})", data=sub2).fit()
+                beta2 = mod2.params.get("T_2x2:Post_2x2", 0)
+                
+                comparisons.append({
+                    "type": "Late vs Early (Early=Control)",
+                    "treated_group": l,
+                    "control_group": k,
+                    "weight": len(sub2),
+                    "beta": beta2
+                })
+    
+    # B. Comparisons vs Never Treated
+    if has_never_treated:
+        for k in treat_times:
+            # Group k vs Never Treated
+            # Use all time periods (or up to max time)
+            # Find units that are never treated
+            never_units = df[df[treat_start_col] == np.inf][unit].unique()
+            k_units = df[df[treat_start_col] == k][unit].unique()
+            
+            sub = df[df[unit].isin(np.concatenate([k_units, never_units]))].copy()
+            
+            sub["T_2x2"] = (sub[treat_start_col] == k).astype(int)
+            sub["Post_2x2"] = (sub[time] >= k).astype(int)
+            
+            mod = smf.ols(f"{y} ~ T_2x2*Post_2x2 + C({time}) + C({unit})", data=sub).fit()
+            beta = mod.params.get("T_2x2:Post_2x2", 0)
+            
+            comparisons.append({
+                "type": "Vs Never Treated",
+                "treated_group": k,
+                "control_group": "Never",
+                "weight": len(sub),
+                "beta": beta
+            })
+            
+    return pd.DataFrame(comparisons)
