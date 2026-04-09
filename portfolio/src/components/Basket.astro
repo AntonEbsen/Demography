@@ -1,0 +1,198 @@
+---
+---
+<div id="basket-container">
+    <button id="basket-toggle" aria-label="Open Research Basket">
+        🧺 <span id="basket-count">0</span>
+    </button>
+    
+    <div id="basket-drawer" class="drawer">
+        <div class="drawer-header">
+            <h3>Research Basket</h3>
+            <button id="close-basket">&times;</button>
+        </div>
+        <div id="basket-items">
+            <p class="empty-msg">Your basket is empty. Add charts or tables as you browse!</p>
+        </div>
+        <div class="drawer-footer">
+            <button id="export-brief" class="btn primary">Download Custom Brief (PDF)</button>
+            <button id="clear-basket" class="btn secondary">Clear All</button>
+        </div>
+    </div>
+</div>
+
+<div id="print-area" class="print-only"></div>
+
+<script is:inline>
+    const basketToggle = document.getElementById('basket-toggle');
+    const basketDrawer = document.getElementById('basket-drawer');
+    const closeBasket = document.getElementById('close-basket');
+    const basketItems = document.getElementById('basket-items');
+    const basketCount = document.getElementById('basket-count');
+    const exportBtn = document.getElementById('export-brief');
+    const clearBtn = document.getElementById('clear-basket');
+    const printArea = document.getElementById('print-area');
+
+    let basket = JSON.parse(localStorage.getItem('research-basket') || '[]');
+
+    const updateUI = () => {
+        basketCount.innerText = basket.length;
+        if (basket.length === 0) {
+            basketItems.innerHTML = '<p class="empty-msg">Your basket is empty. Add charts or tables as you browse!</p>';
+        } else {
+            basketItems.innerHTML = basket.map((item, index) => `
+                <div class="basket-item">
+                    <span>${item.title}</span>
+                    <button onclick="removeBasketItem(${index})">&times;</button>
+                </div>
+            `).join('');
+        }
+    };
+
+    window.addtoBasket = (title, elementId) => {
+        const content = document.getElementById(elementId)?.innerHTML || 'Content not found';
+        basket.push({ title, content });
+        localStorage.setItem('research-basket', JSON.stringify(basket));
+        updateUI();
+        // Visual feedback
+        basketToggle.classList.add('pulse');
+        setTimeout(() => basketToggle.classList.remove('pulse'), 500);
+    };
+
+    window.removeBasketItem = (index) => {
+        basket.splice(index, 1);
+        localStorage.setItem('research-basket', JSON.stringify(basket));
+        updateUI();
+    };
+
+    if (basketToggle) {
+        basketToggle.onclick = () => basketDrawer.classList.toggle('open');
+        closeBasket.onclick = () => basketDrawer.classList.remove('open');
+        clearBtn.onclick = () => {
+            basket = [];
+            localStorage.setItem('research-basket', JSON.stringify(basket));
+            updateUI();
+        };
+
+        exportBtn.onclick = () => {
+            if (basket.length === 0) return alert('Your basket is empty!');
+            
+            printArea.innerHTML = `
+                <div class="print-header">
+                    <h1>Custom Research Brief</h1>
+                    <p>Curated Evidence from "The Cost of Quality" Portfolio</p>
+                </div>
+                ${basket.map(item => `
+                    <div class="print-section">
+                        <h2>${item.title}</h2>
+                        ${item.content}
+                    </div>
+                `).join('')}
+                <div class="print-footer">
+                    <p>&copy; 2026 Anton Ebsen - Demographic Research Export</p>
+                </div>
+            `;
+            window.print();
+        };
+    }
+
+    updateUI();
+</script>
+
+<style>
+    #basket-container {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 1000;
+    }
+    #basket-toggle {
+        background: var(--accent);
+        color: #000;
+        border: none;
+        padding: 1rem 1.5rem;
+        border-radius: 50px;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        transition: transform 0.3s;
+    }
+    #basket-toggle:hover { transform: scale(1.05); }
+    #basket-toggle.pulse { animation: pulse 0.5s; }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+
+    .drawer {
+        position: fixed;
+        right: -400px;
+        top: 0;
+        width: 350px;
+        height: 100vh;
+        background: var(--secondary);
+        box-shadow: -10px 0 50px rgba(0,0,0,0.5);
+        transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+    }
+    .drawer.open { right: 0; }
+
+    .drawer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    #close-basket {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+    }
+    #basket-items {
+        flex: 1;
+        overflow-y: auto;
+    }
+    .basket-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem;
+        background: rgba(255,255,255,0.05);
+        margin-bottom: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    .basket-item button {
+        background: none;
+        border: none;
+        color: var(--accent);
+        cursor: pointer;
+    }
+    .drawer-footer {
+        padding-top: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .print-only { display: none; }
+
+    @media print {
+        body * { display: none; }
+        .print-only, .print-only * { display: block; }
+        .print-only {
+            background: white !important;
+            color: black !important;
+            padding: 2rem;
+        }
+        .print-section { margin-bottom: 4rem; page-break-inside: avoid; }
+        h1, h2 { color: black !important; }
+    }
+</style>

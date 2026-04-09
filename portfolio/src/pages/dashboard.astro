@@ -1,0 +1,213 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Executive Dashboard | The Cost of Quality">
+	<main class="container">
+		<header>
+			<h1>Executive Dashboard</h1>
+			<p>High-level nationwide trends and econometric summary coefficients.</p>
+		</header>
+
+		<div class="metrics-grid">
+			<div class="metric-card" id="m1">
+				<span class="label">Aggregate TFR Shift</span>
+				<span class="value">-32%</span>
+				<p class="description">Reduction in Total Fertility Rate across textile districts (1851–1881).</p>
+                <button onclick="addtoBasket('TFR Shift', 'm1')" class="b-btn">+ Bookmark</button>
+			</div>
+			<div class="metric-card gold" id="m2">
+				<span class="label">Policy Identification</span>
+				<span class="value">Exogenous</span>
+				<p class="description">Identifying the 1833 Factory Act as a regulatory shock to child labor supply.</p>
+                <button onclick="addtoBasket('Identification', 'm2')" class="b-btn">+ Bookmark</button>
+			</div>
+			<div class="metric-card" id="m3">
+				<span class="label">Total Observations</span>
+				<span class="value">40,962</span>
+				<p class="description">Individual registration district snapshots cleaned and harmonized.</p>
+                <button onclick="addtoBasket('Sample Size', 'm3')" class="b-btn">+ Bookmark</button>
+			</div>
+			<div class="metric-card" id="m4">
+				<span class="label">Q-Q Elasticity</span>
+				<span class="value">+0.85</span>
+				<p class="description">Estimated elasticity of human capital investment relative to labor bans.</p>
+                <button onclick="addtoBasket('Q-Q Elasticity', 'm4')" class="b-btn">+ Bookmark</button>
+			</div>
+		</div>
+
+		<section class="mega-chart">
+			<h2>National Divergence</h2>
+			<div class="chart-placeholder">
+				<p>Chart: Baseline Fertility (Control) vs. Treatment Fertility (Textile Districts)</p>
+				<div class="bars">
+					<div class="bar-group">
+						<span class="bar-label">1851</span>
+						<div class="bar-wrap"><div class="bar control" style="height: 100%"></div><div class="bar treatment" style="height: 98%"></div></div>
+					</div>
+					<div class="bar-group">
+						<span class="bar-label">1861</span>
+						<div class="bar-wrap"><div class="bar control" style="height: 95%"></div><div class="bar treatment" style="height: 88%"></div></div>
+					</div>
+					<div class="bar-group">
+						<span class="bar-label">1871</span>
+						<div class="bar-wrap"><div class="bar control" style="height: 90%"></div><div class="bar treatment" style="height: 75%"></div></div>
+					</div>
+					<div class="bar-group">
+						<span class="bar-label">1881</span>
+						<div class="bar-wrap"><div class="bar control" style="height: 85%"></div><div class="bar treatment" style="height: 60%"></div></div>
+					</div>
+				</div>
+                <div class="chart-legend">
+                    <span class="legend-item"><i class="dot control"></i> Agriculture/Control</span>
+                    <span class="legend-item"><i class="dot treatment"></i> Textile/Treatment</span>
+                </div>
+			</div>
+		</section>
+	</main>
+</Layout>
+
+<style>
+	.container {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 4rem 2rem;
+	}
+	header {
+		margin-bottom: 5rem;
+		text-align: center;
+	}
+	h1 {
+		font-size: 3.5rem;
+		margin-bottom: 1rem;
+	}
+	.metrics-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+		gap: 2rem;
+		margin-bottom: 6rem;
+	}
+	.metric-card {
+		background: var(--secondary);
+		padding: 3rem;
+		border-radius: 12px;
+		border: 1px solid rgba(255,255,255,0.05);
+		text-align: center;
+		transition: all 0.3s;
+	}
+	.metric-card:hover {
+		transform: translateY(-5px);
+		border-color: rgba(212, 175, 55, 0.3);
+	}
+	.metric-card.gold {
+		background: linear-gradient(135deg, var(--secondary) 0%, rgba(212, 175, 55, 0.05) 100%);
+		border-color: var(--accent);
+	}
+	.label {
+		display: block;
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.15rem;
+		opacity: 0.5;
+		margin-bottom: 1rem;
+	}
+	.value {
+		display: block;
+		font-size: 3.5rem;
+		font-weight: 100;
+		color: var(--accent);
+		font-family: var(--sans);
+		margin-bottom: 1rem;
+	}
+	.description {
+		font-size: 0.9rem;
+		opacity: 0.7;
+		line-height: 1.6;
+        margin-bottom: 2rem;
+	}
+    .b-btn {
+        background: rgba(212, 175, 55, 0.1);
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        padding: 0.4rem 1rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .b-btn:hover {
+        background: var(--accent);
+        color: #000;
+    }
+
+	.mega-chart {
+		background: var(--secondary);
+		padding: 4rem;
+		border-radius: 12px;
+		border: 1px solid rgba(255,255,255,0.05);
+	}
+	h2 {
+		font-family: var(--serif);
+		margin-bottom: 3rem;
+		text-align: center;
+	}
+	.chart-placeholder {
+		height: 400px;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+		padding: 2rem;
+	}
+	.bars {
+		display: flex;
+		justify-content: space-around;
+		align-items: flex-end;
+		height: 300px;
+		border-bottom: 1px solid rgba(255,255,255,0.1);
+	}
+	.bar-group {
+		width: 15%;
+		text-align: center;
+	}
+	.bar-wrap {
+		display: flex;
+		justify-content: center;
+		gap: 5px;
+		height: 250px;
+		align-items: flex-end;
+	}
+	.bar {
+		width: 30px;
+		transition: height 1s ease-out;
+	}
+	.bar.control { background: #555; }
+	.bar.treatment { background: var(--accent); box-shadow: 0 0 15px rgba(212, 175, 55, 0.2); }
+	.bar-label {
+		display: block;
+		margin-top: 1rem;
+		font-size: 0.8rem;
+		opacity: 0.5;
+	}
+    .chart-legend {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 3rem;
+    }
+    .legend-item {
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        opacity: 0.7;
+    }
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+    }
+    .dot.control { background: #555; }
+    .dot.treatment { background: var(--accent); }
+</style>
