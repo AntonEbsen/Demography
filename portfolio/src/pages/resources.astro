@@ -1,0 +1,130 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Learning Resources | The Cost of Quality">
+	<main class="container">
+		<header>
+			<h1>Learning Resources</h1>
+			<p>A curated collection of archives, theoretical foundations, and datasets for further exploration.</p>
+		</header>
+
+		<div class="resource-sections">
+			<section class="resource-block">
+				<h2>🏛️ Historical Archives & Legislation</h2>
+				<ul class="link-list">
+					<li>
+						<a href="https://www.parliament.uk/about/living-heritage/transformingsociety/livinglearning/19thcentury/overview/factoryact/" target="_blank">
+							<strong>UK Parliament: The 1833 Factory Act</strong>
+							<span>Official overview of the landmark legislation and its impact.</span>
+						</a>
+					</li>
+					<li>
+						<a href="https://www.nationalarchives.gov.uk/education/resources/1833-factory-act/" target="_blank">
+							<strong>The National Archives: Education Resources</strong>
+							<span>Primary sources and classroom materials on Victorian labor conditions.</span>
+						</a>
+					</li>
+				</ul>
+			</section>
+
+			<section class="resource-block">
+				<h2>🧬 Theoretical Foundations</h2>
+				<ul class="link-list">
+					<li>
+						<a href="https://www.brown.edu/Departments/Economics/Faculty/Oded_Galor/UGT/index.html" target="_blank">
+							<strong>Unified Growth Theory (Oded Galor)</strong>
+							<span>The comprehensive framework for the transition from Malthusian stagnation to sustained growth.</span>
+						</a>
+					</li>
+					<li>
+						<a href="https://www.jstor.org/stable/1827014" target="_blank">
+							<strong>Gary Becker: The Q-Q Tradeoff</strong>
+							<span>The seminal 1973 paper: "On the Interaction between the Quantity and Quality of Children."</span>
+						</a>
+					</li>
+				</ul>
+			</section>
+
+			<section class="resource-block">
+				<h2>📊 Data & Mapping Resources</h2>
+				<ul class="link-list">
+					<li>
+						<a href="https://www.populationspast.org/" target="_blank">
+							<strong>Populations Past</strong>
+							<span>The primary source for Victorian census data and regional mapping in England and Wales.</span>
+						</a>
+					</li>
+					<li>
+						<a href="https://www.hgis.org.uk/" target="_blank">
+							<strong>Historical GIS (GBHGIS)</strong>
+							<span>Resources for historical administrative boundaries and spatial demographic data.</span>
+						</a>
+					</li>
+				</ul>
+			</section>
+		</div>
+	</main>
+</Layout>
+
+<style>
+	.container {
+		max-width: 900px;
+		margin: 0 auto;
+		padding: 4rem 2rem;
+	}
+	header {
+		margin-bottom: 5rem;
+		text-align: center;
+	}
+	h1 {
+		font-size: 4rem;
+		margin-bottom: 1rem;
+	}
+	.resource-sections {
+		display: flex;
+		flex-direction: column;
+		gap: 4rem;
+	}
+	h2 {
+		font-family: var(--serif);
+		color: var(--accent);
+		border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+		padding-bottom: 1rem;
+		margin-bottom: 2rem;
+	}
+	.link-list {
+		list-style: none;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+	.link-list li a {
+		display: block;
+		padding: 2rem;
+		background: var(--secondary);
+		border: 1px solid rgba(255,255,255,0.05);
+		border-radius: 8px;
+		text-decoration: none;
+		color: inherit;
+		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	.link-list li a:hover {
+		transform: translateY(-5px);
+		border-color: var(--accent);
+		background: rgba(212, 175, 55, 0.05);
+	}
+	.link-list li strong {
+		display: block;
+		font-family: var(--serif);
+		font-size: 1.4rem;
+		color: var(--accent);
+		margin-bottom: 0.5rem;
+	}
+	.link-list li span {
+		font-size: 0.95rem;
+		opacity: 0.7;
+		line-height: 1.5;
+	}
+</style>

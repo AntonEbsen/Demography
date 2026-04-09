@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Flowchart from '../components/Flowchart.astro';
 import References from '../components/References.astro';
 import TrendsChart from '../components/TrendsChart.astro';
+import Glossary from '../components/Glossary.astro';
 ---
 
 <Layout title="Research Methodology | The Cost of Quality">
@@ -26,7 +27,23 @@ import TrendsChart from '../components/TrendsChart.astro';
 			
 			<Flowchart />
 
-			<h2>2. Difference-in-Differences Strategy</h2>
+			<h2>2. The Mechanism: Bounding Child Labor</h2>
+			<div class="theory-grid">
+				<div class="theory-card">
+					<h3>Economic Opportunity Cost</h3>
+					<p>When the Factory Acts restricted child labor, the "price" of children changed. They moved from being an asset (a source of income) to a cost (requiring investment without immediate return).</p>
+				</div>
+				<div class="theory-card">
+					<h3>The Education Mandate</h3>
+					<p>By coupling labor restrictions with compulsory "part-time" schooling, the Acts lowered the relative cost of education, incentivizing parents to invest in child 'quality'.</p>
+				</div>
+				<div class="theory-card">
+					<h3>Q-Q Shift</h3>
+					<p>This exogenous shock forced a microeconomic pivot: households reduced fertility (quantity) to maximize the long-term human capital (quality) of each child.</p>
+				</div>
+			</div>
+
+			<h2>3. Difference-in-Differences Strategy</h2>
 			<p>
 				I utilize a <strong>Difference-in-Differences (DiD)</strong> approach with 
 				spatial weights. The identification strategy relies on the staggered 
@@ -94,13 +111,12 @@ import TrendsChart from '../components/TrendsChart.astro';
 								</tr>
 							</tbody>
 						</table>
-						<p class="legend">Standard errors in parentheses. *p<0.1; **p<0.05; ***p<0.01</p>
-					</div>
-				</div>
-			</div>
-		</section>
-
+						<aside class="cta">
+			<p>Interested in the code behind this analysis?</p>
+			<a href="https://github.com/AntonEbsen/Demography" class="github-link">Explore the Repository on GitHub</a>
 		</aside>
+
+		<Glossary />
 
 		<References />
 	</main>
@@ -249,6 +265,29 @@ import TrendsChart from '../components/TrendsChart.astro';
 		font-weight: bold;
 		text-transform: uppercase;
 		letter-spacing: 0.1rem;
+	}
+	.theory-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		gap: 2rem;
+		margin: 3rem 0;
+	}
+	.theory-card {
+		background: rgba(212, 175, 55, 0.05);
+		padding: 2rem;
+		border-left: 2px solid var(--accent);
+	}
+	.theory-card h3 {
+		font-size: 1rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1rem;
+		margin-bottom: 1rem;
+		color: var(--accent);
+	}
+	.theory-card p {
+		font-size: 0.85rem;
+		line-height: 1.6;
+		opacity: 0.8;
 	}
 	.specification-box {
 		background: var(--secondary);

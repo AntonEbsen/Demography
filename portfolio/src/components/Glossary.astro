@@ -1,0 +1,106 @@
+---
+---
+<div class="glossary-section">
+    <h2>Conceptual Glossary</h2>
+    <div class="glossary-grid">
+        <details>
+            <summary>Quantity-Quality (Q-Q) Trade-off</summary>
+            <div class="details-content">
+                <p>A microeconomic framework suggesting that as income rises or the "price" of child quality (education) falls, parents choose to invest more in fewer children rather than having a larger family.</p>
+            </div>
+        </details>
+        
+        <details>
+            <summary>Exogenous Shock</summary>
+            <div class="details-content">
+                <p>An external event (like the 1833 Factory Act) that changes the environment for participants but is not caused by the participants themselves. This is crucial for establishing causality in econometrics.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary>Total Fertility Rate (TFR)</summary>
+            <div class="details-content">
+                <p>The average number of children that would be born to a woman over her lifetime if she were to experience the exact current age-specific fertility rates through her reproductive life.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary>Difference-in-Differences (DiD)</summary>
+            <div class="details-content">
+                <p>A statistical technique that calculates the effect of a treatment by comparing the change in outcomes over time between a treated group and a control group.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary>Oster's Delta (δ)</summary>
+            <div class="details-content">
+                <p>A robustness metric developed by Emily Oster. It quantifies how strong unobserved selection would need to be relative to observed selection to explain away an estimated effect.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary>Spatial Weights</summary>
+            <div class="details-content">
+                <p>A method to account for the geographic proximity of observations. It acknowledges that districts close to each other are likely to share similar trends due to regional economic spills.</p>
+            </div>
+        </details>
+    </div>
+</div>
+
+<style>
+    .glossary-section {
+        margin-top: 6rem;
+        background: var(--secondary);
+        padding: 4rem;
+        border-radius: 8px;
+        border: 1px solid rgba(212, 175, 55, 0.1);
+    }
+    h2 {
+        font-family: var(--serif);
+        color: var(--accent);
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    .glossary-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    details {
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        padding: 1rem 0;
+        cursor: pointer;
+    }
+    summary {
+        font-weight: bold;
+        color: var(--accent);
+        font-family: var(--sans);
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        font-size: 0.9rem;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    summary::after {
+        content: '+';
+        font-size: 1.2rem;
+        transition: transform 0.3s;
+    }
+    details[open] summary::after {
+        transform: rotate(45deg);
+    }
+    .details-content {
+        padding-top: 1rem;
+        font-size: 0.9rem;
+        opacity: 0.8;
+        line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+        .glossary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
