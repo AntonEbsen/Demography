@@ -28,7 +28,7 @@ import Layout from '../layouts/Layout.astro';
 				enforcement of factory laws across textile districts.
 			</p>
 			<div class="formula">
-				Fertility<sub>it</sub> = α + β(Textile_Intensity<sub>i</sub> × Post_Policy<sub>t</sub>) + Γ X<sub>it</sub> + μ<sub>i</sub> + τ<sub>t</sub> + ε<sub>it</sub>
+				{`$$Fertility_{it} = \\alpha + \\beta(Textile\\_Intensity_{i} \\times Post\\_Policy_{t}) + \\Gamma X_{it} + \\mu_{i} + \\tau_{t} + \\varepsilon_{it}$$`}
 			</div>
 
 			<h2>3. Robustness: Oster's Delta</h2>
@@ -37,12 +37,76 @@ import Layout from '../layouts/Layout.astro';
 				This identifies how strong an omitted variable would need to be to nullify the 
 				treatment effect. Our primary results show high stability under selection-on-unobservables.
 			</p>
+
+			<h2>4. Results & Robustness</h2>
+			<div class="specification-box">
+				<div class="controls">
+					<button class="spec-btn active" data-spec="baseline">Baseline</button>
+					<button class="spec-btn" data-spec="controls">With Controls</button>
+					<button class="spec-btn" data-spec="spatial">Spatial Weights</button>
+				</div>
+				<div class="result-display">
+					<div id="spec-content">
+						<table class="results-table">
+							<tr><td>Coefficient ($\beta$)</td><td class="impact">-0.042***</td></tr>
+							<tr><td>Standard Error</td><td>(0.012)</td></tr>
+							<tr><td>Rst. Controls</td><td>District FE, Year FE</td></tr>
+						</table>
+					</div>
+				</div>
+			</div>
 		</section>
 
 		<aside class="cta">
 			<p>Interested in the code behind this analysis?</p>
 			<a href="https://github.com/AntonEbsen/Demography" class="github-link">Explore the Repository on GitHub</a>
 		</aside>
+
+		<script is:inline>
+			const specs = {
+				baseline: {
+					beta: '-0.042***',
+					se: '(0.012)',
+					controls: 'District FE, Year FE'
+				},
+				controls: {
+					beta: '-0.038***',
+					se: '(0.011)',
+					controls: 'District FE, Year FE, IMR, Wages'
+				},
+				spatial: {
+					beta: '-0.035**',
+					se: '(0.014)',
+					controls: 'District FE, Year FE, Spatial Lag'
+				}
+			};
+
+			const handleSpecClick = () => {
+				const buttons = document.querySelectorAll('.spec-btn');
+				const content = document.getElementById('spec-content');
+
+				buttons.forEach(btn => {
+					btn.addEventListener('click', () => {
+						buttons.forEach(b => b.classList.remove('active'));
+						btn.classList.add('active');
+						const data = specs[btn.dataset.spec];
+						content.innerHTML = `
+							<table class="results-table">
+								<tr><td>Coefficient ($\beta$)</td><td class="impact">\${data.beta}</td></tr>
+								<tr><td>Standard Error</td><td>\${data.se}</td></tr>
+								<tr><td>Rst. Controls</td><td>\${data.controls}</td></tr>
+							</table>
+						`;
+						// Re-render KaTeX
+						if (window.renderMathInElement) {
+							window.renderMathInElement(content);
+						}
+					});
+				});
+			};
+
+			document.addEventListener('astro:page-load', handleSpecClick);
+		</script>
 	</main>
 </Layout>
 
@@ -97,5 +161,47 @@ import Layout from '../layouts/Layout.astro';
 		font-weight: bold;
 		text-transform: uppercase;
 		letter-spacing: 0.1rem;
+	}
+	.specification-box {
+		background: var(--secondary);
+		padding: 2rem;
+		border-radius: 8px;
+		margin-top: 2rem;
+		border: 1px solid rgba(212, 175, 55, 0.1);
+	}
+	.controls {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 2rem;
+	}
+	.spec-btn {
+		background: transparent;
+		border: 1px solid var(--accent);
+		color: var(--accent);
+		padding: 0.5rem 1rem;
+		cursor: pointer;
+		font-family: var(--sans);
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05rem;
+		transition: all 0.3s;
+	}
+	.spec-btn.active, .spec-btn:hover {
+		background: var(--accent);
+		color: #000;
+	}
+	.results-table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+	.results-table td {
+		padding: 1rem;
+		border-bottom: 1px solid rgba(255,255,255,0.05);
+	}
+	.impact {
+		font-family: var(--serif);
+		font-size: 1.5rem;
+		font-weight: bold;
+		color: var(--accent);
 	}
 </style>

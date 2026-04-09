@@ -10,9 +10,9 @@ import Layout from '../layouts/Layout.astro';
 		</header>
 
 		<div class="gallery">
-			<article class="card">
+			<article class="card reveal">
 				<div class="visual">
-					<img src="/animations/fertility_decline_1851_1881.gif" alt="Fertility Time-lapse" />
+					<img src={`${import.meta.env.BASE_URL}animations/fertility_decline_1851_1881.gif`} alt="Fertility Time-lapse" />
 				</div>
 				<div class="content">
 					<h2>🎬 Temporal Evolution</h2>
@@ -24,9 +24,9 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 			</article>
 
-			<article class="card">
+			<article class="card reveal">
 				<div class="visual">
-					<img src="/spatial/lisa_tfr_1851.png" alt="LISA Cluster map" />
+					<img src={`${import.meta.env.BASE_URL}spatial/lisa_tfr_1851.png`} alt="LISA Cluster map" />
 				</div>
 				<div class="content">
 					<h2>🗺️ Spatial Auto-correlation</h2>
@@ -38,9 +38,9 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 			</article>
 
-			<article class="card">
+			<article class="card reveal">
 				<div class="visual">
-					<img src="/ml/shap_summary_plot.png" alt="SHAP Plot" />
+					<img src={`${import.meta.env.BASE_URL}ml/shap_summary_plot.png`} alt="SHAP Plot" />
 				</div>
 				<div class="content">
 					<h2>🤖 Predictive Importance (AI)</h2>
@@ -52,6 +52,24 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 			</article>
 		</div>
+
+		<script is:inline>
+			const revealCards = () => {
+				const cards = document.querySelectorAll('.card.reveal');
+				const observer = new IntersectionObserver((entries) => {
+					entries.forEach(entry => {
+						if (entry.isIntersecting) {
+							entry.target.classList.add('visible');
+							observer.unobserve(entry.target);
+						}
+					});
+				}, { threshold: 0.1 });
+				
+				cards.forEach(card => observer.observe(card));
+			};
+
+			document.addEventListener('astro:page-load', revealCards);
+		</script>
 	</main>
 </Layout>
 
@@ -98,6 +116,15 @@ import Layout from '../layouts/Layout.astro';
 	.content p {
 		font-size: 1.1rem;
 		opacity: 0.9;
+	}
+	.card.reveal {
+		opacity: 0;
+		transform: translateY(30px);
+		transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	.card.reveal.visible {
+		opacity: 1;
+		transform: translateY(0);
 	}
 
 	@media (max-width: 800px) {

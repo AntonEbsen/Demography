@@ -1,0 +1,66 @@
+---
+const events = [
+	{ year: '1802', title: 'Health and Morals of Apprentices Act', desc: 'First attempt to limit child labor (applies only to apprentices).' },
+	{ year: '1819', title: 'Cotton Mills Act', desc: 'No children under 9 to work in cotton mills; 12-hour limit for under-16s.' },
+	{ year: '1833', title: 'The Althorp Act', desc: 'Mandatory schooling (2h/day) and factory inspectors introduced.' },
+	{ year: '1844', title: 'The Graham Act', desc: 'Children (aged 8-13) work hours halved; schooling increased to 3h/day.' },
+	{ year: '1847', title: 'Ten Hours Act', desc: 'The "Ten-Hour" movement succeeds for women and young persons.' },
+];
+---
+
+<div class="timeline">
+	{events.map((event, index) => (
+		<div class="timeline-item">
+			<div class="year">{event.year}</div>
+			<div class="content">
+				<h3>{event.title}</h3>
+				<p>{event.desc}</p>
+			</div>
+		</div>
+	))}
+</div>
+
+<style>
+	.timeline {
+		position: relative;
+		max-width: 800px;
+		margin: 4rem auto;
+		padding-left: 2rem;
+		border-left: 1px solid var(--accent);
+	}
+	.timeline-item {
+		position: relative;
+		margin-bottom: 4rem;
+		padding-left: 3rem;
+	}
+	.timeline-item::before {
+		content: '';
+		position: absolute;
+		left: -2.35rem;
+		top: 0.5rem;
+		width: 1rem;
+		height: 1rem;
+		background: var(--bg);
+		border: 2px solid var(--accent);
+		border-radius: 50%;
+	}
+	.year {
+		font-family: var(--serif);
+		font-size: 2rem;
+		font-weight: bold;
+		color: var(--accent);
+		line-height: 1;
+		margin-bottom: 0.5rem;
+	}
+	h3 {
+		font-size: 1.2rem;
+		margin-bottom: 0.5rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05rem;
+	}
+	p {
+		font-size: 1rem;
+		opacity: 0.8;
+		margin: 0;
+	}
+</style>
