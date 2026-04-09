@@ -1,0 +1,58 @@
+---
+---
+<section class="references">
+    <h2>Select Bibliography</h2>
+    <div class="reference-grid">
+        <div class="ref-item" data-ref="becker1973">
+            <span class="ref-cite">Becker & Lewis (1973)</span>
+            <p>"On the Interaction between the Quantity and Quality of Children." Journal of Political Economy.</p>
+        </div>
+        <div class="ref-item" data-ref="galor2011">
+            <span class="ref-cite">Galor (2011)</span>
+            <p>"Unified Growth Theory." Princeton University Press.</p>
+        </div>
+        <div class="ref-item" data-ref="nardinelli1990">
+            <span class="ref-cite">Nardinelli (1990)</span>
+            <p>"Child Labor and the Industrial Revolution." Indiana University Press.</p>
+        </div>
+        <div class="ref-item" data-ref="humphries2010">
+            <span class="ref-cite">Humphries (2010)</span>
+            <p>"Childhood and Child Labour in the British Industrial Revolution." Cambridge University Press.</p>
+        </div>
+    </div>
+</section>
+
+<style>
+    .references {
+        margin-top: 8rem;
+        padding-top: 4rem;
+        border-top: 1px solid rgba(212, 175, 55, 0.2);
+    }
+    .reference-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        margin-top: 2rem;
+    }
+    .ref-item {
+        font-family: var(--serif);
+    }
+    .ref-cite {
+        display: block;
+        color: var(--accent);
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+    }
+    .ref-item p {
+        font-size: 0.95rem;
+        opacity: 0.8;
+        line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+        .reference-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

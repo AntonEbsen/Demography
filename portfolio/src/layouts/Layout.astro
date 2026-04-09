@@ -191,6 +191,40 @@ const { title } = Astro.props;
 		font-size: 0.8rem;
 		opacity: 0.6;
 	}
+
+	/* Print optimization for Research Brief */
+	@media print {
+		nav, .theme-btn, .cta, .spec-btn, .github-link, footer, .controls {
+			display: none !important;
+		}
+		body {
+			background: white !important;
+			color: black !important;
+		}
+		.container {
+			max-width: 100% !important;
+			padding: 0 !important;
+		}
+		h1, h2, h3 {
+			color: black !important;
+			page-break-after: avoid;
+		}
+		.monograph {
+			column-count: 2;
+			column-gap: 3rem;
+		}
+		.results-table {
+			border: 1px solid #ccc;
+			page-break-inside: avoid;
+		}
+		.results-table thead th {
+			border-bottom: 2px solid black;
+			color: black;
+		}
+		.impact {
+			color: black;
+		}
+	}
 	h1, h2, h3 {
 		font-family: var(--serif);
 		color: var(--accent);

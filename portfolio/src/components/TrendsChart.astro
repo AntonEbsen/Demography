@@ -1,0 +1,81 @@
+---
+---
+<div class="chart-container">
+    <h3>Impact Divergence (1851-1881)</h3>
+    <svg viewBox="0 0 400 200" class="divergence-svg">
+        <!-- Axes -->
+        <line x1="40" y1="20" x2="40" y2="180" stroke="currentColor" stroke-width="2" opacity="0.3" />
+        <line x1="40" y1="180" x2="380" y2="180" stroke="currentColor" stroke-width="2" opacity="0.3" />
+        
+        <!-- Grid lines -->
+        <line x1="40" y1="140" x2="380" y2="140" stroke="currentColor" stroke-width="1" stroke-dasharray="4" opacity="0.1" />
+        <line x1="40" y1="100" x2="380" y2="100" stroke="currentColor" stroke-width="1" stroke-dasharray="4" opacity="0.1" />
+        <line x1="40" y1="60" x2="380" y2="60" stroke="currentColor" stroke-width="1" stroke-dasharray="4" opacity="0.1" />
+
+        <!-- Control Group (Steady Decline) -->
+        <path d="M 40 60 L 125 75 L 210 90 L 295 105 L 380 120" 
+              fill="none" stroke="currentColor" stroke-width="2" opacity="0.3" />
+        <text x="385" y="125" class="label" opacity="0.5">Control</text>
+
+        <!-- Treatment Group (Divergent Decline) -->
+        <path d="M 40 60 L 125 85 L 210 120 L 295 160 L 380 185" 
+              fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" class="draw-line" />
+        <text x="385" y="190" class="label" fill="var(--accent)" font-weight="bold">Textile IDs</text>
+
+        <!-- Timepoints -->
+        <text x="40" y="195" class="time">1851</text>
+        <text x="125" y="195" class="time">1861</text>
+        <text x="210" y="195" class="time">1871</text>
+        <text x="295" y="195" class="time">1881</text>
+
+        <!-- Annotation -->
+        <circle cx="125" cy="85" r="4" fill="var(--accent)" />
+        <text x="135" y="80" class="anno" fill="var(--accent)">Shock Phase</text>
+    </svg>
+    <p class="chart-caption">Stylized aggregate fertility trends (Coale Index) indexed to 1851 baseline.</p>
+</div>
+
+<style>
+    .chart-container {
+        margin: 4rem 0;
+        padding: 3rem;
+        background: #000;
+        border-radius: 8px;
+        border: 1px solid rgba(212, 175, 55, 0.1);
+    }
+    h3 {
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 1.2rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+    }
+    .divergence-svg {
+        width: 100%;
+        height: auto;
+        overflow: visible;
+    }
+    .label {
+        font-size: 10px;
+        font-family: var(--sans);
+    }
+    .time {
+        font-size: 10px;
+        opacity: 0.5;
+        text-anchor: middle;
+    }
+    .anno {
+        font-size: 9px;
+        font-family: var(--serif);
+        font-style: italic;
+    }
+    .draw-line {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: draw 3s ease-out forwards;
+    }
+
+    @keyframes draw {
+        to { stroke-dashoffset: 0; }
+    }
+</style>

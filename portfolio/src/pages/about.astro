@@ -46,10 +46,10 @@ import Layout from '../layouts/Layout.astro';
 						</a>
 					</li>
 					<li>
-						<a href="#">
-							<strong>Research Brief (PDF)</strong>
+						<button onclick="window.print()" class="print-brief-btn">
+							<strong>Generate Research Brief (PDF)</strong>
 							<span>Typeset summary of the Factory Acts analysis.</span>
-						</a>
+						</button>
 					</li>
 					<li>
 						<a href="https://github.com/AntonEbsen/Demography/blob/main/exam_project/notebooks/exam_project.ipynb">
@@ -114,7 +114,7 @@ import Layout from '../layouts/Layout.astro';
 		flex-direction: column;
 		gap: 2rem;
 	}
-	.resource-list li a {
+	.resource-list li a, .print-brief-btn {
 		text-decoration: none;
 		color: var(--text);
 		display: block;
@@ -123,8 +123,12 @@ import Layout from '../layouts/Layout.astro';
 		border-radius: 4px;
 		transition: transform 0.3s;
 		border: 1px solid rgba(255,255,255,0.05);
+		width: 100%;
+		text-align: left;
+		cursor: pointer;
+		font-family: inherit;
 	}
-	.resource-list li a:hover {
+	.resource-list li a:hover, .print-brief-btn:hover {
 		transform: scale(1.02);
 		border-color: var(--accent);
 	}

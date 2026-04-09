@@ -1,0 +1,79 @@
+---
+---
+<div class="flowchart-container">
+    <div class="flow-step">
+        <div class="icon">📊</div>
+        <h4>1. Raw Data</h4>
+        <p>1851-1881 District Panel</p>
+    </div>
+    <div class="arrow">→</div>
+    <div class="flow-step">
+        <div class="icon">🌍</div>
+        <h4>2. Spatial Join</h4>
+        <p>GIS Integration</p>
+    </div>
+    <div class="arrow">→</div>
+    <div class="flow-step">
+        <div class="icon">📐</div>
+        <h4>3. Formulation</h4>
+        <p>DiD Identification</p>
+    </div>
+    <div class="arrow">→</div>
+    <div class="flow-step">
+        <div class="icon">📈</div>
+        <h4>4. Impact</h4>
+        <p>Q-Q Trade-off Evidence</p>
+    </div>
+</div>
+
+<style>
+    .flowchart-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--secondary);
+        padding: 3rem;
+        border-radius: 8px;
+        margin: 4rem 0;
+        border: 1px solid rgba(212, 175, 55, 0.1);
+        text-align: center;
+    }
+    .flow-step {
+        flex: 1;
+        padding: 0 1rem;
+    }
+    .icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+    h4 {
+        font-family: var(--serif);
+        color: var(--accent);
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+    }
+    p {
+        font-size: 0.8rem;
+        opacity: 0.7;
+        margin: 0;
+        line-height: 1.4;
+    }
+    .arrow {
+        font-size: 1.5rem;
+        color: var(--accent);
+        opacity: 0.4;
+        font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+        .flowchart-container {
+            flex-direction: column;
+            gap: 2rem;
+        }
+        .arrow {
+            transform: rotate(90deg);
+        }
+    }
+</style>

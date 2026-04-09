@@ -1,5 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Flowchart from '../components/Flowchart.astro';
+import References from '../components/References.astro';
+import TrendsChart from '../components/TrendsChart.astro';
 ---
 
 <Layout title="Research Methodology | The Cost of Quality">
@@ -20,6 +23,8 @@ import Layout from '../layouts/Layout.astro';
 				"The Factory Acts introduced a structural break in the economic value of children by 
 				simultaneously lowering labor income and raising education costs."
 			</blockquote>
+			
+			<Flowchart />
 
 			<h2>2. Difference-in-Differences Strategy</h2>
 			<p>
@@ -38,6 +43,8 @@ import Layout from '../layouts/Layout.astro';
 				treatment effect. Our primary results show high stability under selection-on-unobservables.
 			</p>
 
+			<TrendsChart />
+
 			<h2>4. Results & Robustness</h2>
 			<div class="specification-box">
 				<div class="controls">
@@ -48,36 +55,81 @@ import Layout from '../layouts/Layout.astro';
 				<div class="result-display">
 					<div id="spec-content">
 						<table class="results-table">
-							<tr><td>Coefficient ($\beta$)</td><td class="impact">-0.042***</td></tr>
-							<tr><td>Standard Error</td><td>(0.012)</td></tr>
-							<tr><td>Rst. Controls</td><td>District FE, Year FE</td></tr>
+							<thead>
+								<tr>
+									<th>Variable</th>
+									<th>(1) Baseline</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>Textile Intensity $\times$ Post</td>
+									<td class="impact">-0.042***</td>
+								</tr>
+								<tr>
+									<td></td>
+									<td class="se">(0.012)</td>
+								</tr>
+								<tr class="spacer"></tr>
+								<tr>
+									<td>Registration District FE</td>
+									<td>Yes</td>
+								</tr>
+								<tr>
+									<td>Census Year FE</td>
+									<td>Yes</td>
+								</tr>
+								<tr>
+									<td>Additional Controls</td>
+									<td>No</td>
+								</tr>
+								<tr class="spacer"></tr>
+								<tr>
+									<td>Observations ($N$)</td>
+									<td>40,962</td>
+								</tr>
+								<tr>
+									<td>R-squared ($R^2$)</td>
+									<td>0.742</td>
+								</tr>
+							</tbody>
 						</table>
+						<p class="legend">Standard errors in parentheses. *p<0.1; **p<0.05; ***p<0.01</p>
 					</div>
 				</div>
 			</div>
 		</section>
 
-		<aside class="cta">
-			<p>Interested in the code behind this analysis?</p>
-			<a href="https://github.com/AntonEbsen/Demography" class="github-link">Explore the Repository on GitHub</a>
 		</aside>
+
+		<References />
+	</main>
 
 		<script is:inline>
 			const specs = {
 				baseline: {
+					name: '(1) Baseline',
 					beta: '-0.042***',
 					se: '(0.012)',
-					controls: 'District FE, Year FE'
+					n: '40,962',
+					r2: '0.742',
+					controls: 'No'
 				},
 				controls: {
+					name: '(2) Full Controls',
 					beta: '-0.038***',
 					se: '(0.011)',
-					controls: 'District FE, Year FE, IMR, Wages'
+					n: '40,962',
+					r2: '0.789',
+					controls: 'IMR, Wages'
 				},
 				spatial: {
+					name: '(3) Spatial Lag',
 					beta: '-0.035**',
 					se: '(0.014)',
-					controls: 'District FE, Year FE, Spatial Lag'
+					n: '40,962',
+					r2: '0.765',
+					controls: 'Spatial Weights'
 				}
 			};
 
@@ -92,10 +144,46 @@ import Layout from '../layouts/Layout.astro';
 						const data = specs[btn.dataset.spec];
 						content.innerHTML = `
 							<table class="results-table">
-								<tr><td>Coefficient ($\beta$)</td><td class="impact">\${data.beta}</td></tr>
-								<tr><td>Standard Error</td><td>\${data.se}</td></tr>
-								<tr><td>Rst. Controls</td><td>\${data.controls}</td></tr>
+								<thead>
+									<tr>
+										<th>Variable</th>
+										<th>\${data.name}</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td>Textile Intensity $\times$ Post</td>
+										<td class="impact">\${data.beta}</td>
+									</tr>
+									<tr>
+										<td></td>
+										<td class="se">\${data.se}</td>
+									</tr>
+									<tr class="spacer"></tr>
+									<tr>
+										<td>Registration District FE</td>
+										<td>Yes</td>
+									</tr>
+									<tr>
+										<td>Census Year FE</td>
+										<td>Yes</td>
+									</tr>
+									<tr>
+										<td>Additional Controls</td>
+										<td>\${data.controls}</td>
+									</tr>
+									<tr class="spacer"></tr>
+									<tr>
+										<td>Observations ($N$)</td>
+										<td>\${data.n}</td>
+									</tr>
+									<tr>
+										<td>R-squared ($R^2$)</td>
+										<td>\${data.r2}</td>
+									</tr>
+								</tbody>
 							</table>
+							<p class="legend">Standard errors in parentheses. *p<0.1; **p<0.05; ***p<0.01</p>
 						`;
 						// Re-render KaTeX
 						if (window.renderMathInElement) {
@@ -193,15 +281,48 @@ import Layout from '../layouts/Layout.astro';
 	.results-table {
 		width: 100%;
 		border-collapse: collapse;
+		font-family: var(--serif);
+		margin: 1rem 0;
+	}
+	.results-table thead th {
+		border-bottom: 2px solid var(--accent);
+		padding: 1rem;
+		text-align: left;
+		font-weight: bold;
+		text-transform: uppercase;
+		font-size: 0.9rem;
+		letter-spacing: 0.05rem;
 	}
 	.results-table td {
-		padding: 1rem;
+		padding: 0.75rem 1rem;
 		border-bottom: 1px solid rgba(255,255,255,0.05);
 	}
+	.results-table tr.spacer {
+		height: 1.5rem;
+		border-bottom: none;
+	}
+	.results-table tr.spacer td {
+		border-bottom: none;
+	}
 	.impact {
-		font-family: var(--serif);
-		font-size: 1.5rem;
+		font-size: 1.3rem;
 		font-weight: bold;
 		color: var(--accent);
+		text-align: right;
+	}
+	.se {
+		text-align: right;
+		opacity: 0.8;
+		font-style: italic;
+	}
+	.results-table td:last-child {
+		text-align: right;
+	}
+	.legend {
+		font-size: 0.8rem;
+		opacity: 0.6;
+		margin-top: 1.5rem;
+		font-style: italic;
+		text-align: right;
 	}
 </style>
