@@ -1,0 +1,29 @@
+[project]
+name = "demography-economics"
+version = "0.1.0"
+description = "Research repository for Demography & Economics"
+authors = [{ name = "Anton Meier Ebsen Jørgensen" }]
+dependencies = [
+    "pandas",
+    "geopandas",
+    "openpyxl",
+    "statsmodels",
+    "matplotlib",
+    "plotly",
+    "streamlit",
+    "pandera",
+    "pytest",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I"]
+ignore = []
+
+[tool.black]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"

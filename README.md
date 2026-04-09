@@ -1,120 +1,50 @@
-# Demography
+# Demography & Economics Research Repository
 
-# AØKA08197U Demography
-
-**Volume:** 2024/2025
-**Education Level:** MSc Programme in Economics – Elective Course  
-**Bachelor Programme:** Danish BSc in Economics – Elective at 3rd Year  
-**Credits:** 7.5 ECTS
-**Course Code:** AØKA08197U
-**Course Room:** [Virtual Course Room on Absalon](#) 
-**Announcements:** [KUnet Study Messages](#)
+Welcome to the research repository for the **MSc Economics - Demography** course (AØKA08197U) at the University of Copenhagen. This repository contains lecture notes, translation of STATA code to Python, and the master's level exam project.
 
 ---
 
-## 📖 Course Overview
+## 🚀 Featured Project: The "Cost of Quality"
+### Legislative Shocks to Child Labor and the Fertility Transition in 19th-Century Britain
 
-Welcome to **Demography**, an introductory course designed to equip you with foundational knowledge and methodologies in demography. This course focuses on measuring vital events and exploring the intricate interactions between demographic and economic changes over time. Through empirical and theoretical studies, you'll gain insights into how populations evolve and the economic implications of these changes.
+This project investigates the impact of the **1833 and 1844 Factory Acts** on the British fertility transition. Using a **Difference-in-Differences (DiD)** methodology, we explore whether legislative restrictions on child labor and mandatory schooling requirements acted as a catalyst for the "Quantity-Quality" trade-off.
 
----
-
-## 🎓 Eligibility
-
-This course is open to:
-- **Exchange and Guest Students** from abroad
-- **Credit Students** from Danish Universities
-- **Open University Students**
-
-**Recommended Academic Qualifications:**
-- Knowledge corresponding to the **2nd year** of the Bachelor in Economics at the University of Copenhagen or a similar institution.
+- **📌 Research Overview:** [Exam Project Folder](./exam_project/)
+- **📊 Analysis Notebook:** [Notebook Link](./exam_project/notebooks/exam_project.ipynb)
+- **📁 Data Sources:** Populations Past (Registration Districts 1851–1891), UK Data Service.
 
 ---
 
-## 📚 Course Content
+## 📖 Course Information: AØKA08197U Demography
 
-The course covers the following key topics:
+**Volume:** 2024/2025  
+**Level:** MSc Economics – Elective Course  
+**Credits:** 7.5 ECTS  
 
-### 1. **Fertility**
-- Measures of fertility.
-- Economic and social determinants of fertility.
+### 📚 Core Topics
+1. **Fertility**: Measures, economic and social determinants.
+2. **Mortality**: Life tables and economic determinants.
+3. **Demographic Transitions**: Macro/Micro causes and consequences.
+4. **Migration**: Measures and consequences.
 
-### 2. **Mortality**
-- Measures of mortality.
-- Construction of life tables.
-- Economic and social determinants of mortality.
-
-### 3. **Demographic Transitions**
-- Macro and microeconomic causes and consequences.
-
-### 4. **Migration**
-- Measures of migration.
-- Economic and social determinants and consequences of migration.
+### 🎯 Learning Outcomes
+- Discuss economic theories of the Demographic Transition.
+- Construct demographic measures using population census and vital statistics.
+- Master methods to analyze interaction between demographic and economic changes.
 
 ---
 
-## 🎯 Learning Outcomes
+## 🛠️ Repository Structure
 
-Upon completing the course, you will be able to:
-
-### **Knowledge:**
-- Explain fundamental demographic processes and changes experienced by countries over the last two centuries.
-- Discuss different economic theories of the Demographic Transition.
-- Describe empirical models used to identify causes and consequences of changes in fertility, mortality, and migration.
-- Analyze key findings in the economic-demography literature focusing on variables like fertility, mortality, and migration.
-
-### **Skills:**
-- Construct relevant measures of fertility, mortality, and migration using population census and vital-statistics data.
-- Analyze the influence of demographic variables on economic variables such as human capital and income, and vice versa.
-- Develop datasets for studying basic demographic issues.
-
-### **Competencies:**
-- Master methods to analyze the interaction between demographic and economic changes in economic development.
-- Combine theoretical and empirical knowledge to design research aimed at identifying causes and consequences of demographic changes.
-
----
-
-## 📖 Literature
-
-- **Primary Textbook:**  
-  Hinde, Andrew & Arnold. *Demographic Methods*. Selected chapters.
-
-- **Additional Reading:**  
-  Various journal articles focusing on the economic causes and consequences of demographic changes in societies.
-
----
-
-## 🛠️ Teaching and Learning Methods
-
-- **Lectures:**  
-  Comprehensive lectures covering all key topics.
-
-- **In-Class Activities:**  
-  Exercises, discussions, and student presentations on journal articles. Preparation is required before class sessions.
-
----
-
-## 📋 Assessment
-
-### **Type of Assessment:**  
-- **Written Assignment:** Individual Project (3 weeks)
-
-### **Details:**
-- **Project Topic:** Choose a topic within demography.
-- **Data:** Identify and utilize suitable data for your project.
-- **Process:**
-  1. **Project Description:** Submit a project proposal for approval.
-  2. **Project Paper:** Write and submit your project paper within 3 weeks.
-- **Collaboration:** You may discuss your project with peers, but the work must be completed and submitted individually.
-- **Language:** Both the project description and project paper must be written in **English**.
+- `exam_project/`: Main research project files, including data and notebooks.
+- `lectures/`: Course lecture materials and notes.
+- `translation_of_STATA_code/`: Python implementations of econometric models originally in STATA.
+- `research_papers/`: Key literature referenced during the course.
 
 ---
 
 ## 📫 Contact
 
-For any questions or further information regarding the course, please contact:
-
 **Anton Meier Ebsen Jørgensen**  
-MSc Student, Economics  
+MSc Student, Economics @ University of Copenhagen  
 **Email:** anton.ebsen@gmail.com
-
----

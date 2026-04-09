@@ -1,0 +1,179 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="The Cost of Quality | Anton Ebsen">
+	<main>
+		<section class="hero">
+			<div class="hero-content">
+				<span class="eyebrow">A PhD Research Showcase</span>
+				<h1>The Cost of Quality</h1>
+				<p class="subtitle">How Legislative Shocks to Child Labor Transformed the British Fertility Transition</p>
+				<div class="cta-group">
+					<a href="/research" class="btn primary">Read the Research</a>
+					<a href="/evidence" class="btn secondary">View the Evidence</a>
+				</div>
+			</div>
+			<div class="hero-visual">
+				<img src="/animations/fertility_decline_1851_1881.gif" alt="Fertility Transition Time-lapse" />
+			</div>
+		</section>
+
+		<section class="abstract">
+			<div class="container">
+				<h2>Executive Abstract</h2>
+				<p>
+					This project investigates the impact of the 1833 and 1844 Factory Acts on the British fertility transition. 
+					Utilizing a Registration District panel (1851–1881), I test whether restricting child labor and 
+					mandating schooling acted as a catalyst for the human capital-driven "Quantity-Quality" trade-off.
+				</p>
+				<p>
+					The findings suggest that districts with higher textile intensity saw a significant shift in the 
+					opportunity cost of children, eventually decoupling industrial production from high-fertility regimes.
+				</p>
+			</div>
+		</section>
+
+		<section class="stats">
+			<div class="stat-card">
+				<span class="label">Total Observations</span>
+				<span class="value">40,962</span>
+			</div>
+			<div class="stat-card">
+				<span class="label">Time Horizon</span>
+				<span class="value">1851–1881</span>
+			</div>
+			<div class="stat-card">
+				<span class="label">Methodology</span>
+				<span class="value">Spatial DiD</span>
+			</div>
+		</section>
+	</main>
+</Layout>
+
+<style>
+	main {
+		width: 100%;
+	}
+	section {
+		padding: 6rem 2rem;
+	}
+	.container {
+		max-width: 800px;
+		margin: 0 auto;
+	}
+	.hero {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 4rem;
+		align-items: center;
+		max-width: 1200px;
+		margin: 0 auto;
+		min-height: 80vh;
+	}
+	.eyebrow {
+		display: block;
+		font-size: 0.9rem;
+		text-transform: uppercase;
+		letter-spacing: 0.2rem;
+		margin-bottom: 1rem;
+		color: var(--accent);
+		opacity: 0.8;
+	}
+	h1 {
+		font-size: 5rem;
+		margin: 0 0 1.5rem;
+		line-height: 1;
+	}
+	.subtitle {
+		font-size: 1.5rem;
+		opacity: 0.8;
+		margin-bottom: 3rem;
+	}
+	.hero-visual img {
+		width: 100%;
+		border-radius: 8px;
+		box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+		border: 1px solid rgba(212, 175, 55, 0.3);
+	}
+	.cta-group {
+		display: flex;
+		gap: 1.5rem;
+	}
+	.btn {
+		padding: 1rem 2rem;
+		border-radius: 4px;
+		text-decoration: none;
+		font-weight: 600;
+		transition: all 0.3s;
+		font-size: 0.9rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1rem;
+	}
+	.btn.primary {
+		background: var(--accent);
+		color: #000;
+	}
+	.btn.primary:hover {
+		transform: translateY(-3px);
+		box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+	}
+	.btn.secondary {
+		border: 1px solid var(--accent);
+		color: var(--accent);
+	}
+	.btn.secondary:hover {
+		background: rgba(212, 175, 55, 0.1);
+	}
+	.abstract {
+		background: var(--secondary);
+		text-align: center;
+	}
+	.abstract h2 {
+		font-size: 3rem;
+		margin-bottom: 2rem;
+	}
+	.stats {
+		display: flex;
+		justify-content: center;
+		gap: 6rem;
+		background: #000;
+	}
+	.stat-card {
+		text-align: center;
+	}
+	.stat-card .label {
+		display: block;
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1rem;
+		margin-bottom: 0.5rem;
+		opacity: 0.6;
+	}
+	.stat-card .value {
+		font-size: 2.5rem;
+		font-family: var(--serif);
+		color: var(--accent);
+	}
+
+	@media (max-width: 900px) {
+		.hero {
+			grid-template-columns: 1fr;
+			text-align: center;
+			padding-top: 4rem;
+		}
+		.hero-content {
+			order: 1;
+		}
+		h1 {
+			font-size: 3.5rem;
+		}
+		.cta-group {
+			justify-content: center;
+		}
+		.stats {
+			flex-direction: column;
+			gap: 3rem;
+		}
+	}
+</style>

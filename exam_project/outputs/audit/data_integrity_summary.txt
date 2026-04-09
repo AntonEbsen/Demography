@@ -1,0 +1,105 @@
+=== DATA INTEGRITY SUMMARY ===
+Total Observations: 40962
+Registration Districts: 1283
+Years Covered: [1851, 1861, 1871, 1881]
+
+=== MISSING DATA (COUNTS) ===
+REGDIST            0
+CEN_1851       30663
+REGCNTY          226
+SUBDIST         2542
+POP_DENS         226
+TYPE             325
+POP              226
+ACRES            226
+TFR              359
+ASFR_20-24       943
+ASFR_25-29       943
+ASFR_30-34       943
+ASFR_35-39       943
+ASFR_40-44       943
+ASFR_45-49       943
+TMFR            9857
+ASMFR_20-24    10441
+ASMFR_25-29    10441
+ASMFR_30-34    10441
+ASMFR_35-39    10441
+ASMFR_40-44    10441
+ASMFR_45-49    10441
+LEGIT_RATE       904
+ILEG_RATE        904
+ILEG_RATIO       805
+F_SMAM          9861
+M_SMAM          9861
+F_CEL_4554      9861
+M_CEL_4554      9861
+IMR              320
+ECMR            9856
+DOC             9851
+SP_FAM          9851
+SINGLE_PER      9851
+HOUSE_SERV      9889
+BOARD           9890
+HH_KIN          9851
+AV_AGE           353
+AV_AGE_F         353
+AV_AGE_M         353
+DEPEND           353
+C_WORK_AGE       353
+ELD_WORK_A       353
+SR               353
+LTM_10_F        9851
+LTM_10_M        9851
+LTM_1050_F      9852
+LTM_1050_M      9852
+LTM_50_F        9851
+LTM_50_M        9851
+IRL_F           9851
+IRL_M           9851
+SCT_F           9851
+SCT_M           9851
+ENG_F           9851
+ENG_M           9851
+WAL_F           9851
+WAL_M           9851
+FOREIGN_F       9851
+FOREIGN_M       9851
+HC1             9851
+HC2             9851
+HC3             9851
+HC4             9851
+HC5             9851
+SC1             9851
+SC2             9851
+SC3             9851
+SC4             9851
+SC5             9851
+SC6             9851
+SC7             9851
+SC8             9851
+FMAR_PRATE      9851
+FNM_PRATE       9851
+FWID_PRATE      9851
+F_DOM           9851
+F_TEX           9851
+C_TEACHER       9851
+F_CL_1013       9851
+M_CL_1013       9851
+F_CL_1418       9851
+M_CL_1418       9851
+Year               0
+CEN_1861       30812
+CEN_1871       30857
+CEN_1881       30780
+dist_to_hub      856
+
+=== DESCRIPTIVE STATISTICS ===
+                TFR         F_TEX           IMR     F_CL_1013
+count  40603.000000  31111.000000  40642.000000  31111.000000
+mean       4.587517      8.177700    132.389876      8.329043
+std        0.712206     18.120609     35.965435      7.400240
+min        1.074230      0.000000     15.748031      0.000000
+25%        4.181990      0.000000    106.290000      3.379479
+50%        4.590970      0.097371    129.943503      5.511420
+75%        4.988440      2.127660    156.440000     10.396040
+max        7.706122     79.462875    313.304721     41.929825

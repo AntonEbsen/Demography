@@ -1,0 +1,30 @@
+# Core Analysis
+numpy
+pandas
+matplotlib
+seaborn
+geopandas
+statsmodels
+scipy
+pandera
+
+# Data Connectors
+openpyxl
+xlrd
+
+# Automation & Notebooks
+nbconvert
+ipykernel
+jupyter
+
+# Visualization & App
+streamlit
+plotly
+folium
+streamlit-folium
+
+# Dev & DevOps
+dvc[gdrive]
+pre-commit
+pytest
+ruff

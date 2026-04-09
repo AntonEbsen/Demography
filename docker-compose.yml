@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - "8501:8501"
+      - "8888:8888"
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+    command: streamlit run exam_project/src/app.py

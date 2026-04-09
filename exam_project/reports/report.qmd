@@ -1,0 +1,63 @@
+---
+title: "The Cost of Quality"
+subtitle: "Legislative Shocks and the British Fertility Transition (1851-1881)"
+author: "Anton Meier Ebsen Jørgensen"
+date: last-modified
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+  html:
+    toc: true
+    theme: cosmo
+execute:
+  echo: false
+  warning: false
+---
+
+# Introduction
+
+This report investigates the impact of the **1833 and 1844 Factory Acts** on the British fertility transition. Using a Difference-in-Differences (DiD) methodology, we explore whether legislative restrictions on child labor and mandatory schooling requirements acted as a catalyst for the "Quantity-Quality" trade-off.
+
+# Data and Methodology
+
+We utilize data from **Populations Past**, covering registration districts in England and Wales from 1851 to 1881. The primary focus is on the registration district level fertility (TFR) and textile industry intensity.
+
+```{python}
+import pandas as pd
+import sys
+from pathlib import Path
+
+# Setup paths
+processed_data = Path('../data/processed/master_panel_data.csv')
+if processed_data.exists():
+    df = pd.read_csv(processed_data)
+    print(f"Dataset successfully loaded with {len(df)} observations.")
+else:
+    print("Warning: Processed data not found. Please run the data pipeline.")
+```
+
+# Preliminary Results
+
+## Descriptive Statistics
+
+The table below summarizes the core variables in our analysis.
+
+```{python}
+if processed_data.exists():
+    summary = df[['TFR', 'F_TEX', 'F_CL_1013', 'IMR']].describe().round(2)
+    print(summary)
+```
+
+## Spatial Distribution
+
+(Placeholder for mapping logic – see Streamlit app for interactive versions)
+
+# Econometric Analysis
+
+We implement a clustered OLS model to estimate the relationship between textile intensity (treatment proxy) and fertility decline.
+
+# Conclusion
+
+(Drafting in progress...)

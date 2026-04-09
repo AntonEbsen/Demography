@@ -1,0 +1,101 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Research Methodology | The Cost of Quality">
+	<main class="container">
+		<header>
+			<h1>Research Methodology</h1>
+			<p>A deep dive into the econometric and demographic framework of the Factory Acts study.</p>
+		</header>
+
+		<section class="monograph">
+			<h2>1. The Theoretical Anchor: Q-Q Model</h2>
+			<p>
+				The core of this analysis rests on the <strong>Quantity-Quality (Q-Q) Model</strong>. 
+				According to Unified Growth Theory, the primary trigger for the demographic transition 
+				is the rise in the demand for human capital.
+			</p>
+			<blockquote>
+				"The Factory Acts introduced a structural break in the economic value of children by 
+				simultaneously lowering labor income and raising education costs."
+			</blockquote>
+
+			<h2>2. Difference-in-Differences Strategy</h2>
+			<p>
+				I utilize a <strong>Difference-in-Differences (DiD)</strong> approach with 
+				spatial weights. The identification strategy relies on the staggered 
+				enforcement of factory laws across textile districts.
+			</p>
+			<div class="formula">
+				Fertility<sub>it</sub> = α + β(Textile_Intensity<sub>i</sub> × Post_Policy<sub>t</sub>) + Γ X<sub>it</sub> + μ<sub>i</sub> + τ<sub>t</sub> + ε<sub>it</sub>
+			</div>
+
+			<h2>3. Robustness: Oster's Delta</h2>
+			<p>
+				To address concerns about unobserved selection, I calculate <strong>Oster's Delta (δ)</strong>. 
+				This identifies how strong an omitted variable would need to be to nullify the 
+				treatment effect. Our primary results show high stability under selection-on-unobservables.
+			</p>
+		</section>
+
+		<aside class="cta">
+			<p>Interested in the code behind this analysis?</p>
+			<a href="https://github.com/AntonEbsen/Demography" class="github-link">Explore the Repository on GitHub</a>
+		</aside>
+	</main>
+</Layout>
+
+<style>
+	.container {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 4rem 2rem;
+	}
+	header {
+		margin-bottom: 4rem;
+	}
+	h1 {
+		font-size: 4rem;
+		margin-bottom: 1rem;
+	}
+	h2 {
+		font-size: 2rem;
+		margin-top: 4rem;
+		margin-bottom: 1.5rem;
+		border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+		padding-bottom: 0.5rem;
+	}
+	blockquote {
+		border-left: 4px solid var(--accent);
+		padding-left: 2rem;
+		margin: 3rem 0;
+		font-family: var(--serif);
+		font-style: italic;
+		font-size: 1.4rem;
+	}
+	.formula {
+		background: var(--secondary);
+		padding: 2rem;
+		border-radius: 4px;
+		font-family: 'Courier New', Courier, monospace;
+		text-align: center;
+		margin: 2rem 0;
+		font-size: 1.1rem;
+		border-left: 4px solid var(--accent);
+	}
+	.cta {
+		margin-top: 6rem;
+		padding: 4rem;
+		background: #000;
+		text-align: center;
+		border: 1px solid rgba(212, 175, 55, 0.2);
+	}
+	.github-link {
+		color: var(--accent);
+		text-decoration: none;
+		font-weight: bold;
+		text-transform: uppercase;
+		letter-spacing: 0.1rem;
+	}
+</style>
