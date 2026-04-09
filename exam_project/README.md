@@ -1,4 +1,6 @@
 # The "Cost of Quality"
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AntonEbsen/Demography/main?filepath=notebooks%2Fexam_project.ipynb)
+
 ## Legislative Shocks to Child Labor and the Fertility Transition in 19th-Century Britain
 
 This repository contains the analysis and data for my research into the impact of the **1833 and 1844 Factory Acts** on the British fertility transition.
@@ -22,7 +24,8 @@ Using a **Difference-in-Differences (DiD)** design, I compare Registered Sub-Dis
 ```text
 ├── data/
 │   ├── raw/         # Original census XLSX and GeoJSON boundary files
-│   └── processed/   # Cleaned panel data and merged spatial datasets
+│   ├── processed/   # Cleaned panel data and merged spatial datasets
+│   └── data_dictionary.md # scientific codebook for variables
 ├── notebooks/
 │   └── exam_project.ipynb  # Primary Python analysis notebook
 └── README.md        # This file
@@ -63,7 +66,17 @@ You will need a Python environment with the following libraries:
 
 ---
 
-## 📚 Data Provenance
 Data is sourced from **Populations Past** (University of Cambridge), providing spatially digitized census data for England and Wales. 
-> [!NOTE]
-> Detailed file descriptions can be found in the [data/raw README](./data/raw/README.md).
+
+---
+
+## 📜 Citation
+
+If you use this data or code in your research, please cite it as:
+
+> Ebsen, A. (2026). The Demographic Transition in Victorian England: A Spatial Econometric Approach. GitHub Repository. https://github.com/AntonEbsen/Demography
+
+Alternatively, use the **"Cite this repository"** button in the sidebar or refer to the [CITATION.cff](./CITATION.cff) file.
+
+## 📖 Data Documentation
+For detailed variable definitions and data provenance, see the [Data Dictionary](./data/data_dictionary.md).

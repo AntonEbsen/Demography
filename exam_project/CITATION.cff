@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Ebsen"
+    given-names: "Anton"
+    affiliation: "University of Copenhagen"
+title: "The Demographic Transition in Victorian England: A Spatial Econometric Approach"
+version: 1.0.0
+date-released: 2026-04-09
+url: "https://github.com/AntonEbsen/Demography"
+repository-code: "https://github.com/AntonEbsen/Demography"
+keywords:
+  - "economic history"
+  - "demography"
+  - "victorian england"
+  - "factory acts"
+  - "spatial econometrics"
+license: MIT

@@ -1,0 +1,10 @@
+numpy
+pandas
+geopandas
+matplotlib
+seaborn
+statsmodels
+scipy
+jupyter
+IPython
+openpyxl

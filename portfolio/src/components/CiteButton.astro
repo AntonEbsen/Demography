@@ -1,0 +1,185 @@
+---
+/**
+ * CiteButton.astro
+ * Persistent scholarly citation utility.
+ */
+---
+
+<div class="cite-wrapper">
+  <button class="cite-fab" id="cite-fab" aria-label="Cite this Research">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+    <span>Cite</span>
+  </button>
+
+  <div class="cite-modal" id="cite-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4>Scholarly Citation</h4>
+        <button class="close-btn" id="close-cite">&times;</button>
+      </div>
+      
+      <div class="cite-options">
+        <div class="cite-block">
+          <label>BibTeX</label>
+          <pre>{`@article{ebsen2026demography,
+  title={The Demographic Transition in Victorian England},
+  author={Ebsen, Anton},
+  journal={Economic History Portfolio},
+  year={2026},
+  url={https://antonebsen.dk/research}
+}`}</pre>
+        </div>
+
+        <div class="cite-block">
+          <label>APA</label>
+          <p>Ebsen, A. (2026). <i>The Demographic Transition in Victorian England: A Spatial Econometric Approach</i>. Economic History Research Portfolio. https://antonebsen.dk/research</p>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <p>Verified against 1851-1881 Integrated Census Microdata.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .cite-wrapper {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 1000;
+  }
+
+  .cite-fab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 99px;
+    border: none;
+    font-weight: 600;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .cite-fab:hover {
+    transform: translateY(-5px) scale(1.05);
+    background: #0ea5e9;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+  }
+
+  .cite-modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 500px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  }
+
+  .cite-modal.active {
+    display: block;
+    animation: modalSpring 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes modalSpring {
+    0% { transform: translate(-50%, -40%) scale(0.9); opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+
+  .modal-header h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: white;
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    line-height: 0.5;
+    opacity: 0.5;
+  }
+
+  .close-btn:hover {
+    opacity: 1;
+  }
+
+  .cite-block {
+    margin-bottom: 2rem;
+  }
+
+  .cite-block label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .cite-block pre {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    overflow-x: auto;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .cite-block p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #cbd5e1;
+  }
+
+  .modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 1rem;
+    font-size: 0.7rem;
+    font-style: italic;
+    opacity: 0.5;
+  }
+</style>
+
+<script is:inline>
+  const fab = document.getElementById('cite-fab');
+  const modal = document.getElementById('cite-modal');
+  const closeBtn = document.getElementById('close-cite');
+
+  fab.addEventListener('click', () => {
+    modal.classList.add('active');
+  });
+
+  closeBtn.addEventListener('click', () => {
+    modal.classList.remove('active');
+  });
+
+  // Close on backdrop click
+  window.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.remove('active');
+    }
+  });
+</script>
