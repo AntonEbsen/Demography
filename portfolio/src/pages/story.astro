@@ -1,0 +1,158 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="The Story of the Acts | The Cost of Quality">
+	<main class="scrolly-container">
+		<div class="scrolly-map" id="story-map-container">
+			<div id="story-map"></div>
+		</div>
+
+		<div class="scrolly-content">
+			<section class="story-step" data-lat="53.4808" data-lng="-2.2426" data-zoom="10">
+				<h2>The Industrial Heartland</h2>
+				<p>It was in the bustling textile hubs of <strong>Manchester</strong> and <strong>Lancashire</strong> that the industrial revolution burned brightest. Thousands of children worked under conditions that would soon spark a national outcry.</p>
+			</section>
+
+			<section class="story-step" data-lat="52.4862" data-lng="-1.8904" data-zoom="10">
+				<h2>The Diversification</h2>
+				<p>In contrast, regions like the <strong>Midlands</strong> saw a different type of industrialization. As we scroll, see how the textile intensity varied significantly across these registration districts.</p>
+			</section>
+
+			<section class="story-step" data-lat="51.5074" data-lng="-0.1278" data-zoom="9">
+				<h2>Legislative Pressure</h2>
+				<p>Public pressure mounted in <strong>London</strong>, leading to the landmark 1833 Factory Act. This wasn't just a law; it was the birth of the modern labor inspectorate.</p>
+			</section>
+
+			<section class="story-step" data-lat="52.5" data-lng="-1.5" data-zoom="7">
+				<h2>The National Impact</h2>
+				<p>The shock was felt nationwide. Districts with high textile intensity saw a sudden divergence in fertility as parents began to pivot toward human capital investment.</p>
+			</section>
+		</div>
+	</main>
+</Layout>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script is:inline define:vars={{ baseUrl: import.meta.env.BASE_URL }}>
+	let map;
+    let geojsonLayer;
+
+	const initStoryMap = () => {
+		if (map) return;
+		map = L.map('story-map', {
+            zoomControl: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            touchZoom: false,
+            dragging: false
+        }).setView([53.4808, -2.2426], 10);
+
+		L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+			attribution: '&copy; OpenStreetMap &copy; CARTO'
+		}).addTo(map);
+
+        // Load overlay
+        fetch(`${baseUrl}data/data1881_0.geojson`)
+            .then(res => res.json())
+            .then(data => {
+                geojsonLayer = L.geoJson(data, {
+                    style: {
+                        fillColor: '#d4af37',
+                        weight: 1,
+                        opacity: 0.3,
+                        color: 'white',
+                        fillOpacity: 0.1
+                    }
+                }).addTo(map);
+            });
+
+		const steps = document.querySelectorAll('.story-step');
+		const observer = new IntersectionObserver((entries) => {
+			entries.forEach(entry => {
+				if (entry.isIntersecting) {
+					const { lat, lng, zoom } = entry.target.dataset;
+					map.flyTo([lat, lng], zoom, {
+						animate: true,
+						duration: 2
+					});
+					
+					steps.forEach(s => s.classList.remove('active'));
+					entry.target.classList.add('active');
+				}
+			});
+		}, {
+			threshold: 0.5
+		});
+
+		steps.forEach(step => observer.observe(step));
+	};
+
+	document.addEventListener('astro:page-load', initStoryMap);
+</script>
+
+<style>
+	.scrolly-container {
+		display: flex;
+		background: #000;
+	}
+	.scrolly-map {
+		position: sticky;
+		top: 0;
+		width: 60%;
+		height: 100vh;
+		z-index: 1;
+	}
+	#story-map {
+		height: 100%;
+		width: 100%;
+	}
+	.scrolly-content {
+		width: 40%;
+		position: relative;
+		z-index: 2;
+		padding: 0 4rem;
+	}
+	.story-step {
+		height: 100vh;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		opacity: 0.2;
+		transition: opacity 0.8s;
+		padding: 2rem;
+	}
+	.story-step.active {
+		opacity: 1;
+	}
+	h2 {
+		font-family: var(--serif);
+		font-size: 3rem;
+		color: var(--accent);
+		margin-bottom: 1.5rem;
+	}
+	p {
+		font-size: 1.2rem;
+		line-height: 1.8;
+		opacity: 0.9;
+	}
+
+	@media (max-width: 1024px) {
+		.scrolly-container {
+			flex-direction: column;
+		}
+		.scrolly-map {
+			width: 100%;
+			height: 50vh;
+		}
+		.scrolly-content {
+			width: 100%;
+			padding: 0 2rem;
+		}
+		.story-step {
+			height: auto;
+			padding: 6rem 0;
+		}
+	}
+</style>

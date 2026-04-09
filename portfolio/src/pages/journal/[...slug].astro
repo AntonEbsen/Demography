@@ -1,0 +1,81 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+	const blogEntries = await getCollection('journal');
+	return blogEntries.map(entry => ({
+		params: { slug: entry.slug },
+		props: { entry },
+	}));
+}
+
+const { entry } = Astro.props;
+const { Content } = await entry.render();
+---
+
+<Layout title={`${entry.data.title} | The Cost of Quality`}>
+	<article class="journal-post container">
+		<header>
+            <a href={`${import.meta.env.BASE_URL}journal/`} class="back-link">← Back to Journal</a>
+			<time datetime={entry.data.date.toISOString()}>
+				{entry.data.date.toLocaleDateString('en-US', {
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric',
+				})}
+			</time>
+			<h1>{entry.data.title}</h1>
+		</header>
+		<div class="content">
+			<Content />
+		</div>
+	</article>
+</Layout>
+
+<style>
+	.container {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 4rem 2rem;
+	}
+    .back-link {
+        display: block;
+        color: var(--accent);
+        text-decoration: none;
+        font-size: 0.8rem;
+        margin-bottom: 2rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+    }
+	header {
+		margin-bottom: 4rem;
+	}
+	h1 {
+		font-size: 3.5rem;
+		margin-bottom: 1rem;
+		line-height: 1.1;
+	}
+	time {
+		font-size: 0.9rem;
+		opacity: 0.6;
+		font-family: var(--sans);
+	}
+	.content {
+		font-size: 1.1rem;
+		line-height: 1.8;
+	}
+	.content :global(h2) {
+		font-family: var(--serif);
+		margin: 3rem 0 1.5rem;
+		color: var(--accent);
+	}
+    .content :global(pre) {
+        background: #000;
+        padding: 2rem;
+        border-radius: 8px;
+        border: 1px solid rgba(212, 175, 55, 0.2);
+        overflow-x: auto;
+        margin: 2rem 0;
+    }
+</style>

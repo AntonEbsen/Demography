@@ -1,6 +1,9 @@
 ---
 import { ClientRouter } from 'astro:transitions';
 
+import { ClientRouter } from 'astro:transitions';
+import Search from '../components/Search.astro';
+
 interface Props {
 	title: string;
 }
@@ -44,11 +47,13 @@ const { title } = Astro.props;
 			<div class="nav-content">
 				<a href={`${import.meta.env.BASE_URL}`} class="logo">The Cost of Quality</a>
 				<div class="links">
+					<a href={`${import.meta.env.BASE_URL}story/`}>Story</a>
 					<a href={`${import.meta.env.BASE_URL}research/`}>Research</a>
-					<a href={`${import.meta.env.BASE_URL}evidence/`}>Evidence</a>
 					<a href={`${import.meta.env.BASE_URL}explorer/`}>Explorer</a>
+					<a href={`${import.meta.env.BASE_URL}journal/`}>Journal</a>
 					<a href={`${import.meta.env.BASE_URL}resources/`}>Resources</a>
 					<a href={`${import.meta.env.BASE_URL}about/`}>About</a>
+                    <Search baseUrl={import.meta.env.BASE_URL} />
 					<button id="theme-toggle" aria-label="Toggle Light Mode" class="theme-btn">
 						<span class="sun">🌞</span>
 						<span class="moon">🌙</span>
