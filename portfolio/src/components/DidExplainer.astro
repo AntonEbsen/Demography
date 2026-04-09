@@ -1,0 +1,89 @@
+---
+---
+
+<div class="did-container">
+    <div class="did-header">
+        <h4>Visualizing the Empirical Strategy</h4>
+        <p>Difference-in-Differences: Parallel Trends & The Legislative Shock</p>
+    </div>
+
+    <div class="svg-wrap">
+        <svg viewBox="0 0 600 300" class="did-svg">
+            <!-- Axes -->
+            <line x1="50" y1="250" x2="550" y2="250" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
+            <line x1="50" y1="250" x2="50" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
+            <text x="300" y="280" fill="rgba(255,255,255,0.5)" font-size="12" text-anchor="middle">Year</text>
+            <text x="20" y="150" fill="rgba(255,255,255,0.5)" font-size="12" text-anchor="middle" transform="rotate(-90, 20, 150)">Fertility (TFR)</text>
+
+            <!-- Grid Lines -->
+            <line x1="200" y1="250" x2="200" y2="50" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4" opacity="0.3" class="shock-line" />
+            <text x="205" y="65" fill="var(--accent)" font-size="10" opacity="0.8">1833 Factory Act</text>
+
+            <!-- Control Group (Agriculture) -->
+            <path id="control-path" d="M 50 100 Q 200 120 550 160" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="3" stroke-dasharray="8 4" />
+            <text x="500" y="150" fill="rgba(255,255,255,0.4)" font-size="10">Control</text>
+
+            <!-- Counterfactual (What would have happened) -->
+            <path id="counter-path" d="M 50 80 Q 200 100 550 140" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="2 2" opacity="0" class="counterfactual" />
+
+            <!-- Treatment Group (Textile) -->
+            <path id="treatment-path" d="M 50 80 Q 200 100 550 230" fill="none" stroke="var(--accent)" stroke-width="4" class="animated-path" />
+            <text x="500" y="220" fill="var(--accent)" font-size="10" font-weight="bold">Treatment</text>
+
+            <!-- Highlights -->
+            <circle cx="200" cy="100" r="4" fill="var(--accent)" class="shock-dot" />
+        </svg>
+    </div>
+
+    <div class="did-legend">
+        <div class="legend-item"><span class="box control"></span> Parallel Baseline</div>
+        <div class="legend-item"><span class="box shock"></span> Legislative Shock (1833)</div>
+        <div class="legend-item"><span class="box impact"></span> Causal Effect (β)</div>
+    </div>
+</div>
+
+<style>
+    .did-container {
+        background: rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.05);
+        padding: 2rem;
+        border-radius: 12px;
+        margin: 2rem 0;
+    }
+    .did-header h4 { margin: 0; color: var(--accent); }
+    .did-header p { font-size: 0.8rem; opacity: 0.6; margin: 0.5rem 0 2rem 0; }
+
+    .svg-wrap { width: 100%; max-width: 600px; margin: 0 auto; }
+    .did-svg { overflow: visible; }
+
+    .animated-path {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: draw 3s ease-out forwards;
+    }
+
+    .counterfactual {
+        animation: fadeIn 1s ease-out 2s forwards;
+    }
+
+    @keyframes draw {
+        to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes fadeIn {
+        to { opacity: 0.4; }
+    }
+
+    .did-legend {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+        font-size: 0.75rem;
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; opacity: 0.7; }
+    .box { width: 12px; height: 3px; border-radius: 2px; }
+    .box.control { background: rgba(255,255,255,0.3); border-style: dashed; }
+    .box.shock { background: var(--accent); opacity: 0.3; }
+    .box.impact { background: var(--accent); height: 8px; width: 12px; }
+</style>

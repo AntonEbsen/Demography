@@ -64,6 +64,23 @@ import Layout from '../layouts/Layout.astro';
 				</ul>
 			</section>
 		</div>
+
+		<section class="monograph">
+			<h2>Open Science Replication Kit</h2>
+			<div class="replication-box">
+				<p>To ensure full transparency and reproducibility at the University of Copenhagen, the following materials are provided for independent verification:</p>
+				<ul class="repro-list">
+					<li><input type="checkbox" checked disabled> <strong>Raw Data</strong>: Registration District level transcripts (1851-1881).</li>
+					<li><input type="checkbox" checked disabled> <strong>OCR Pipeline</strong>: Python scripts for tabular extraction from PDF archives.</li>
+					<li><input type="checkbox" checked disabled> <strong>Harmonization</strong>: Geographic cross-walks for unit boundary changes.</li>
+					<li><input type="checkbox" checked disabled> <strong>Codebase</strong>: Final DiD regression logic and robustness tests.</li>
+				</ul>
+				<div class="repo-links">
+					<a href="https://github.com/AntonEbsen/Demography/tree/main/exam_project/data" class="btn secondary">Raw Data Folder</a>
+					<a href="https://github.com/AntonEbsen/Demography/tree/main/exam_project/notebooks" class="btn secondary">Analysis Scripts</a>
+				</div>
+			</div>
+		</section>
 	</main>
 </Layout>
 
@@ -127,4 +144,38 @@ import Layout from '../layouts/Layout.astro';
 		opacity: 0.7;
 		line-height: 1.5;
 	}
+
+    .replication-box {
+        background: var(--secondary);
+        padding: 2.5rem;
+        border-radius: 8px;
+        border: 1px solid rgba(212, 175, 55, 0.1);
+        margin: 2rem 0;
+    }
+    .repro-list {
+        list-style: none;
+        padding: 0;
+        margin: 2rem 0;
+    }
+    .repro-list li {
+        margin-bottom: 0.8rem;
+        display: flex;
+        gap: 0.8rem;
+        align-items: center;
+        opacity: 0.8;
+    }
+    .repro-list input {
+        accent-color: var(--accent);
+    }
+    .repo-links {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .monograph h2 {
+        font-size: 2rem;
+        border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+        padding-bottom: 0.5rem;
+        margin: 4rem 0 2rem 0;
+    }
 </style>

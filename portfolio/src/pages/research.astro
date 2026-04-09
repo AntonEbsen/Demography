@@ -4,6 +4,11 @@ import Flowchart from '../components/Flowchart.astro';
 import References from '../components/References.astro';
 import TrendsChart from '../components/TrendsChart.astro';
 import Glossary from '../components/Glossary.astro';
+import DidExplainer from '../components/DidExplainer.astro';
+import Methodology from '../components/Methodology.astro';
+import Citation from '../components/Citation.astro';
+import DistrictSpotlight from '../components/DistrictSpotlight.astro';
+import Critique from '../components/Critique.astro';
 ---
 
 <Layout title="Research Methodology | The Cost of Quality">
@@ -45,10 +50,13 @@ import Glossary from '../components/Glossary.astro';
 
 			<h2>3. Difference-in-Differences Strategy</h2>
 			<p>
-				I utilize a <strong>Difference-in-Differences (DiD)</strong> approach with 
+				I utilize a <span class="stats-term" data-term="Difference-in-Differences">Difference-in-Differences (DiD)</span> approach with 
 				spatial weights. The identification strategy relies on the staggered 
 				enforcement of factory laws across textile districts.
 			</p>
+
+            <DidExplainer />
+
 			<div class="formula">
 				{`$$Fertility_{it} = \\alpha + \\beta(Textile\\_Intensity_{i} \\times Post\\_Policy_{t}) + \\Gamma X_{it} + \\mu_{i} + \\tau_{t} + \\varepsilon_{it}$$`}
 			</div>
@@ -89,11 +97,11 @@ import Glossary from '../components/Glossary.astro';
 								</tr>
 								<tr class="spacer"></tr>
 								<tr>
-									<td>Registration District FE</td>
+									<td><span class="stats-term" data-term="Fixed Effects">Registration District FE</span></td>
 									<td>Yes</td>
 								</tr>
 								<tr>
-									<td>Census Year FE</td>
+									<td><span class="stats-term" data-term="Census Year FE">Census Year FE</span></td>
 									<td>Yes</td>
 								</tr>
 								<tr>
@@ -118,8 +126,45 @@ import Glossary from '../components/Glossary.astro';
 
 		<Glossary />
 
+        <Methodology />
+
 		<References />
+
+        <Critique />
+
+        <Citation />
 	</main>
+
+    <div id="stats-tooltip" class="stats-popup hidden"></div>
+
+    <script is:inline>
+        const termStore = {
+            "Difference-in-Differences": "An econometric technique that calculates the causal effect of a policy by comparing the change in outcomes over time between a 'treatment' group and a 'control' group.",
+            "Fixed Effects": "A statistical method that controls for time-invariant characteristics of districts (like geography or culture) that might bias our estimates.",
+            "Census Year FE": "Controls for national shocks that affect all districts simultaneously in a given census year (e.g., a national economic depression)."
+        };
+
+        const tooltip = document.getElementById('stats-tooltip');
+        
+        function initTooltips() {
+            document.querySelectorAll('.stats-term').forEach(el => {
+                el.onmouseenter = (e) => {
+                    const term = el.getAttribute('data-term') || el.innerText;
+                    if (termStore[term]) {
+                        tooltip.innerText = termStore[term];
+                        const rect = el.getBoundingClientRect();
+                        tooltip.style.left = `${rect.left + window.scrollX}px`;
+                        tooltip.style.top = `${rect.top + window.scrollY - 60}px`;
+                        tooltip.classList.remove('hidden');
+                    }
+                };
+                el.onmouseleave = () => tooltip.classList.add('hidden');
+            });
+        }
+
+        initTooltips();
+        document.addEventListener('astro:page-load', initTooltips);
+    </script>
 
 		<script is:inline>
 			const specs = {
@@ -211,6 +256,8 @@ import Glossary from '../components/Glossary.astro';
 
 			document.addEventListener('astro:page-load', handleSpecClick);
 		</script>
+
+        <DistrictSpotlight />
 	</main>
 </Layout>
 
@@ -364,4 +411,24 @@ import Glossary from '../components/Glossary.astro';
 		font-style: italic;
 		text-align: right;
 	}
+
+    .stats-term {
+        border-bottom: 1px dashed var(--accent);
+        cursor: help;
+        color: var(--accent);
+    }
+    .stats-popup {
+        position: absolute;
+        background: var(--secondary);
+        border: 1px solid var(--accent);
+        padding: 1rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        max-width: 250px;
+        z-index: 100;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        pointer-events: none;
+        transition: opacity 0.2s;
+    }
+    .hidden { opacity: 0; pointer-events: none; }
 </style>

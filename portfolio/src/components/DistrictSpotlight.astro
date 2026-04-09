@@ -1,0 +1,127 @@
+---
+---
+<div class="spotlight-card">
+    <div class="spotlight-header">
+        <h3>District Spotlight</h3>
+        <p>Compare specific local trends against the national baseline.</p>
+    </div>
+
+    <div class="spotlight-interface">
+        <select id="district-selector" class="district-dropdown">
+            <option value="manchester">Manchester (Textile Core)</option>
+            <option value="leeds">Leeds (High Impact)</option>
+            <option value="anglesey">Anglesey (Agricultural Control)</option>
+            <option value="sussex">East Sussex (Low Exposure)</option>
+        </select>
+
+        <div class="chart-container">
+            <svg viewBox="0 0 400 200" class="mini-chart">
+                <!-- Axes -->
+                <line x1="40" y1="160" x2="360" y2="160" stroke="#666" />
+                <line x1="40" y1="160" x2="40" y2="20" stroke="#666" />
+                
+                <!-- Baseline -->
+                <path d="M 40 100 Q 200 110 360 130" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-dasharray="4" />
+                
+                <!-- Dynamic Path -->
+                <path id="district-path" d="M 40 100 Q 200 110 360 180" fill="none" stroke="var(--accent)" stroke-width="3" />
+                
+                <text x="360" y="145" fill="rgba(255,255,255,0.4)" font-size="8">National Avg</text>
+            </svg>
+        </div>
+
+        <div id="district-data" class="district-meta">
+            <div class="stat">
+                <span class="label">Textile Intensity</span>
+                <span class="value" id="val-intensity">84.2%</span>
+            </div>
+            <div class="stat">
+                <span class="label">Shock Response (β)</span>
+                <span class="value" id="val-beta">-0.082***</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script is:inline>
+    const districtData = {
+        manchester: {
+            path: "M 40 100 Q 200 120 360 180",
+            intensity: "84.2%",
+            beta: "-0.082***"
+        },
+        leeds: {
+            path: "M 40 100 Q 200 115 360 170",
+            intensity: "68.5%",
+            beta: "-0.064***"
+        },
+        anglesey: {
+            path: "M 40 105 Q 200 115 360 135",
+            intensity: "1.2%",
+            beta: "+0.004"
+        },
+        sussex: {
+            path: "M 40 95 Q 200 105 360 125",
+            intensity: "0.8%",
+            beta: "-0.002"
+        }
+    };
+
+    const selector = document.getElementById('district-selector');
+    const path = document.getElementById('district-path');
+    const valIntensity = document.getElementById('val-intensity');
+    const valBeta = document.getElementById('val-beta');
+
+    selector.onchange = (e) => {
+        const data = districtData[e.target.value];
+        path.setAttribute('d', data.path);
+        valIntensity.innerText = data.intensity;
+        valBeta.innerText = data.beta;
+        
+        // Micro-animation trigger
+        path.style.strokeDasharray = '1000';
+        path.style.strokeDashoffset = '1000';
+        path.getBoundingClientRect(); // trigger reflow
+        path.style.transition = 'stroke-dashoffset 1s ease-out';
+        path.style.strokeDashoffset = '0';
+    };
+</script>
+
+<style>
+    .spotlight-card {
+        background: var(--secondary);
+        border: 1px solid rgba(212, 175, 55, 0.2);
+        padding: 2rem;
+        border-radius: 12px;
+        margin: 2rem 0;
+    }
+    .spotlight-header h3 { margin: 0; color: var(--accent); }
+    .spotlight-header p { font-size: 0.8rem; opacity: 0.6; margin: 0.5rem 0 1.5rem 0; }
+
+    .district-dropdown {
+        width: 100%;
+        background: #000;
+        color: white;
+        border: 1px solid rgba(255,255,255,0.2);
+        padding: 0.8rem;
+        border-radius: 4px;
+        font-family: var(--sans);
+        margin-bottom: 2rem;
+    }
+
+    .chart-container {
+        pointer-events: none;
+    }
+
+    .district-meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .stat { display: flex; flex-direction: column; }
+    .label { font-size: 0.65rem; text-transform: uppercase; opacity: 0.6; letter-spacing: 0.05rem; }
+    .value { font-size: 1.1rem; font-weight: bold; color: var(--accent); }
+</style>

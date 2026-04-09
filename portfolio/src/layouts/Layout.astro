@@ -53,6 +53,7 @@ const { title } = Astro.props;
 					<a href={`${import.meta.env.BASE_URL}journal/`} data-t="nav_journal">Journal</a>
 					<a href={`${import.meta.env.BASE_URL}resources/`} data-t="nav_resources">Resources</a>
 					<a href={`${import.meta.env.BASE_URL}about/`} data-t="nav_about">About</a>
+                    <a href="https://antonebsen.dk/" target="_blank" class="nav-ext">antonebsen.dk</a>
                     <Search baseUrl={import.meta.env.BASE_URL} />
                     <button id="lang-toggle" class="lang-btn">DA</button>
 					<button id="theme-toggle" aria-label="Toggle Light Mode" class="theme-btn">
@@ -66,7 +67,7 @@ const { title } = Astro.props;
         <Basket />
         <Basket />
 		<footer>
-			<p>&copy; 2026 Anton Ebsen. Built with Astro & Professional Rigor.</p>
+			<p>&copy; 2026 Anton Ebsen. Built with Astro & Professional Rigor. <a href="https://antonebsen.dk/" target="_blank" style="color: var(--accent); text-decoration: underline; margin-left: 10px;">Personal Website ↗</a></p>
 		</footer>
 
 		<script is:inline>
@@ -211,6 +212,15 @@ const { title } = Astro.props;
 	.links a:hover {
 		color: var(--accent);
 	}
+    .nav-ext {
+        color: var(--accent) !important;
+        font-weight: bold;
+        opacity: 0.8;
+    }
+    .nav-ext:hover {
+        opacity: 1;
+        text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+    }
 	.theme-btn, .lang-btn {
 		background: transparent;
 		border: 1px solid var(--accent);

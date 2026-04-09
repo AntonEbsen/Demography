@@ -1,0 +1,110 @@
+---
+---
+<section class="methodology-sandbox">
+    <div class="sandbox-header">
+        <h3>Methodology Sandbox</h3>
+        <p>Direct exposure of the computational engine driving this research.</p>
+    </div>
+
+    <div class="code-spotlight">
+        <div class="code-card">
+            <header>
+                <span class="file-tag">Python (Pandas)</span>
+                <h4>Panel Harmonization</h4>
+            </header>
+            <div class="code-inner">
+                <pre><code># Aligning disparate census rounds into a unified panel
+def harmonize_census(df, year):
+    df['YEAR'] = year
+    # Mapping registration districts to stable units
+    df['RD_ID'] = df['REGDIST'].map(rd_lookup_1851)
+    return df.set_index(['RD_ID', 'YEAR'])</code></pre>
+            </div>
+            <footer>
+                <p>Crucial for handling changing administrative boundaries between 1851 and 1881.</p>
+            </footer>
+        </div>
+
+        <div class="code-card">
+            <header>
+                <span class="file-tag">Econometrics (Statsmodels)</span>
+                <h4>The Identification Logic</h4>
+            </header>
+            <div class="code-inner">
+                <pre><code># Difference-in-Differences Estimation
+model = sm.PanelOLS.from_formula(
+    'TFR ~ treat_intensity * post_act + IMR + C(YEAR) + EntityEffects',
+    data=panel_df
+)
+results = model.fit(cov_type='clustered', cluster_entity=True)</code></pre>
+            </div>
+            <footer>
+                <p>Standard Errors are clustered at the district level to account for spatial and temporal autocorrelation.</p>
+            </footer>
+        </div>
+    </div>
+
+    <div class="sandbox-cta">
+        <a href="https://github.com/AntonEbsen/Demography/tree/main/exam_project/notebooks" class="btn secondary">View Full Notebook on GitHub</a>
+    </div>
+</section>
+
+<style>
+    .methodology-sandbox {
+        margin: 6rem 0;
+        padding-top: 4rem;
+        border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .sandbox-header h3 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .sandbox-header p { opacity: 0.6; margin-bottom: 3rem; }
+
+    .code-spotlight {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 2rem;
+    }
+    .code-card {
+        background: #0d1117;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.1);
+        display: flex;
+        flex-direction: column;
+    }
+    .code-card header {
+        padding: 1.5rem;
+        background: rgba(255,255,255,0.02);
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .file-tag {
+        font-size: 0.6rem;
+        color: var(--accent);
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    .code-card h4 { margin: 0; font-family: var(--sans); }
+    .code-inner {
+        padding: 1.5rem;
+        flex: 1;
+        overflow-x: auto;
+    }
+    .code-inner code {
+        font-size: 0.85rem;
+        line-height: 1.6;
+        color: #e6edf3;
+    }
+    .code-card footer {
+        padding: 1.5rem;
+        background: rgba(255,255,255,0.02);
+        font-size: 0.8rem;
+        opacity: 0.6;
+        font-style: italic;
+    }
+    .sandbox-cta { margin-top: 3rem; text-align: center; }
+
+    @media (max-width: 600px) {
+        .code-spotlight { grid-template-columns: 1fr; }
+    }
+</style>

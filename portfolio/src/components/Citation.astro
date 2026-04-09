@@ -1,0 +1,116 @@
+---
+---
+<div class="citation-box">
+    <h3>Cite this Research</h3>
+    <p class="citation-intro">If you use this data or these findings in your work, please cite it as follows:</p>
+    
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="bibtex">BibTeX</button>
+        <button class="tab-btn" data-tab="apa">APA</button>
+        <button class="tab-btn" data-tab="mla">MLA</button>
+    </div>
+
+    <div class="tab-content" id="bibtex">
+        <pre><code is:raw>@misc{ebsen2026cost,
+  author = {Ebsen, Anton},
+  title = {The Cost of Quality: Legislative Shocks and the Fertility Transition in 19th Century Britain},
+  year = {2026},
+  publisher = {University of Copenhagen},
+  url = {https://AntonEbsen.github.io/Demography/}
+}</code></pre>
+    </div>
+
+    <div class="tab-content hidden" id="apa">
+        <p>Ebsen, A. (2026). <i>The Cost of Quality: Legislative Shocks and the Fertility Transition in 19th Century Britain</i>. University of Copenhagen. Retrieved from https://AntonEbsen.github.io/Demography/</p>
+    </div>
+
+    <div class="tab-content hidden" id="mla">
+        <p>Ebsen, Anton. "The Cost of Quality: Legislative Shocks and the Fertility Transition in 19th Century Britain." University of Copenhagen, 2026.</p>
+    </div>
+
+    <button id="copy-citation" class="copy-btn">Copy to Clipboard</button>
+</div>
+
+<script is:inline>
+    const tabs = document.querySelectorAll('.tab-btn');
+    const contents = document.querySelectorAll('.tab-content');
+    const copyBtn = document.getElementById('copy-citation');
+
+    tabs.forEach(tab => {
+        tab.onclick = () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.add('hidden'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.tab).classList.remove('hidden');
+        };
+    });
+
+    if (copyBtn) {
+        copyBtn.onclick = () => {
+            const activeTabId = document.querySelector('.tab-btn.active').dataset.tab;
+            const text = document.getElementById(activeTabId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                copyBtn.innerText = 'Copied!';
+                setTimeout(() => copyBtn.innerText = 'Copy to Clipboard', 2000);
+            });
+        };
+    }
+</script>
+
+<style>
+    .citation-box {
+        background: var(--secondary);
+        border: 1px solid rgba(212, 175, 55, 0.2);
+        padding: 2.5rem;
+        border-radius: 12px;
+        margin-top: 4rem;
+    }
+    .citation-intro {
+        font-size: 0.9rem;
+        opacity: 0.7;
+        margin-bottom: 1.5rem;
+    }
+    .tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .tab-btn {
+        background: none;
+        border: none;
+        color: white;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        font-family: var(--sans);
+        font-size: 0.8rem;
+        opacity: 0.5;
+        transition: all 0.3s;
+    }
+    .tab-btn.active {
+        opacity: 1;
+        border-bottom: 2px solid var(--accent);
+        color: var(--accent);
+    }
+    .tab-content {
+        background: rgba(0,0,0,0.2);
+        padding: 1.5rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+    .hidden { display: none; }
+    .copy-btn {
+        background: var(--accent);
+        color: black;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: transform 0.2s;
+    }
+    .copy-btn:active { transform: scale(0.95); }
+</style>

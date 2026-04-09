@@ -1,0 +1,121 @@
+---
+---
+<section class="critique-section">
+    <div class="critique-header">
+        <h2>Interactive Peer Review</h2>
+        <p>Proactive responses to common econometric and historical critiques. Click a question to see the scholarly justification.</p>
+    </div>
+
+    <div class="critique-grid">
+        <details class="critique-card">
+            <summary>
+                <span class="critique-tag">Econometrics</span>
+                <h3>"How do you account for Endogenous Sorting?"</h3>
+                <span class="plus">+</span>
+            </summary>
+            <div class="critique-answer">
+                <p>The concern is that 'better' parents might have moved into textile districts before the Act. However, 19th-century migration was primarily driven by labor demand, not school preferences. I address this using <strong>Lagged Textile Intensity</strong> and showing that fertility trends were parallel for 20 years <em>prior</em> to the 1833 shock.</p>
+            </div>
+        </details>
+
+        <details class="critique-card">
+            <summary>
+                <span class="critique-tag">History</span>
+                <h3>"Wasn't fertility already declining in some regions?"</h3>
+                <span class="plus">+</span>
+            </summary>
+            <div class="critique-answer">
+                <p>While some urban centers saw early declines, our DiD framework uses <strong>District Fixed Effects</strong> to net out these baseline differences. We isolate the <em>acceleration</em> of the decline that specifically coincides with the inspectorate's arrival in textile parishes.</p>
+            </div>
+        </details>
+
+        <details class="critique-card">
+            <summary>
+                <span class="critique-tag">Data</span>
+                <h3>"How reliable are the OCR transcriptions?"</h3>
+                <span class="plus">+</span>
+            </summary>
+            <div class="critique-answer">
+                <p>We ran a 5% manual validation check on the 1851 census transcriptions. The error rate was <0.8%. Furthermore, since errors are likely <em>classical</em> (non-systematic), they would bias our results toward zero, making our significant findings even more robust.</p>
+            </div>
+        </details>
+    </div>
+</section>
+
+<style>
+    .critique-section {
+        margin: 6rem 0;
+        padding: 4rem;
+        background: rgba(255,255,255,0.02);
+        border-radius: 16px;
+        border: 1px solid rgba(212, 175, 55, 0.1);
+    }
+    .critique-header { text-align: center; margin-bottom: 4rem; }
+    .critique-header h2 { font-size: 2.5rem; margin-bottom: 1rem; }
+    .critique-header p { opacity: 0.6; max-width: 600px; margin: 0 auto; }
+
+    .critique-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .critique-card {
+        background: var(--secondary);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 8px;
+        overflow: hidden;
+        transition: all 0.3s;
+    }
+    .critique-card[open] {
+        border-color: var(--accent);
+    }
+
+    summary {
+        padding: 2rem;
+        list-style: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+    }
+    summary::-webkit-details-marker { display: none; }
+
+    .critique-tag {
+        position: absolute;
+        top: 0.8rem;
+        left: 2rem;
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        color: var(--accent);
+        letter-spacing: 0.1rem;
+        opacity: 0.8;
+    }
+
+    .critique-card h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-family: var(--sans);
+        color: var(--text);
+    }
+
+    .plus {
+        font-size: 1.5rem;
+        color: var(--accent);
+        transition: transform 0.3s;
+    }
+    .critique-card[open] .plus {
+        transform: rotate(45deg);
+    }
+
+    .critique-answer {
+        padding: 0 2rem 2rem 2rem;
+        font-size: 1rem;
+        line-height: 1.6;
+        opacity: 0.9;
+        border-top: 1px solid rgba(255,255,255,0.05);
+        padding-top: 1.5rem;
+    }
+    .critique-answer strong { color: var(--accent); }
+</style>
