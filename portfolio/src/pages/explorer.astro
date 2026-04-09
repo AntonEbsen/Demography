@@ -1,0 +1,19 @@
+---
+import Layout from '../layouts/Layout.astro';
+import DistrictMap from '../components/DistrictMap.astro';
+---
+
+<Layout title="Geospatial Explorer | The Cost of Quality">
+	<main class="explorer-page">
+		<DistrictMap />
+	</main>
+</Layout>
+
+<style>
+	.explorer-page {
+		width: 100%;
+		height: 100vh;
+		display: flex;
+		flex-direction: column;
+	}
+</style>

@@ -1,0 +1,246 @@
+---
+---
+<div class="explorer-layout">
+  <div class="map-section">
+    <div id="map"></div>
+    <div class="map-controls">
+      <div class="year-slider">
+        <label for="year">Census Year: <span id="year-label">1881</span></label>
+        <input type="range" id="year" min="1851" max="1881" step="10" value="1881" />
+      </div>
+    </div>
+  </div>
+  
+  <aside class="sidebar" id="district-sidebar">
+    <div id="sidebar-welcome">
+      <h3>District Explorer</h3>
+      <p>Click on a registration district to view detailed demographic and industrial statistics from the Victorian census.</p>
+    </div>
+    <div id="sidebar-data" style="display: none;">
+      <h2 id="district-name">---</h2>
+      <div class="stat-grid">
+        <div class="mini-stat">
+          <span class="label">Textile Intensity</span>
+          <span class="value" id="stat-tex">--</span>
+        </div>
+        <div class="mini-stat">
+          <span class="label">Fertility (TFR)</span>
+          <span class="value" id="stat-tfr">--</span>
+        </div>
+        <div class="mini-stat">
+          <span class="label">Infant Mortality</span>
+          <span class="value" id="stat-imr">--</span>
+        </div>
+        <div class="mini-stat">
+            <span class="label">Dependency Ratio</span>
+            <span class="value" id="stat-depend">--</span>
+          </div>
+      </div>
+      <div id="district-type-badge">---</div>
+    </div>
+  </aside>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script is:inline define:vars={{ baseUrl: import.meta.env.BASE_URL }}>
+  let map;
+  let geojsonLayer;
+  let currentYear = 1881;
+
+  function getColor(d) {
+    return d > 30 ? '#800026' :
+           d > 20 ? '#BD0026' :
+           d > 10 ? '#E31A1C' :
+           d > 5  ? '#FC4E2A' :
+           d > 2  ? '#FD8D3C' :
+           d > 1  ? '#FEB24C' :
+           d > 0.1 ? '#FED976' :
+                    '#FFEDA0';
+  }
+
+  function style(feature) {
+    const texIntensity = feature.properties.F_TEX || 0;
+    return {
+      fillColor: getColor(texIntensity),
+      weight: 1,
+      opacity: 1,
+      color: 'rgba(212, 175, 55, 0.4)',
+      fillOpacity: 0.7
+    };
+  }
+
+  function onEachFeature(feature, layer) {
+    layer.on({
+      mouseover: (e) => {
+        const layer = e.target;
+        layer.setStyle({
+          weight: 3,
+          color: '#d4af37',
+          fillOpacity: 0.9
+        });
+        layer.bringToFront();
+      },
+      mouseout: (e) => {
+        geojsonLayer.resetStyle(e.target);
+      },
+      click: (e) => {
+        const props = e.target.feature.properties;
+        document.getElementById('sidebar-welcome').style.display = 'none';
+        document.getElementById('sidebar-data').style.display = 'block';
+        
+        document.getElementById('district-name').innerText = props.REGDIST;
+        document.getElementById('stat-tex').innerText = (props.F_TEX || 0).toFixed(1) + '%';
+        document.getElementById('stat-tfr').innerText = (props.TFR || 0).toFixed(2);
+        document.getElementById('stat-imr').innerText = (props.IMR || 0).toFixed(1);
+        document.getElementById('stat-depend').innerText = (props.DEPEND || 0).toFixed(1);
+        
+        const typeBadge = document.getElementById('district-type-badge');
+        typeBadge.innerText = props.TYPE || 'Unknown';
+        typeBadge.className = 'badge ' + (props.TYPE || 'default').toLowerCase();
+      }
+    });
+  }
+
+  async function loadYear(year) {
+    if (geojsonLayer) map.removeLayer(geojsonLayer);
+    
+    // Attempt to load the data with year-stamps
+    // Files are in /Demography/data/data1881_0.geojson
+    const dataPath = `${baseUrl}data/data\${year}_0.geojson`;
+    
+    try {
+      const response = await fetch(dataPath);
+      const data = await response.json();
+      
+      geojsonLayer = L.geoJson(data, {
+        style: style,
+        onEachFeature: onEachFeature
+      }).addTo(map);
+      
+      document.getElementById('year-label').innerText = year;
+    } catch (err) {
+      console.error('Failed to load map data:', err);
+    }
+  }
+
+  const initMap = () => {
+    if (map) return;
+    
+    map = L.map('map').setView([52.5, -1.5], 7);
+    
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO'
+    }).addTo(map);
+
+    loadYear(currentYear);
+
+    document.getElementById('year').addEventListener('input', (e) => {
+      loadYear(e.target.value);
+    });
+  };
+
+  document.addEventListener('astro:page-load', initMap);
+</script>
+
+<style>
+  .explorer-layout {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    height: calc(100vh - 80px); /* Height of nav */
+    background: #000;
+  }
+  .map-section {
+    position: relative;
+    height: 100%;
+  }
+  #map {
+    height: 100%;
+    width: 100%;
+    background: #0a0a0a;
+  }
+  .sidebar {
+    background: var(--secondary);
+    border-left: 1px solid rgba(212, 175, 55, 0.2);
+    padding: 2rem;
+    overflow-y: auto;
+  }
+  h3, h2 {
+    font-family: var(--serif);
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+  }
+  p {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    line-height: 1.6;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin: 2rem 0;
+  }
+  .mini-stat {
+    display: flex;
+    flex-direction: column;
+  }
+  .label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1rem;
+    opacity: 0.5;
+    margin-bottom: 0.5rem;
+  }
+  .value {
+    font-size: 1.5rem;
+    font-family: var(--serif);
+    color: var(--accent);
+    font-weight: bold;
+  }
+  .badge {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1rem;
+      font-weight: bold;
+      background: rgba(212, 175, 55, 0.2);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+  }
+  .map-controls {
+    position: absolute;
+    bottom: 2rem;
+    left: 2rem;
+    z-index: 1000;
+    background: rgba(0,0,0,0.8);
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    backdrop-filter: blur(5px);
+  }
+  .year-slider {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .year-slider input {
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+
+  @media (max-width: 900px) {
+    .explorer-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr 300px;
+    }
+    .sidebar {
+      border-left: none;
+      border-top: 1px solid rgba(212, 175, 55, 0.2);
+    }
+  }
+</style>

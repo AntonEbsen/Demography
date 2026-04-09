@@ -17,6 +17,20 @@ const { title } = Astro.props;
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
+
+		<!-- OpenGraph / Social Meta Tags -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="https://AntonEbsen.github.io/Demography/" />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content="A PhD research showcase on the Victorian fertility transition and child labor laws." />
+		<meta property="og:image" content="https://AntonEbsen.github.io/Demography/preview.jpg" />
+
+		<!-- Twitter -->
+		<meta property="twitter:card" content="summary_large_image" />
+		<meta property="twitter:url" content="https://AntonEbsen.github.io/Demography/" />
+		<meta property="twitter:title" content={title} />
+		<meta property="twitter:description" content="A PhD research showcase on the Victorian fertility transition and child labor laws." />
+		<meta property="twitter:image" content="https://AntonEbsen.github.io/Demography/preview.jpg" />
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Outfit:wght@100..900&display=swap" rel="stylesheet">
@@ -32,6 +46,7 @@ const { title } = Astro.props;
 				<div class="links">
 					<a href={`${import.meta.env.BASE_URL}research/`}>Research</a>
 					<a href={`${import.meta.env.BASE_URL}evidence/`}>Evidence</a>
+					<a href={`${import.meta.env.BASE_URL}explorer/`}>Explorer</a>
 					<a href={`${import.meta.env.BASE_URL}about/`}>About</a>
 					<button id="theme-toggle" aria-label="Toggle Light Mode" class="theme-btn">
 						<span class="sun">🌞</span>
