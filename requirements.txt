@@ -22,6 +22,10 @@ streamlit
 plotly
 folium
 streamlit-folium
+libpysal
+esda
+splot
+spreg
 
 # Dev & DevOps
 dvc[gdrive]

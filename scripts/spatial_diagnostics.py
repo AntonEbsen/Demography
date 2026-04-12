@@ -10,43 +10,53 @@ from utils.spatial import calculate_spatial_weights, run_global_moran, plot_lisa
 
 def run_diagnostics():
     """
-    Runs spatial diagnostics for the 1851 baseline.
+    Runs spatial diagnostics comparing 1851 and 1881.
     """
-    print("Running Spatial Diagnostics (1851)...")
+    print("--- STARTING SPATIAL CONTAGION ANALYSIS ---")
     
-    # Paths
     root = Path(__file__).parents[1]
-    raw_geo = root / 'exam_project' / 'data' / 'raw' / 'data1851_0.geojson'
-    processed_csv = root / 'exam_project' / 'data' / 'processed' / 'master_panel_data.csv'
     output_dir = root / 'exam_project' / 'outputs' / 'spatial'
     os.makedirs(output_dir, exist_ok=True)
     
-    if not raw_geo.exists() or not processed_csv.exists():
-        print("Data files missing. Aborting.")
+    processed_csv = root / 'exam_project' / 'data' / 'processed' / 'master_panel_data.csv'
+    if not processed_csv.exists():
+        print(f"Error: {processed_csv} not found. Run data processing first.")
         return
         
-    # Load and Merge
-    gdf = gpd.read_file(raw_geo).drop(columns=['TFR'], errors='ignore')
     df = pd.read_csv(processed_csv)
-    df_1851 = df[df['Year'] == 1851]
     
-    # Merge
-    merged = gdf.merge(df_1851, on='REGDIST')
-    merged = merged.dropna(subset=['TFR'])
-    
-    # Weights
-    w = calculate_spatial_weights(merged)
-    
-    # Global Moran
-    moran_results = run_global_moran(merged, 'TFR', w)
-    print(f"Global Moran's I (TFR): {moran_results['I']:.4f}")
-    print(f"P-value: {moran_results['p-value']:.4f}")
-    
-    # LISA Plots
-    plot_lisa_clusters(merged, 'TFR', w, output_path=output_dir / 'lisa_tfr_1851.png')
-    plot_lisa_clusters(merged, 'F_TEX', w, output_path=output_dir / 'lisa_textiles_1851.png')
-    
-    print(f"Diagnostics complete. Plots saved to {output_dir}")
+    for year in [1851, 1881]:
+        print(f"Processing Year: {year}")
+        geo_file = root / 'exam_project' / 'data' / 'raw' / f'data{year}_0.geojson'
+        
+        if not geo_file.exists():
+            print(f"Skipping {year}: GeoJSON missing.")
+            continue
+            
+        gdf = gpd.read_file(geo_file)
+        # Drop columns that exist in the CSV to avoid _x/_y collisions
+        cols_to_drop = ['TFR', 'F_TEX', 'TMFR', 'IMR', 'F_CL_1013']
+        gdf = gdf.drop(columns=[c for c in cols_to_drop if c in gdf.columns])
+        
+        # Normalize join keys for robust matching
+        gdf['REGDIST_MATCH'] = gdf['REGDIST'].astype(str).str.upper().str.strip()
+        year_df = df[df['Year'] == year].copy()
+        year_df['REGDIST_MATCH'] = year_df['REGDIST'].astype(str).str.upper().str.strip()
+        
+        merged = gdf.merge(year_df, on='REGDIST_MATCH', how='inner')
+        merged = merged.dropna(subset=['TFR'])
+        
+        # 1. Spatial Weights (Queen Contiguity)
+        w = calculate_spatial_weights(merged)
+        
+        # 2. Global Moran's I (Robust check for spatial dependency)
+        moran = run_global_moran(merged, 'TFR', w)
+        print(f"  [{year}] Global Moran's I: {moran['I']:.4f} (p={moran['p-value']:.4f})")
+        
+        # 3. LISA Cluster Mapping
+        plot_lisa_clusters(merged, 'TFR', w, output_path=output_dir / f'lisa_tfr_{year}.png')
+        
+    print(f"--- SPATIAL DIAGNOSTICS COMPLETE. Maps saved to: {output_dir} ---")
 
 if __name__ == "__main__":
     run_diagnostics()

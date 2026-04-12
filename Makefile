@@ -54,11 +54,16 @@ audit:
 spatial:
 	python scripts/spatial_diagnostics.py
 
+spatial-reg:
+	python scripts/spatial_regression.py
+
 animate:
 	python scripts/animate_transition.py
 
 memo:
-	quarto render scripts/generate_memo.qmd --to pdf
-	mv scripts/generate_memo.pdf memo.pdf
+	quarto render scripts/generate_memo.qmd --to pdf --output research_brief.pdf
+	mv scripts/research_brief.pdf research_brief.pdf
 
-check-all: lint test
+full-audit: spatial spatial-reg memo
+
+check-all: lint test full-audit

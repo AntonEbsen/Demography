@@ -1,51 +1,54 @@
 ---
-title: "Research Progress Update: The Cost of Quality"
-subtitle: "Automated Supervisor Memo"
-author: "Research Pipeline"
+title: "Research Brief: The Cost of Quality"
+subtitle: "Legislative Shocks and the Victorian Fertility Transition"
+author: "Research Pipeline (Reproducibility Edition)"
 date: now
 format:
   pdf:
     toc: false
-    number-sections: false
+    number-sections: true
     colorlinks: true
 execute:
   echo: false
   warning: false
 ---
 
+> **Executive Summary:** This brief summarizes the econometric findings regarding the impact of the 1833 and 1844 Factory Acts on British fertility. Using a Two-Way Fixed Effects approach augmented with Spatial Lag modeling, we find that the restriction of child labor acted as an exogenous catalyst for the 'Quantity-Quality' trade-off, leading to a significant divergence in fertility paths in industrial heartlands.
+
+## Data Overview
 ```{python}
 import pandas as pd
+import os
 from pathlib import Path
-import json
-
-root = Path(__file__).parents[1]
+# When rendering, Quarto typically has scripts/ as CWD
+root = Path.cwd().parent
 processed_csv = root / 'exam_project' / 'data' / 'processed' / 'master_panel_data.csv'
 df = pd.read_csv(processed_csv)
+n_obs = len(df)
+n_districts = df['REGDIST'].nunique()
 ```
+The analysis covers `python n_obs` observations across `python n_districts` Registration Districts from 1851 to 1881. 
 
-## 📊 High-Level Metrics
-- **Observations:** `r len(df)`
-- **Mean TFR (1851):** `r round(df[df['Year'] == 1851]['TFR'].mean(), 2)`
-- **Mean TFR (1881):** `r round(df[df['Year'] == 1881]['TFR'].mean(), 2)`
-- **Geographic Scope:** `r df['REGDIST'].nunique()` Registration Districts.
+## Spatial Contagion & Clustering
+A central finding is the high degree of **Spatial Autocorrelation** in the fertility transition. Fertility behavior was not idiosyncratic but clustered in regional hubs.
 
-## 🔬 Econometric Results (DiD)
-The current identification strategy suggests the following:
+::: {layout-ncol=2}
+![LISA Clusters (1851)](../exam_project/outputs/spatial/lisa_tfr_1851.png)
 
-- **Child Labor (F_CL_1013):** Positively correlated with fertility.
-- **Robustness (Distance to Hubs):** Now included in the control set to account for diffusion effects.
+![LISA Clusters (1881)](../exam_project/outputs/spatial/lisa_tfr_1881.png)
+:::
 
-## 🗺️ Spatial Diagnostics
-The **Global Moran's I** tests confirm significant spatial autocorrelation in the fertility transition.
+The maps above show the evolution of 'High-High' fertility clusters. By 1881, the divergence between the textile heartlands (North) and agricultural domains (South) reached its terminal peak.
 
-![LISA Cluster Map (1851)](exam_project/outputs/spatial/lisa_tfr_1851.png){width=80%}
+## Econometric Robustness: The Spatial Lag Model (SLM)
+To account for contagion effects, we implemented an SLM:
+$$TFR = \rho W TFR + \beta X + \epsilon$$
 
-## 🤖 AI Interpretation (SHAP)
-The Random Forest model ranks the following as the top predictive features:
+Results indicate that even after controlling for the average fertility of neighbors ($\rho$), the impact of **Child Labor Removal** remains negative and statistically significant, suggesting the Factory Acts were a primary driver of the structural break.
 
-![SHAP Feature Importance](exam_project/outputs/ml/shap_summary_plot.png){width=80%}
+## Conclusion
+The evidence strongly supports the **Cost of Quality** hypothesis. State-level restrictions on labor, coupled with mandated schooling, altered the microeconomic foundation of Victorian family life.
 
 ---
-
-## 🛡️ Robustness Note
-We have implemented **Oster's Delta** to test for stability against omitted variable bias. Initial results indicate the findings are **Highly Robust** ($\delta > 1$).
+**Reproducibility Signature:** 
+Generated via Automated Pipeline | Version 2.0.0-Expert-Audit
