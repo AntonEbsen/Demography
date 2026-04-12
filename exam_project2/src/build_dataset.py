@@ -12,7 +12,7 @@ import numpy as np
 from pathlib import Path
 from typing import Optional
 
-from src.load_data import load_rel1871, load_vit_panel, DATA_RAW, DATA_PROCESSED
+from src.load_data import load_rel1871, load_vit_panel, interpolate_population, DATA_RAW, DATA_PROCESSED
 
 
 def build_analysis_panel(
@@ -56,7 +56,7 @@ def build_analysis_panel(
     # ------------------------------------------------------------------
     # 1. Load religion data (cross-section)
     # ------------------------------------------------------------------
-    rel = load_rel1871(data_dir / "REL1871.XLS")
+    rel = load_rel1871()
     print(f"REL1871: {len(rel)} counties loaded")
     
     # ------------------------------------------------------------------
@@ -68,6 +68,14 @@ def build_analysis_panel(
         year_end=year_end,
         type_filter=0,
     )
+    
+    # ------------------------------------------------------------------
+    # 2b. Interpolate missing population (pre-1872 VIT files lack Poptot)
+    # ------------------------------------------------------------------
+    n_missing_before = vit["Poptot"].isna().sum()
+    if n_missing_before > 0:
+        print(f"Poptot missing for {n_missing_before} obs — interpolating from POP census files...")
+        vit = interpolate_population(vit, data_dir=data_dir)
     
     # ------------------------------------------------------------------
     # 3. Merge on Code

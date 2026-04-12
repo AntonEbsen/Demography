@@ -6,6 +6,7 @@ and the iPEHD Becker-Woessmann replication dataset.
 
 Usage (from notebook):
     from src.load_data import load_rel1871, load_vit_panel, load_ipehd_master
+    from src.load_data import load_pop_census, interpolate_population
 """
 
 import pandas as pd
@@ -21,6 +22,63 @@ DATA_RAW = PROJECT_ROOT / "data" / "raw"
 DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
 
 
+def _find_file(data_dir: Path, basename: str) -> Optional[Path]:
+    """Try common extension variants (.xlsx, .XLS, .xls) for a file."""
+    for ext in [".xlsx", ".XLS", ".xls"]:
+        p = data_dir / f"{basename}{ext}"
+        if p.exists():
+            return p
+    return None
+
+
+def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Standardise column names to mixed-case convention used in VIT1875.
+    
+    Some Galloway files use ALL CAPS (VIT1862, VIT1881), others use
+    mixed case (VIT1875). This maps everything to a consistent form.
+    """
+    canonical = {
+        "code": "Code", "rb": "Rb", "kreis": "Kreis",
+        "type": "Type", "year": "Year",
+        "popm": "Popm", "popf": "Popf", "poptot": "Poptot", "pop": "Pop",
+        "popmilitary": "Popmilitary",
+        "birtot": "Birtot",
+        "birm": "Birm", "birf": "Birf",
+        "birinstm": "Birinstm", "birinstf": "Birinstf",
+        "birlegtot": "Birlegtot",
+        "birleglivem": "Birleglivem", "birleglivef": "Birleglivef",
+        "birlegdeadm": "Birlegdeadm", "birlegdeadf": "Birlegdeadf",
+        "birbastot": "Birbastot",
+        "birbaslivem": "Birbaslivem", "birbaslivef": "Birbaslivef",
+        "birbasdeadm": "Birbasdeadm", "birbasdeadf": "Birbasdeadf",
+        "birdeadtot": "Birdeadtot",
+        "dthtot": "Dthtot",
+        "dthm": "Dthm", "dthf": "Dthf",
+        "dthinstm": "Dthinstm", "dthinstf": "Dthinstf",
+        "dth<1leg": "Dth<1leg", "dth<1bas": "Dth<1bas",
+        "dthyoung": "Dthyoung", "dthsuicide": "Dthsuicide",
+        "martot": "Martot",
+        "marevan": "Marevan", "marcath": "Marcath",
+        "marjew": "Marjew", "marother": "Marother",
+        "inmigm": "Inmigm", "inmigf": "Inmigf",
+        "inmigtot": "Inmigtot",
+        "outmigm": "Outmigm", "outmigf": "Outmigf",
+        "outmigtot": "Outmigtot", "outmigunoff": "Outmigunoff",
+        "relevan": "Relevan", "relcath": "Relcath",
+        "relcathm": "Relcathm", "relcathf": "Relcathf",
+        "reljew": "Reljew", "relother": "Relother",
+    }
+    
+    rename_map = {}
+    for col in df.columns:
+        lower = col.lower()
+        if lower in canonical:
+            rename_map[col] = canonical[lower]
+    
+    return df.rename(columns=rename_map)
+
+
 # ===================================================================
 # 1.  REL1871 – Religion census (one cross-section)
 # ===================================================================
@@ -28,72 +86,112 @@ DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
 def load_rel1871(path: Optional[Path] = None) -> pd.DataFrame:
     """
     Load the Galloway REL1871 file and compute denomination shares.
-    
-    Returns only Type 0 (Stadt+Land combined) Kreise, excluding
-    Regierungsbezirk/province totals (Code >= 900).
-    
-    Columns returned
-    ----------------
-    Code, Rb, Kreis, Pop, cath_share, prot_share
-        where cath_share = (Relcathm + Relcathf) / Pop * 100
-        and   prot_share = 100 - cath_share  (approximation; ignores Jews & others)
+    Returns only Type 0 (Stadt+Land combined) Kreise, Code < 900.
     """
     if path is None:
-        path = DATA_RAW / "REL1871.XLS"
+        path = _find_file(DATA_RAW, "REL1871")
+        if path is None:
+            raise FileNotFoundError("REL1871 not found in data/raw/")
 
-    df = pd.read_excel(path)
-
-    # Keep only actual Kreise (not totals) and Type 0 (combined Stadt+Land)
+    df = _normalize_columns(pd.read_excel(path))
     df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
 
-    # Compute Catholic share (percentage)
     df["cath_share"] = (df["Relcathm"] + df["Relcathf"]) / df["Pop"] * 100
-
-    # Protestant share as residual (approximate – small Jewish/other population)
     df["prot_share"] = 100 - df["cath_share"]
 
-    # Keep clean set of columns
     cols_out = ["Code", "Rb", "Kreis", "Pop", "cath_share", "prot_share"]
     return df[cols_out].reset_index(drop=True)
 
 
 # ===================================================================
-# 2.  VIT files – Vital registration panel (annual, 1862-1914)
+# 2.  POP files – Population census (for interpolation)
 # ===================================================================
 
-# Column mappings for different VIT file formats.
-# The Galloway files changed structure over time:
-#   1862-1867 : 15 fields, totals only (Birtot, Dthtot, ...)
-#   1868-1871 : 13 fields, similar but fewer migration vars
-#   1872-1874 : 16 fields, adds Poptot
-#   1875-1886 : 36 fields, gender-split births, marriage by religion
-#   1887-1914 : 37 fields, adds Marsinglem/Marsinglef
+def load_pop_census(data_dir: Optional[Path] = None, years=None) -> pd.DataFrame:
+    """
+    Load POP census files and extract population by county.
+    Returns DataFrame with Code, Year, Pop_census (Type 0, Code < 900).
+    """
+    if data_dir is None:
+        data_dir = DATA_RAW
+    if years is None:
+        years = [1861, 1864, 1867, 1871, 1875, 1880, 1885, 1890]
+    
+    frames = []
+    for yr in years:
+        path = _find_file(data_dir, f"POP{yr}")
+        if path is None:
+            continue
+        
+        df = _normalize_columns(pd.read_excel(path))
+        df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+        
+        if "Pop" in df.columns:
+            pop_col = "Pop"
+        elif "Poptot" in df.columns:
+            pop_col = "Poptot"
+        else:
+            continue
+        
+        frames.append(df[["Code", "Year", pop_col]].rename(columns={pop_col: "Pop_census"}))
+        print(f"  POP{yr}: {len(df)} counties loaded")
+    
+    if not frames:
+        return pd.DataFrame(columns=["Code", "Year", "Pop_census"])
+    
+    return pd.concat(frames, ignore_index=True)
 
-# We harmonise all formats to a common set of output columns.
 
-# Columns we always want in the output:
-_OUTPUT_COLS = [
-    "Code", "Rb", "Kreis", "Type", "Year",
-    "Poptot",           # population (may be NaN for 1862-1871)
-    "Birtot",           # total births
-    "Birlegtot",        # legitimate births
-    "Birbastot",        # illegitimate births
-    "Dthtot",           # total deaths
-    "Dth_infant_leg",   # infant deaths (legitimate, under 1 year)
-    "Martot",           # total marriages
-    "Marevan",          # evangelical marriages
-    "Marcath",          # catholic marriages
-]
+def interpolate_population(
+    panel: pd.DataFrame,
+    data_dir: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
+    Fill missing Poptot values using linear interpolation from POP census files.
+    For years where VIT files don't include population (pre-1872).
+    """
+    pop_census = load_pop_census(data_dir)
+    
+    if len(pop_census) == 0:
+        print("Warning: No POP census files found, cannot interpolate.")
+        return panel
+    
+    panel = panel.copy()
+    
+    # Merge census population
+    panel = panel.merge(pop_census, on=["Code", "Year"], how="left")
+    
+    # Where Poptot is missing but census pop exists, use census
+    mask = panel["Poptot"].isna() & panel["Pop_census"].notna()
+    panel.loc[mask, "Poptot"] = panel.loc[mask, "Pop_census"]
+    
+    # Interpolate within each county
+    panel = panel.sort_values(["Code", "Year"])
+    panel["Poptot"] = panel.groupby("Code")["Poptot"].transform(
+        lambda s: s.interpolate(method="linear", limit_direction="both")
+    )
+    
+    panel = panel.drop(columns=["Pop_census"], errors="ignore")
+    
+    n_still_missing = panel["Poptot"].isna().sum()
+    if n_still_missing > 0:
+        print(f"Warning: {n_still_missing} obs still missing Poptot after interpolation")
+    else:
+        print("Population interpolation complete — no missing values.")
+    
+    return panel
 
+
+# ===================================================================
+# 3.  VIT files – Vital registration panel (annual, 1862-1914)
+# ===================================================================
 
 def _load_single_vit(path: Path) -> pd.DataFrame:
     """
     Load a single VIT file and harmonise column names.
-    
-    Handles the four different file formats transparently.
+    Handles all four Galloway file formats transparently.
     """
-    df = pd.read_excel(path)
-    year = df["Year"].iloc[0]
+    df = _normalize_columns(pd.read_excel(path))
     
     out = pd.DataFrame()
     out["Code"] = df["Code"]
@@ -122,7 +220,6 @@ def _load_single_vit(path: Path) -> pd.DataFrame:
     if "Birlegtot" in df.columns:
         out["Birlegtot"] = df["Birlegtot"]
     elif "Birleglivem" in df.columns:
-        # Sum live + dead, male + female
         out["Birlegtot"] = (
             df.get("Birleglivem", 0) + df.get("Birleglivef", 0) +
             df.get("Birlegdeadm", 0) + df.get("Birlegdeadf", 0)
@@ -149,19 +246,18 @@ def _load_single_vit(path: Path) -> pd.DataFrame:
     else:
         out["Dthtot"] = np.nan
     
-    # --- Infant deaths (legitimate, under 1) ---
+    # --- Infant deaths ---
     if "Dth<1leg" in df.columns:
         out["Dth_infant_leg"] = df["Dth<1leg"]
     elif "Dthyoung" in df.columns:
-        # Early files only have total young deaths, not split by legitimacy
         out["Dth_infant_leg"] = df["Dthyoung"]
     else:
         out["Dth_infant_leg"] = np.nan
     
     # --- Marriages ---
-    out["Martot"] = df.get("Martot", np.nan)
-    out["Marevan"] = df.get("Marevan", np.nan)
-    out["Marcath"] = df.get("Marcath", np.nan)
+    out["Martot"] = df["Martot"] if "Martot" in df.columns else np.nan
+    out["Marevan"] = df["Marevan"] if "Marevan" in df.columns else np.nan
+    out["Marcath"] = df["Marcath"] if "Marcath" in df.columns else np.nan
     
     return out
 
@@ -174,36 +270,16 @@ def load_vit_panel(
 ) -> pd.DataFrame:
     """
     Load all VIT files from year_start to year_end and stack into a panel.
-    
-    Parameters
-    ----------
-    data_dir : Path
-        Directory containing VIT{year}.XLS files.
-    year_start, year_end : int
-        Range of years to load (inclusive).
-    type_filter : int
-        Kreis type to keep. Default 0 = Stadt+Land combined.
-        Set to None to keep all types.
-    
-    Returns
-    -------
-    pd.DataFrame
-        Panel with columns: Code, Rb, Kreis, Type, Year, Poptot,
-        Birtot, Birlegtot, Birbastot, Dthtot, Dth_infant_leg,
-        Martot, Marevan, Marcath.
-        Filtered to Code < 900 (excludes totals).
+    Automatically handles different file extensions and column name cases.
     """
     if data_dir is None:
         data_dir = DATA_RAW
 
     frames = []
     for year in range(year_start, year_end + 1):
-        fpath = data_dir / f"VIT{year}.XLS"
-        if not fpath.exists():
-            # Try lowercase
-            fpath = data_dir / f"vit{year}.xls"
-        if not fpath.exists():
-            print(f"  [skip] VIT{year}.XLS not found")
+        fpath = _find_file(data_dir, f"VIT{year}")
+        if fpath is None:
+            print(f"  [skip] VIT{year} not found")
             continue
         
         try:
@@ -217,11 +293,8 @@ def load_vit_panel(
         raise FileNotFoundError(f"No VIT files found in {data_dir}")
 
     panel = pd.concat(frames, ignore_index=True)
-    
-    # Drop totals
     panel = panel[panel["Code"] < 900].copy()
     
-    # Filter by Type
     if type_filter is not None:
         panel = panel[panel["Type"] == type_filter].copy()
     
@@ -235,17 +308,14 @@ def load_vit_panel(
 
 
 # ===================================================================
-# 3.  iPEHD master dataset (reference only)
+# 4.  iPEHD master dataset (reference only)
 # ===================================================================
 
 def load_ipehd_master(path: Optional[Path] = None) -> pd.DataFrame:
     """
     Load the Becker-Woessmann (2009) replication dataset.
-    
-    This is a cross-section of 452 counties in 1871.
-    Use for reference / validation, not as your main data source.
+    Cross-section of 452 counties in 1871. For reference / validation only.
     """
     if path is None:
         path = DATA_RAW / "ipehd_qje2009_master.dta"
-    
     return pd.read_stata(path)
