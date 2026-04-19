@@ -562,3 +562,405 @@ def robustness_exclude_war(
         "coefs": coefs,
         "fig": fig,
     }
+
+
+# ===================================================================
+# 6. Trend-adjusted DiD
+# ===================================================================
+
+def trend_adjusted_did(
+    df: pd.DataFrame,
+    outcome: str = "cbr",
+    trend_base_year: int = 1862,
+    exclude_war: bool = False,
+    war_years: tuple = (1870, 1871, 1872),
+):
+    """
+    Estimate a DiD that allows for differential linear pre-trends
+    between counties with different Catholic shares.
+    
+    Specification
+    -------------
+    Y_it = β (CathShare × Post) + γ (CathShare × Trend) 
+           + controls + α_i + δ_t + ε_it
+    
+    where Trend = Year − trend_base_year.
+    
+    The γ term absorbs any linear differential trend correlated with
+    Catholic share. The β term is then identified from *deviations*
+    from that trend — i.e. a discontinuous shift at the Kulturkampf.
+    
+    Interpretation
+    --------------
+    If your raw event study shows a smooth downward trend through the
+    whole period (as in our results), the baseline DiD picks up this
+    trend as if it were a treatment effect. By explicitly controlling
+    for the trend, we isolate any Kulturkampf-specific *break*.
+    
+    A null β here is a much stronger result than a null baseline DiD,
+    because it means: after accounting for the pre-existing convergence
+    between Catholic and Protestant counties, there is no additional
+    fertility change attributable to the Kulturkampf.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Analysis panel.
+    outcome : str
+        Dependent variable (default: 'cbr').
+    trend_base_year : int
+        Year from which linear trend is measured.
+    exclude_war : bool
+        If True, drop the Franco-Prussian War years.
+    war_years : tuple
+        Years to drop if exclude_war is True.
+    
+    Returns
+    -------
+    dict with keys 'result' (PanelOLS fit), 'coefs' (dict of β, γ, SEs).
+    """
+    print("=" * 60)
+    print("TREND-ADJUSTED DiD")
+    if exclude_war:
+        print(f"(excluding war years {war_years})")
+    print("=" * 60)
+    
+    df = df.copy()
+    if exclude_war:
+        df = df[~df["Year"].isin(war_years)].copy()
+    
+    # Construct the linear trend interaction
+    df["trend"] = df["Year"] - trend_base_year
+    df["cath_x_trend"] = df["cath_share"] * df["trend"]
+    
+    # Run the regression
+    exog = ["cath_share_x_post", "cath_x_trend", "ln_pop"]
+    res = _safe_panel_ols(df, outcome, exog)
+    
+    # Also run baseline (without trend adjustment) for comparison
+    res_baseline = _safe_panel_ols(df, outcome, ["cath_share_x_post", "ln_pop"])
+    
+    # Report
+    print("\n--- BASELINE (no trend adjustment) ---")
+    b_base = res_baseline.params["cath_share_x_post"]
+    s_base = res_baseline.std_errors["cath_share_x_post"]
+    p_base = res_baseline.pvalues["cath_share_x_post"]
+    print(f"  cath_share × post: β = {b_base:+.5f} "
+          f"(SE = {s_base:.5f}, p = {p_base:.3f})")
+    
+    print("\n--- TREND-ADJUSTED ---")
+    b_adj = res.params["cath_share_x_post"]
+    s_adj = res.std_errors["cath_share_x_post"]
+    p_adj = res.pvalues["cath_share_x_post"]
+    print(f"  cath_share × post:  β = {b_adj:+.5f} "
+          f"(SE = {s_adj:.5f}, p = {p_adj:.3f})")
+    
+    g_trend = res.params["cath_x_trend"]
+    s_trend = res.std_errors["cath_x_trend"]
+    p_trend = res.pvalues["cath_x_trend"]
+    print(f"  cath_share × trend: γ = {g_trend:+.5f} "
+          f"(SE = {s_trend:.5f}, p = {p_trend:.3f})")
+    
+    # Interpretation
+    print(f"\nInterpretation:")
+    print(f"  γ = {g_trend:+.5f} means that per year of trend, a 10-pp")
+    print(f"  more-Catholic county's CBR changed by {10*g_trend:+.4f} per 1,000")
+    print(f"  relative to a less-Catholic county, independent of the Kulturkampf.")
+    print(f"  Over 30 years that compounds to {30*10*g_trend:+.2f} per 1,000.")
+    print(f"")
+    if p_adj > 0.10:
+        print(f"  β (Kulturkampf break) is NOT significant after trend adjustment.")
+        print(f"  → No evidence of a Kulturkampf-specific fertility shock.")
+    else:
+        print(f"  β (Kulturkampf break) IS significant after trend adjustment.")
+        print(f"  → Evidence of a discontinuous shift beyond the linear trend.")
+    
+    return {
+        "result": res,
+        "result_baseline": res_baseline,
+        "coefs": {
+            "beta_baseline": b_base, "se_baseline": s_base, "p_baseline": p_base,
+            "beta_adjusted": b_adj, "se_adjusted": s_adj, "p_adjusted": p_adj,
+            "gamma_trend": g_trend, "se_trend": s_trend, "p_trend": p_trend,
+        },
+    }
+
+
+# ===================================================================
+# 7. Polish vs German × Rollback interaction
+# ===================================================================
+
+def polish_german_rollback(
+    df: pd.DataFrame,
+    outcome: str = "cbr",
+    savepath: str = None,
+):
+    """
+    Does the Polish-vs-German divergence reverse during the rollback period?
+    
+    Rationale
+    ---------
+    You already found that during the full post-Kulturkampf era
+    (1873+), Polish Catholic provinces saw significantly lower Catholic
+    fertility while German Catholic provinces saw slightly higher
+    fertility. This analysis splits the "post" period into two phases
+    to see whether these effects persisted through the Kulturkampf
+    rollback (1880-1887):
+    
+      - Enforcement (1873-1878): Kulturkampf in full force
+      - Rollback    (1880-1887): laws gradually repealed
+    
+    Three possible patterns:
+      1. Polish negative effect DISAPPEARS in rollback
+         → Strong evidence Kulturkampf caused it.
+      2. Polish negative effect PERSISTS in rollback
+         → Suggests something else (e.g. ongoing Germanization)
+            drove the result, not the religious legislation per se.
+      3. Polish effect GROWS in rollback
+         → The slow fertility transition catching up.
+    
+    Specification
+    -------------
+    Interact cath_share with period dummies (enforcement / rollback),
+    and estimate separately on the Polish and German sub-samples.
+    
+    Returns
+    -------
+    dict with sub-sample results and a coefficient plot.
+    """
+    print("=" * 60)
+    print("POLISH × ROLLBACK vs GERMAN × ROLLBACK")
+    print("=" * 60)
+    
+    df = df.copy()
+    
+    # Create enforcement / rollback / post-rollback indicators
+    df["enforcement"] = df["Year"].between(1873, 1878).astype(int)
+    df["rollback"] = df["Year"].between(1880, 1887).astype(int)
+    df["post_rollback"] = (df["Year"] >= 1888).astype(int)
+    
+    df["cath_x_enforcement"] = df["cath_share"] * df["enforcement"]
+    df["cath_x_rollback"] = df["cath_share"] * df["rollback"]
+    df["cath_x_postrollback"] = df["cath_share"] * df["post_rollback"]
+    
+    polish_rbs = ["POS", "BRO"]
+    german_cath_rbs = ["KOL", "KOB", "TRI", "AAC", "OPP", "MUN"]
+    
+    sub_results = {}
+    
+    for label, mask in [
+        ("Polish provinces", df["Rb"].isin(polish_rbs)),
+        ("German Catholic provinces", df["Rb"].isin(german_cath_rbs)),
+        ("Protestant provinces (rest)", ~df["Rb"].isin(polish_rbs + german_cath_rbs)),
+    ]:
+        sub = df[mask].copy()
+        if sub["Code"].nunique() < 10:
+            print(f"  {label}: too few counties, skipping")
+            continue
+        
+        exog = ["cath_x_enforcement", "cath_x_rollback", "cath_x_postrollback", "ln_pop"]
+        res = _safe_panel_ols(sub, outcome, exog)
+        
+        sub_results[label] = {
+            "enforcement": {
+                "coef": res.params["cath_x_enforcement"],
+                "se":   res.std_errors["cath_x_enforcement"],
+                "p":    res.pvalues["cath_x_enforcement"],
+            },
+            "rollback": {
+                "coef": res.params["cath_x_rollback"],
+                "se":   res.std_errors["cath_x_rollback"],
+                "p":    res.pvalues["cath_x_rollback"],
+            },
+            "post_rollback": {
+                "coef": res.params["cath_x_postrollback"],
+                "se":   res.std_errors["cath_x_postrollback"],
+                "p":    res.pvalues["cath_x_postrollback"],
+            },
+            "n_counties": sub["Code"].nunique(),
+        }
+        
+        print(f"\n  {label} ({sub['Code'].nunique()} counties):")
+        for period_label, key in [
+            ("Enforcement  (1873-1878)", "enforcement"),
+            ("Rollback     (1880-1887)", "rollback"),
+            ("Post-rollback (1888+)   ", "post_rollback"),
+        ]:
+            r = sub_results[label][key]
+            stars = "***" if r["p"] < 0.01 else "**" if r["p"] < 0.05 else "*" if r["p"] < 0.10 else ""
+            print(f"    {period_label}: β = {r['coef']:+.4f} "
+                  f"(SE = {r['se']:.4f}, p = {r['p']:.3f}) {stars}")
+    
+    # Plot coefficients by period for each sub-sample
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    colors = {
+        "Polish provinces": "#C0392B",
+        "German Catholic provinces": "#2471A3",
+        "Protestant provinces (rest)": "#555555",
+    }
+    
+    period_labels = ["Enforcement\n(1873-1878)", "Rollback\n(1880-1887)", "Post-rollback\n(1888+)"]
+    period_keys = ["enforcement", "rollback", "post_rollback"]
+    
+    width = 0.25
+    x = np.arange(len(period_labels))
+    
+    for i, (label, r) in enumerate(sub_results.items()):
+        if label not in colors:
+            continue
+        coefs = [r[k]["coef"] for k in period_keys]
+        ses = [r[k]["se"] for k in period_keys]
+        xpos = x + (i - 1) * width
+        ax.bar(xpos, coefs, width=width, yerr=[1.96 * s for s in ses],
+               color=colors[label], alpha=0.8, label=label, capsize=4)
+    
+    ax.axhline(0, color="black", linewidth=0.8)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(period_labels)
+    ax.set_ylabel("Coefficient on cath_share × period", fontsize=11)
+    ax.set_title("Kulturkampf effects by sub-region and period\n(95% CI)",
+                 fontsize=13, fontweight="bold")
+    ax.legend(loc="best", frameon=True, fontsize=9)
+    ax.grid(axis="y", alpha=0.3)
+    
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    
+    return {"results": sub_results, "fig": fig}
+
+
+# ===================================================================
+# 8. Placebo test with fake treatment year
+# ===================================================================
+
+def placebo_test(
+    df: pd.DataFrame,
+    outcome: str = "cbr",
+    placebo_years: list = None,
+    savepath: str = None,
+):
+    """
+    Placebo test: pretend the Kulturkampf happened in a different year
+    and re-run the baseline DiD.
+    
+    Rationale
+    ---------
+    If the baseline DiD (β ≈ 0 at true treatment year 1873) is really
+    picking up the absence of a Kulturkampf effect, then:
+      - β at fake treatment years in the PRE-period should also be ≈ 0
+        (nothing special happened there)
+      - β at fake treatment years in the POST-period should also be ≈ 0
+        (nothing special happened there either)
+    
+    If instead some placebo years produce significant coefficients,
+    then the DiD is sensitive to the choice of cutoff and its null
+    result may be coincidental.
+    
+    Parameters
+    ----------
+    placebo_years : list of int
+        Years to treat as fake Kulturkampf onset.
+        Default: 1864, 1866, 1868, 1870, 1873 (true), 1876, 1880, 1884.
+    
+    Returns
+    -------
+    DataFrame with placebo_year, coef, se, p_value, sample restriction.
+    """
+    if placebo_years is None:
+        placebo_years = [1864, 1866, 1868, 1870, 1873, 1876, 1880, 1884]
+    
+    print("=" * 60)
+    print("PLACEBO TEST — FAKE TREATMENT YEARS")
+    print("=" * 60)
+    print("Re-estimating the DiD with the 'post' indicator set at various")
+    print("different years. Only the true treatment year (1873) should")
+    print("produce a meaningful result if the design is correct.\n")
+    
+    results = []
+    
+    for placebo_year in placebo_years:
+        df_pl = df.copy()
+        # Override post_kulturkampf with the placebo year
+        df_pl["post_placebo"] = (df_pl["Year"] >= placebo_year).astype(int)
+        df_pl["cath_x_post_placebo"] = df_pl["cath_share"] * df_pl["post_placebo"]
+        
+        # Need variation in post_placebo → trim sample if needed
+        if df_pl["post_placebo"].var() == 0:
+            continue
+        
+        try:
+            res = _safe_panel_ols(
+                df_pl, outcome, ["cath_x_post_placebo", "ln_pop"]
+            )
+            coef = res.params["cath_x_post_placebo"]
+            se = res.std_errors["cath_x_post_placebo"]
+            p = res.pvalues["cath_x_post_placebo"]
+            
+            is_true = (placebo_year == 1873)
+            marker = " ← TRUE" if is_true else ""
+            stars = "***" if p < 0.01 else "**" if p < 0.05 else "*" if p < 0.10 else ""
+            
+            print(f"  Placebo year = {placebo_year}: β = {coef:+.5f} "
+                  f"(SE = {se:.5f}, p = {p:.3f}) {stars}{marker}")
+            
+            results.append({
+                "placebo_year": placebo_year,
+                "coef": coef,
+                "se": se,
+                "ci_lo": coef - 1.96 * se,
+                "ci_hi": coef + 1.96 * se,
+                "p_value": p,
+                "is_true": is_true,
+                "n": int(res.nobs),
+            })
+        except Exception as e:
+            print(f"  Placebo year = {placebo_year}: failed ({e})")
+    
+    res_df = pd.DataFrame(results)
+    
+    # Plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    colors = ["#C0392B" if t else "#555555" for t in res_df["is_true"]]
+    markers = ["D" if t else "o" for t in res_df["is_true"]]
+    
+    for _, row in res_df.iterrows():
+        color = "#C0392B" if row["is_true"] else "#555555"
+        marker = "D" if row["is_true"] else "o"
+        size = 80 if row["is_true"] else 50
+        ax.errorbar(
+            row["placebo_year"], row["coef"],
+            yerr=1.96 * row["se"],
+            fmt=marker, color=color, markersize=8 if row["is_true"] else 6,
+            capsize=4, linewidth=1.5,
+        )
+    
+    ax.axhline(0, color="black", linewidth=0.8)
+    ax.axvline(1873, color="#C0392B", linestyle="--", linewidth=0.8, alpha=0.5)
+    
+    ax.set_xlabel("Placebo treatment year", fontsize=11)
+    ax.set_ylabel("Coefficient on cath_share × post_placebo (95% CI)", fontsize=11)
+    ax.set_title("Placebo test: coefficients at fake treatment years\n"
+                 "(red diamond = true Kulturkampf year)",
+                 fontsize=12, fontweight="bold")
+    ax.grid(axis="y", alpha=0.3)
+    
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    
+    # Summary assessment
+    n_sig = (res_df[~res_df["is_true"]]["p_value"] < 0.05).sum()
+    n_placebo = (~res_df["is_true"]).sum()
+    print(f"\nSummary:")
+    print(f"  {n_sig} out of {n_placebo} placebo years produced p < 0.05")
+    if n_sig == 0:
+        print(f"  → Consistent with a clean null: no year shows a significant effect.")
+    elif n_sig <= 1:
+        print(f"  → One placebo is significant (within chance expectations at 5% level).")
+    else:
+        print(f"  → Multiple placebos are significant — design is noisy.")
+    
+    return {"results_df": res_df, "fig": fig}
