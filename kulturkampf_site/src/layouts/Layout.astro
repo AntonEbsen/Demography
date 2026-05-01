@@ -16,7 +16,7 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
 		<meta charset="UTF-8" />
 		<meta name="description" content={description} />
 		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" type="image/png" href="/favicon.png" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 
@@ -41,13 +41,22 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
 					<a href="/methods" data-t="nav_methods">Methodology</a>
 					<a href="/evidence" data-t="nav_evidence">Evidence</a>
 					<a href="/context" data-t="nav_context">Historical Context</a>
+                    <a href="/data" data-t="nav_data">Data Hub</a>
                     <a href="/appendix" data-t="nav_appendix">Appendix</a>
                     <a href="https://github.com/AntonEbsen/Demography" target="_blank" class="nav-ext">GitHub</a>
+                    <button id="search-trigger" class="search-btn">🔍</button>
                     <button id="lang-toggle" class="lang-btn">DA</button>
 				</div>
 			</div>
             <div id="scroll-progress" class="progress-bar"></div>
 		</nav>
+
+        <div id="search-modal" class="search-modal hidden">
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Search research..." />
+                <div id="search-results" class="search-results"></div>
+            </div>
+        </div>
         
         <div class="page-transition-wrapper">
 		    <slot />
@@ -76,11 +85,11 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
 				const t = {
 					en: {
 						nav_overview: "Overview", nav_methods: "Methodology", nav_evidence: "Evidence", 
-                        nav_context: "History", nav_appendix: "Appendix"
+                        nav_context: "History", nav_appendix: "Appendix", nav_data: "Data Hub"
 					},
 					da: {
 						nav_overview: "Oversigt", nav_methods: "Metode", nav_evidence: "Beviser", 
-                        nav_context: "Historie", nav_appendix: "Appendiks"
+                        nav_context: "Historie", nav_appendix: "Appendiks", nav_data: "Data Hub"
 					}
 				};
 
@@ -113,13 +122,44 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
                 };
             };
 
+            const initSearch = () => {
+                const trigger = document.getElementById('search-trigger');
+                const modal = document.getElementById('search-modal');
+                const input = document.getElementById('search-input');
+                const results = document.getElementById('search-results');
+
+                const pages = [
+                    { title: "Overview", url: "/", tags: "bismarck prussia fertility kulturkampf bray" },
+                    { title: "Methodology", url: "/methods", tags: "did econometric twfe fixed effects galloway" },
+                    { title: "Evidence", url: "/evidence", tags: "results maps cbr decline robustness" },
+                    { title: "History", url: "/context", tags: "vatican may laws pope marriage secularization" },
+                    { title: "Data Hub", url: "/data", tags: "dictionary csv parquet variables" }
+                ];
+
+                trigger.onclick = () => {
+                    modal.classList.toggle('hidden');
+                    if (!modal.classList.contains('hidden')) input.focus();
+                };
+
+                input.oninput = (e) => {
+                    const q = e.target.value.toLowerCase();
+                    if (!q) { results.innerHTML = ''; return; }
+                    const filtered = pages.filter(p => p.title.toLowerCase().includes(q) || p.tags.includes(q));
+                    results.innerHTML = filtered.map(p => `<a href="${p.url}">${p.title}</a>`).join('');
+                };
+
+                window.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+            };
+
 			initTheme();
             initLang();
             initProgress();
+            initSearch();
 
             document.addEventListener('astro:page-load', () => {
                 initLang();
                 initProgress();
+                initSearch();
             });
 		</script>
 	</body>
@@ -249,6 +289,71 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
 		background: var(--accent);
 		color: #000;
 	}
+
+    .search-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 1rem;
+        transition: color 0.3s;
+    }
+
+    .search-btn:hover { color: var(--accent); }
+
+    .search-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.9);
+        z-index: 2000;
+        display: flex;
+        justify-content: center;
+        padding-top: 10vh;
+        backdrop-filter: blur(10px);
+    }
+
+    .search-container {
+        width: 100%;
+        max-width: 600px;
+        padding: 0 2rem;
+    }
+
+    #search-input {
+        width: 100%;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid var(--accent);
+        color: var(--text);
+        font-size: 2rem;
+        font-family: var(--serif);
+        padding: 1rem 0;
+        outline: none;
+    }
+
+    .search-results {
+        margin-top: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .search-results a {
+        color: var(--text);
+        text-decoration: none;
+        font-size: 1.5rem;
+        font-family: var(--serif);
+        padding: 1rem;
+        background: rgba(255,255,255,0.05);
+        border-radius: 4px;
+        transition: all 0.3s;
+    }
+
+    .search-results a:hover {
+        background: var(--accent);
+        color: #000;
+    }
+
+    .hidden { display: none; }
 
     .progress-bar {
         position: absolute;

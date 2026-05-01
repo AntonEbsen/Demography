@@ -1,0 +1,146 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const variables = [
+    { name: "CBR", type: "Outcome", desc: "Crude Birth Rate: Live births per 1,000 citizens. Sourced from Galloway VIT." },
+    { name: "CathShare", type: "Treatment", desc: "Share of Catholic population in 1871. Sourced from iPEHD (Becker-Woessmann)." },
+    { name: "Post1873", type: "Temporal", desc: "Indicator for the period following the enactment of the May Laws." },
+    { name: "UrbanShare", type: "Control", desc: "Percentage of the population living in towns with >2,000 inhabitants." },
+    { name: "InduShare", type: "Control", desc: "Share of the workforce employed in the industrial sector (1882 Census)." }
+];
+---
+
+<Layout title="Data Hub | Kulturkampf Research">
+	<main class="container">
+		<header class="page-header">
+			<span class="eyebrow">Open Science</span>
+			<h1>Data Hub</h1>
+			<p>Access the documentation and schemas for the Prussian analysis panel.</p>
+		</header>
+
+		<section class="dictionary">
+			<h2>Data Dictionary</h2>
+			<div class="dict-table-wrapper">
+                <table class="dict-table">
+                    <thead>
+                        <tr>
+                            <th>Variable</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {variables.map(v => (
+                            <tr>
+                                <td><code>{v.name}</code></td>
+                                <td><span class={`tag ${v.type.toLowerCase()}`}>{v.type}</span></td>
+                                <td>{v.desc}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+		</section>
+
+        <section class="downloads">
+            <div class="grid-2">
+                <div class="download-card">
+                    <h4>Analysis Panel (Sample)</h4>
+                    <p>Standardized county-year panel for 1862–1914. Includes all harmonized demographic outcomes.</p>
+                    <a href="#" class="btn-sm">Download CSV (Sample)</a>
+                </div>
+                <div class="download-card">
+                    <h4>Technical Spec</h4>
+                    <p>The <code>environment.yml</code> file containing the exact Python dependencies for replication.</p>
+                    <a href="#" class="btn-sm">View Spec</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="build-status">
+            <h3>Pipeline Integrity</h3>
+            <p>Every change to the data pipeline is automatically validated against a suite of 13 econometric and structural tests.</p>
+            <div class="status-badge">
+                <img src="https://img.shields.io/badge/Pipeline-Passing-success?style=for-the-badge&logo=github&labelColor=2471a3&color=d4af37" alt="GitHub Build Status" />
+            </div>
+        </section>
+	</main>
+</Layout>
+
+<style>
+    .dict-table-wrapper {
+        margin: 3rem 0;
+        overflow-x: auto;
+    }
+
+    .dict-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    .dict-table th {
+        padding: 1rem;
+        border-bottom: 2px solid var(--accent);
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.1rem;
+        color: var(--accent);
+    }
+
+    .dict-table td {
+        padding: 1.5rem 1rem;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.95rem;
+    }
+
+    .tag {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+
+    .tag.outcome { background: var(--church); color: white; }
+    .tag.treatment { background: var(--accent); color: black; }
+    .tag.temporal { background: var(--state); color: white; }
+    .tag.control { background: var(--surface); color: var(--text-muted); }
+
+    .downloads { margin-top: 4rem; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+
+    .download-card {
+        background: var(--surface);
+        padding: 2rem;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+    }
+
+    .download-card h4 { margin-bottom: 1rem; }
+    .download-card p { font-size: 0.85rem; opacity: 0.7; }
+
+    .btn-sm {
+        display: inline-block;
+        margin-top: 1rem;
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+    }
+
+    .build-status {
+        margin-top: 6rem;
+        text-align: center;
+        padding: 4rem;
+        background: #000;
+        border: 1px solid var(--border);
+    }
+
+    .status-badge {
+        margin-top: 2rem;
+        filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.3));
+    }
+</style>
