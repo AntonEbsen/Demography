@@ -141,7 +141,10 @@ import PrussiaMap from '../components/PrussiaMap.astro';
             <div class="container">
                 <h3>Interested in the Reproducibility?</h3>
                 <p>The entire data pipeline, from raw Galloway census files to the final spatial regressions, is open-source and modularized in Python.</p>
-                <a href="https://github.com/AntonEbsen/Demography" target="_blank" class="btn primary">Explore GitHub Repository</a>
+                <div class="cta-btns">
+                    <a href="https://github.com/AntonEbsen/Demography" target="_blank" class="btn primary">Explore GitHub Repository</a>
+                </div>
+                <p class="ai-note">Built in collaboration with AI for academic transparency.</p>
             </div>
         </section>
 	</main>
@@ -369,6 +372,13 @@ import PrussiaMap from '../components/PrussiaMap.astro';
         max-width: 600px;
         margin: 0 auto 3rem;
         opacity: 0.7;
+    }
+
+    .ai-note {
+        margin-top: 3rem !important;
+        font-size: 0.8rem !important;
+        opacity: 0.4 !important;
+        font-style: italic;
     }
 
 	@media (max-width: 900px) {

@@ -54,3 +54,14 @@ Welcome to the research repository for the **MSc Economics - Demography** course
 **Anton Meier Ebsen Jørgensen**  
 MSc Student, Economics @ University of Copenhagen  
 **Email:** anton.ebsen@gmail.com
+
+---
+
+## 🤖 AI Transparency & Collaboration
+In the interest of academic integrity and digital transparency, this repository was professionalized with the assistance of an **AI Coding Agent (Antigravity)**. 
+
+While the econometric specifications, historical interpretation, and demographic domain expertise were provided by the author, the AI was utilized as a technical research partner for:
+- **Monograph Architecture**: Implementing the Astro-based digital monograph and high-fidelity SVG components.
+- **CI/CD & Automation**: Configuring GitHub Actions, unit tests, and the installable Python package structure.
+- **Reproducibility**: Developing the Binder cloud-environment and Mermaid data lineage.
+- **Professionalization**: Drafting technical documentation and optimizing repo-wide PWA/SEO performance.
