@@ -1,0 +1,32 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+
+\title{The Iron and the Altar: \\ Institutional Conflict and the Demographic Transition in Prussia}
+\author{Anton Ebsen}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This study investigates the Kulturkampf (1872--1878)---Bismarck’s institutional assault on the Catholic Church---as an exogenous shock to the cost of child-rearing. Using a panel of 452 Prussian counties, I employ a Difference-in-Differences strategy to show that secularization catalyzed the demographic transition.
+\end{abstract}
+
+\section{Introduction}
+The secularization of Prussia in the 1870s represents one of the most significant institutional shocks of the 19th century. By dismantling Catholic oversight over education and marriage, the state effectively altered the social and economic incentives for large families.
+
+\section{Methodology}
+I estimate the following specification:
+\begin{equation}
+    BirthRate_{it} = \alpha + \beta(CathShare_i \times Post1873_t) + \mu_i + \delta_t + \Gamma X_{it} + \varepsilon_{it}
+\end{equation}
+
+\section{Conclusion}
+Our findings suggest that institutional secularization was a primary driver of the "Quantity-Quality" trade-off in the Catholic regions of the German Empire.
+
+\end{document}
