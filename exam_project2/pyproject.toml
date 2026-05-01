@@ -36,7 +36,20 @@ dev = [
     "pytest-cov>=4.0",
     "ruff>=0.0.260",
     "black>=23.1.0",
+    "mypy>=1.0.0",
+    "pandas-stubs>=1.5.0",
 ]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "W"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+plugins = ["numpy.typing.mypy_plugin"]
 
 [tool.setuptools.packages.find]
 where = ["."]

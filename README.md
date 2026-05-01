@@ -1,17 +1,23 @@
 # Demography & Economics Research Repository
+[![Python Tests](https://github.com/AntonEbsen/Demography/actions/workflows/test.yml/badge.svg)](https://github.com/AntonEbsen/Demography/actions/workflows/test.yml)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AntonEbsen/Demography/main?urlpath=lab)
 
-Welcome to the research repository for the **MSc Economics - Demography** course (AØKA08197U) at the University of Copenhagen. This repository contains lecture notes, translation of STATA code to Python, and the master's level exam project.
+Welcome to the research repository for the **MSc Economics - Demography** course at the University of Copenhagen. This repository hosts two primary research projects exploring the intersection of institutions and demography.
 
 ---
 
-## 🚀 Featured Project: The "Cost of Quality"
-### Legislative Shocks to Child Labor and the Fertility Transition in 19th-Century Britain
+## 🏛️ Project 1: The "Iron & Altar" (Kulturkampf)
+**Institutional Conflict and the Demographic Transition in 19th-Century Prussia**
 
-This project investigates the impact of the **1833 and 1844 Factory Acts** on the British fertility transition. Using a **Difference-in-Differences (DiD)** methodology, we explore whether legislative restrictions on child labor and mandatory schooling requirements acted as a catalyst for the "Quantity-Quality" trade-off.
+- **🌐 Digital Monograph:** [https://AntonEbsen.github.io/Demography/kulturkampf](https://AntonEbsen.github.io/Demography/kulturkampf)
+- **📁 Research Hub:** [exam_project2/](./exam_project2/)
+- **🛠️ Methodology:** Two-Way Fixed Effects (TWFE), Event Studies, Triple-Differences.
 
-- **📌 Research Overview:** [Exam Project Folder](./exam_project/)
-- **📊 Analysis Notebook:** [Notebook Link](./exam_project/notebooks/exam_project.ipynb)
-- **📁 Data Sources:** Populations Past (Registration Districts 1851–1891), UK Data Service.
+## 🏭 Project 2: The "Cost of Quality" (Factory Acts)
+**Legislative Shocks to Child Labor and the Fertility Transition in 19th-Century Britain**
+
+- **📊 Analysis Notebook:** [exam_project.ipynb](./exam_project/notebooks/exam_project.ipynb)
+- **🛠️ Methodology:** Difference-in-Differences (DiD).
 
 ---
 
