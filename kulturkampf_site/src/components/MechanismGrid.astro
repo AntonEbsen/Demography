@@ -1,0 +1,120 @@
+---
+const mechanisms = [
+    {
+        title: "Civil Marriage",
+        stat: "+12%",
+        label: "Illegitimacy Rate",
+        desc: "Following the 1875 Civil Marriage Act, illegitimate births rose as the Church's marital gatekeeping was bypassed.",
+        icon: "💍"
+    },
+    {
+        title: "Health Oversight",
+        stat: "Robust",
+        label: "Infant Mortality",
+        desc: "No significant surge in infant deaths, suggesting the state successfully replaced Catholic health services.",
+        icon: "🏥"
+    },
+    {
+        title: "Education Shift",
+        stat: "Stochastic",
+        label: "Schooling Quality",
+        desc: "Staggered secularization of schools mirrored the fertility decline, supporting the 'Quantity-Quality' trade-off.",
+        icon: "📚"
+    }
+];
+---
+
+<div class="mechanism-spotlight">
+    <h2>Mechanism Spotlight</h2>
+    <p>Testing the secondary channels of institutional secularization.</p>
+
+    <div class="mechanism-grid">
+        {mechanisms.map(m => (
+            <div class="mechanism-card">
+                <div class="mech-icon">{m.icon}</div>
+                <div class="mech-content">
+                    <h3>{m.title}</h3>
+                    <div class="mech-stat">
+                        <span class="stat-val">{m.stat}</span>
+                        <span class="stat-label">{m.label}</span>
+                    </div>
+                    <p>{m.desc}</p>
+                </div>
+            </div>
+        ))}
+    </div>
+</div>
+
+<style>
+    .mechanism-spotlight {
+        margin: 6rem 0;
+    }
+
+    .mechanism-spotlight h2 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .mechanism-spotlight p {
+        opacity: 0.7;
+        margin-bottom: 4rem;
+    }
+
+    .mechanism-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 3rem;
+    }
+
+    .mechanism-card {
+        display: flex;
+        gap: 2rem;
+        background: rgba(212, 175, 55, 0.02);
+        padding: 2.5rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        transition: transform 0.3s, border-color 0.3s;
+    }
+
+    .mechanism-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--accent);
+    }
+
+    .mech-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+
+    .mech-content h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: var(--accent);
+    }
+
+    .mech-stat {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-val {
+        font-size: 2rem;
+        font-family: var(--serif);
+        font-weight: bold;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        opacity: 0.5;
+    }
+
+    .mech-content p {
+        font-size: 0.9rem;
+        line-height: 1.6;
+        margin-bottom: 0;
+    }
+</style>

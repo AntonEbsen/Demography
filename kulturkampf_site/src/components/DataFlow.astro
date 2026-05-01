@@ -1,0 +1,93 @@
+---
+---
+<div class="data-flow">
+    <div class="flow-step">
+        <div class="step-icon">📄</div>
+        <div class="step-content">
+            <h4>Raw Inputs</h4>
+            <p>Galloway VIT (Vital Statistics) & POP (Census) Excel files (1862–1914).</p>
+        </div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">
+        <div class="step-icon">🐍</div>
+        <div class="step-content">
+            <h4>Harmonization</h4>
+            <p>Custom Python pipeline standardizes inconsistent column names and county codes.</p>
+        </div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">
+        <div class="step-icon">🔗</div>
+        <div class="step-content">
+            <h4>Dataset Merge</h4>
+            <p>Integration with iPEHD (Becker-Woessmann) for baseline religious and economic data.</p>
+        </div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">
+        <div class="step-icon">📊</div>
+        <div class="step-content">
+            <h4>Analysis Panel</h4>
+            <p>Final Parquet dataset: 12,000+ observations across 452 Prussian counties.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .data-flow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        margin: 4rem 0;
+    }
+
+    .flow-step {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 2rem;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 600px;
+        transition: transform 0.3s;
+    }
+
+    .flow-step:hover {
+        transform: scale(1.02);
+        border-color: var(--accent);
+    }
+
+    .step-icon {
+        font-size: 2.5rem;
+        background: rgba(212, 175, 55, 0.05);
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 1px solid rgba(212, 175, 55, 0.2);
+    }
+
+    .step-content h4 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        color: var(--accent);
+    }
+
+    .step-content p {
+        font-size: 0.9rem;
+        margin-bottom: 0;
+        opacity: 0.7;
+    }
+
+    .flow-arrow {
+        font-size: 1.5rem;
+        color: var(--accent);
+        opacity: 0.5;
+    }
+</style>

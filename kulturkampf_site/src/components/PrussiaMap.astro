@@ -1,0 +1,154 @@
+---
+const provinces = [
+    { id: "rhineland", name: "Rhineland", cath: 78, decline: "-12.4%", path: "M 50 150 L 150 120 L 180 180 L 80 220 Z", color: "#c0392b" },
+    { id: "brandenburg", name: "Brandenburg", cath: 12, decline: "-1.2%", path: "M 350 100 L 450 80 L 500 150 L 400 180 Z", color: "#2c3e50" },
+    { id: "posen", name: "Posen", cath: 65, decline: "-9.8%", path: "M 520 120 L 620 100 L 650 180 L 550 200 Z", color: "#e74c3c" },
+    { id: "silesia", name: "Silesia", cath: 55, decline: "-7.5%", path: "M 500 200 L 600 220 L 630 280 L 530 260 Z", color: "#d35400" },
+    { id: "pomerania", name: "Pomerania", cath: 8, decline: "-0.5%", path: "M 400 30 L 550 50 L 520 100 L 380 80 Z", color: "#34495e" },
+    { id: "eastprussia", name: "East Prussia", cath: 28, decline: "-2.1%", path: "M 650 40 L 780 60 L 750 120 L 630 100 Z", color: "#7f8c8d" },
+    { id: "westphalia", name: "Westphalia", cath: 52, decline: "-6.2%", path: "M 180 120 L 280 140 L 250 200 L 150 180 Z", color: "#e67e22" }
+];
+---
+
+<div class="map-explorer">
+    <div class="map-container">
+        <svg viewBox="0 0 800 350" preserveAspectRatio="xMidYMid meet">
+            {provinces.map(p => (
+                <path 
+                    d={p.path} 
+                    class="province" 
+                    fill={p.color}
+                    data-name={p.name}
+                    data-cath={p.cath}
+                    data-decline={p.decline}
+                />
+            ))}
+        </svg>
+        
+        <div id="map-tooltip" class="map-tooltip hidden">
+            <h4 id="tooltip-name">Province</h4>
+            <div class="tooltip-row">
+                <span>Catholic Share (1871):</span>
+                <strong id="tooltip-cath">0%</strong>
+            </div>
+            <div class="tooltip-row">
+                <span>Fertility Decline:</span>
+                <strong id="tooltip-decline">0%</strong>
+            </div>
+        </div>
+    </div>
+    <div class="map-legend">
+        <span>Low Catholic Share</span>
+        <div class="gradient-bar"></div>
+        <span>High Catholic Share</span>
+    </div>
+</div>
+
+<script is:inline>
+    const tooltip = document.getElementById('map-tooltip');
+    const nameVal = document.getElementById('tooltip-name');
+    const cathVal = document.getElementById('tooltip-cath');
+    const decVal = document.getElementById('tooltip-decline');
+
+    document.querySelectorAll('.province').forEach(p => {
+        p.addEventListener('mousemove', (e) => {
+            const rect = e.target.getBoundingClientRect();
+            nameVal.innerText = p.dataset.name;
+            cathVal.innerText = `${p.dataset.cath}%`;
+            decVal.innerText = p.dataset.decline;
+            
+            tooltip.style.left = `${e.clientX + 20}px`;
+            tooltip.style.top = `${e.clientY + 20}px`;
+            tooltip.classList.remove('hidden');
+        });
+
+        p.addEventListener('mouseleave', () => {
+            tooltip.classList.add('hidden');
+        });
+    });
+</script>
+
+<style>
+    .map-explorer {
+        margin: 4rem 0;
+        position: relative;
+    }
+
+    .map-container {
+        background: #000;
+        border: 1px solid var(--border);
+        padding: 2rem;
+        border-radius: 8px;
+    }
+
+    svg {
+        width: 100%;
+        height: auto;
+        overflow: visible;
+    }
+
+    .province {
+        stroke: #000;
+        stroke-width: 2;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        cursor: crosshair;
+        opacity: 0.8;
+    }
+
+    .province:hover {
+        opacity: 1;
+        stroke: var(--accent);
+        stroke-width: 3;
+        transform: scale(1.02);
+        filter: drop-shadow(0 0 15px var(--accent));
+    }
+
+    .map-tooltip {
+        position: fixed;
+        background: var(--surface);
+        border: 1px solid var(--accent);
+        padding: 1.2rem;
+        border-radius: 4px;
+        z-index: 2000;
+        pointer-events: none;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+        min-width: 200px;
+    }
+
+    .map-tooltip h4 {
+        margin-bottom: 0.8rem;
+        font-size: 1.2rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.5rem;
+    }
+
+    .tooltip-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .tooltip-row strong {
+        color: var(--accent);
+    }
+
+    .hidden { opacity: 0; visibility: hidden; }
+
+    .map-legend {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 2rem;
+        font-size: 0.8rem;
+        opacity: 0.6;
+    }
+
+    .gradient-bar {
+        width: 200px;
+        height: 8px;
+        background: linear-gradient(to right, #2c3e50, #c0392b);
+        border-radius: 4px;
+    }
+</style>

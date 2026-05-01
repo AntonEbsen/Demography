@@ -1,6 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import SpecCurve from '../components/SpecCurve.astro';
+import DataFlow from '../components/DataFlow.astro';
+import GlossaryTerm from '../components/GlossaryTerm.astro';
 ---
 
 <Layout title="Methodology | Kulturkampf Research">
@@ -22,18 +24,17 @@ import SpecCurve from '../components/SpecCurve.astro';
 			</div>
 
 			<p>
-				Where $\mu_i$ represents county fixed effects (controlling for time-invariant traits like soil quality or traditional culture) and $\delta_t$ represents year fixed effects (controlling for national shocks like the Franco-Prussian War).
+				Where $\mu_i$ represents county <GlossaryTerm term="Fixed Effects">fixed effects</GlossaryTerm> and $\delta_t$ represents year fixed effects.
 			</p>
+
+			<h2>2. The Data Journey</h2>
+			<p>
+				The dataset is constructed from the **Galloway Prussia Database**, harmonizing over 40 years of vital statistics and census records. 
+			</p>
+            
+            <DataFlow />
 
 			<div class="method-callout">
-				<h3>Why 1871?</h3>
-				<p>By using the religious shares from 1871, we capture the "pre-conflict" landscape of Prussia before the state began actively suppressing Catholic institutions. This provides a clean measure of exposure to the subsequent institutional shock.</p>
-			</div>
-
-			<h2>2. Data Harmonization</h2>
-			<p>
-				The dataset is constructed from the **Galloway Prussia Database**, harmonizing over 40 years of vital statistics (VIT) and census records (POP). 
-			</p>
 			<ul class="method-list">
 				<li><strong>Spatial Units</strong>: 452 Prussian counties (Kreise).</li>
 				<li><strong>Temporal Coverage</strong>: 1862–1914 (Annual panel).</li>

@@ -1,0 +1,66 @@
+---
+interface Props {
+    term: string;
+}
+
+const { term } = Astro.props;
+
+const glossary = {
+    "Ultramontanism": "The orientation of Roman Catholic policy toward the Pope and the Vatican, which Bismarck viewed as a threat to German national sovereignty.",
+    "Difference-in-Differences": "An econometric technique that calculates the causal effect of a policy by comparing the change in outcomes over time between a 'treatment' group and a 'control' group.",
+    "May Laws": "A series of aggressive Prussian legislative acts passed in May 1873 to assert state control over the Catholic Church.",
+    "Secularization": "The historical process in which religion loses social and cultural significance, often catalyzed by institutional shifts.",
+    "Fixed Effects": "A statistical method that controls for time-invariant characteristics (like geography or culture) that might bias estimates.",
+    "Crude Birth Rate": "The total number of live births per 1,000 people in a population in a given year.",
+    "Zentrumspartei": "The Catholic Center Party, formed to protect Catholic interests in the German Empire against Bismarck's policies.",
+    "TWFE": "Two-Way Fixed Effects—a standard model for panel data that includes both entity (county) and time (year) fixed effects.",
+    "iPEHD": "The 'interactive Prussian Economic History Database,' a modern harmonized version of Prussian census data created by Becker and Woessmann."
+};
+
+const definition = glossary[term as keyof typeof glossary] || "Definition not found.";
+---
+
+<span class="glossary-term" data-definition={definition}>
+    <slot />
+</span>
+
+<style>
+    .glossary-term {
+        border-bottom: 1px dashed var(--accent);
+        cursor: help;
+        color: var(--accent);
+        position: relative;
+        display: inline-block;
+    }
+
+    .glossary-term::after {
+        content: attr(data-definition);
+        position: absolute;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%) translateY(10px);
+        background: var(--surface);
+        color: var(--text);
+        padding: 1rem;
+        border: 1px solid var(--accent);
+        border-radius: 4px;
+        width: 250px;
+        font-size: 0.85rem;
+        font-family: var(--sans);
+        font-weight: 400;
+        line-height: 1.4;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 1000;
+        pointer-events: none;
+        text-align: left;
+    }
+
+    .glossary-term:hover::after {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+    }
+</style>

@@ -1,5 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import GlossaryTerm from '../components/GlossaryTerm.astro';
+import PrussiaMap from '../components/PrussiaMap.astro';
 ---
 
 <Layout title="Kulturkampf & Fertility | The Secularization of Prussia">
@@ -28,11 +30,13 @@ import Layout from '../layouts/Layout.astro';
 					</div>
 					<div class="abstract-body">
 						<p>
-							This study investigates the <strong>Kulturkampf (1872–1878)</strong>—Bismarck’s massive institutional assault on the Catholic Church—as an exogenous shock to the cost of child-rearing and institutional secularization. 
+							This study investigates the <GlossaryTerm term="May Laws"><strong>Kulturkampf (1872–1878)</strong></GlossaryTerm>—Bismarck’s massive institutional assault on the Catholic Church—as an exogenous shock to the cost of child-rearing and institutional secularization. 
 						</p>
 						<p>
-							Using a panel of 400+ Prussian counties, I employ a **Difference-in-Differences** strategy to measure how the dismantling of Catholic oversight over education, marriage, and welfare catalyzed a structural shift in fertility behavior. The findings reveal a significant, persistent decline in birth rates in Catholic-majority counties, particularly in areas where institutional resistance was met with state enforcement.
+							Using a panel of 400+ Prussian counties, I employ a <GlossaryTerm term="Difference-in-Differences"><strong>Difference-in-Differences</strong></GlossaryTerm> strategy to measure how the dismantling of Catholic oversight over education, marriage, and welfare catalyzed a structural shift in fertility behavior.
 						</p>
+
+                        <PrussiaMap />
 					</div>
 				</div>
 			</div>

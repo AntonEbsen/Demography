@@ -1,0 +1,112 @@
+---
+const studies = [
+    {
+        author: "Galloway et al. (1994)",
+        focus: "Prussian Fertility Decline",
+        finding: "Find strong religious cultural effects on fertility.",
+        relation: "Our study provides a causal institutional trigger for these cultural differences."
+    },
+    {
+        author: "Becker & Woessmann (2009)",
+        focus: "Protestantism & Human Capital",
+        finding: "Protestantism promoted education, leading to earlier growth.",
+        relation: "We look at the Catholic side: how secularizing Catholic institutions mimicked this transition."
+    },
+    {
+        author: "Brown & Guinnane (2002)",
+        focus: "Fertility in Bavaria",
+        finding: "Questioned the strength of purely religious explanations.",
+        relation: "We resolve this by focusing on institutional conflict (Kulturkampf) rather than static theology."
+    }
+];
+---
+
+<div class="influence-library">
+    <h3>Historiographical Context</h3>
+    <p>How this research connects with and updates the classical literature on Prussian demography.</p>
+
+    <div class="studies-grid">
+        {studies.map(s => (
+            <div class="study-card">
+                <div class="study-header">
+                    <h4>{s.author}</h4>
+                    <span class="study-focus">{s.focus}</span>
+                </div>
+                <div class="study-body">
+                    <p><strong>Finding:</strong> {s.finding}</p>
+                    <p class="relation"><strong>Contribution:</strong> {s.relation}</p>
+                </div>
+            </div>
+        ))}
+    </div>
+</div>
+
+<style>
+    .influence-library {
+        margin: 5rem 0;
+    }
+
+    .influence-library h3 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .influence-library p {
+        opacity: 0.7;
+        margin-bottom: 3rem;
+    }
+
+    .studies-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+    }
+
+    .study-card {
+        background: #000;
+        border: 1px solid var(--border);
+        padding: 2rem;
+        transition: border-color 0.3s;
+    }
+
+    .study-card:hover {
+        border-color: var(--accent);
+    }
+
+    .study-header {
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+        padding-bottom: 1rem;
+    }
+
+    .study-header h4 {
+        font-size: 1.2rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .study-focus {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        color: var(--accent);
+        opacity: 0.8;
+    }
+
+    .study-body p {
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+    }
+
+    .study-body p strong {
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    .relation {
+        font-style: italic;
+        opacity: 0.9;
+        border-top: 1px solid rgba(255,255,255,0.05);
+        padding-top: 1rem;
+    }
+</style>

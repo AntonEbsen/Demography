@@ -1,6 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Timeline from '../components/Timeline.astro';
+import InfluenceTable from '../components/InfluenceTable.astro';
+import GlossaryTerm from '../components/GlossaryTerm.astro';
 ---
 
 <Layout title="Historical Context | The Prussian Kulturkampf">
@@ -14,7 +16,7 @@ import Timeline from '../components/Timeline.astro';
 		<article class="monograph">
 			<h2>1. The Rise of the Secular State</h2>
 			<p>
-				In the aftermath of the 1870 Unification, Otto von Bismarck sought to consolidate the power of the new German Empire. A central obstacle was the **Center Party** (Zentrum), a Catholic political force that Bismarck viewed as loyal to the Vatican rather than the Kaiser.
+				In the aftermath of the 1870 Unification, Otto von Bismarck sought to consolidate the power of the new German Empire. A central obstacle was the <GlossaryTerm term="Zentrumspartei"><strong>Center Party</strong></GlossaryTerm>, a Catholic political force that Bismarck viewed as loyal to the Vatican rather than the Kaiser.
 			</p>
 			
 			<blockquote>
@@ -26,6 +28,8 @@ import Timeline from '../components/Timeline.astro';
 			</p>
 
             <Timeline />
+
+            <InfluenceTable />
 
 			<h2>2. The May Laws (1873)</h2>
 			<p>
