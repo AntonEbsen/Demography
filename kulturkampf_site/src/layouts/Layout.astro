@@ -37,13 +37,16 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
                     <span class="logo-accent">Kulturkampf</span> & Fertility
                 </a>
 				<div class="links">
-					<a href="/">Overview</a>
-					<a href="/methods">Methodology</a>
-					<a href="/evidence">Evidence</a>
-					<a href="/context">Historical Context</a>
+					<a href="/" data-t="nav_overview">Overview</a>
+					<a href="/methods" data-t="nav_methods">Methodology</a>
+					<a href="/evidence" data-t="nav_evidence">Evidence</a>
+					<a href="/context" data-t="nav_context">Historical Context</a>
+                    <a href="/appendix" data-t="nav_appendix">Appendix</a>
                     <a href="https://github.com/AntonEbsen/Demography" target="_blank" class="nav-ext">GitHub</a>
+                    <button id="lang-toggle" class="lang-btn">DA</button>
 				</div>
 			</div>
+            <div id="scroll-progress" class="progress-bar"></div>
 		</nav>
         
         <div class="page-transition-wrapper">
@@ -66,7 +69,58 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
 			const initTheme = () => {
 				document.documentElement.setAttribute('data-theme', 'dark');
 			};
+
+            const initLang = () => {
+				const lang = localStorage.getItem('lang_kultur') || 'en';
+				const langBtn = document.getElementById('lang-toggle');
+				const t = {
+					en: {
+						nav_overview: "Overview", nav_methods: "Methodology", nav_evidence: "Evidence", 
+                        nav_context: "History", nav_appendix: "Appendix"
+					},
+					da: {
+						nav_overview: "Oversigt", nav_methods: "Metode", nav_evidence: "Beviser", 
+                        nav_context: "Historie", nav_appendix: "Appendiks"
+					}
+				};
+
+				const updateLang = (newLang) => {
+					document.querySelectorAll('[data-t]').forEach(el => {
+						const key = el.getAttribute('data-t');
+						if (t[newLang][key]) el.innerText = t[newLang][key];
+					});
+					if (langBtn) langBtn.innerText = newLang === 'en' ? 'DA' : 'EN';
+					localStorage.setItem('lang_kultur', newLang);
+				};
+
+				updateLang(lang);
+
+				if (langBtn) {
+					langBtn.onclick = () => {
+						const currentLang = localStorage.getItem('lang_kultur') || 'en';
+						updateLang(currentLang === 'en' ? 'da' : 'en');
+					};
+				}
+			};
+
+            const initProgress = () => {
+                const bar = document.getElementById('scroll-progress');
+                window.onscroll = () => {
+                    const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+                    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                    const scrolled = (winScroll / height) * 100;
+                    if (bar) bar.style.width = scrolled + "%";
+                };
+            };
+
 			initTheme();
+            initLang();
+            initProgress();
+
+            document.addEventListener('astro:page-load', () => {
+                initLang();
+                initProgress();
+            });
 		</script>
 	</body>
 </html>
@@ -175,6 +229,35 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
     .nav-ext {
         color: var(--accent) !important;
         opacity: 0.8;
+    }
+
+    .lang-btn {
+		background: transparent;
+		border: 1px solid var(--accent);
+		color: var(--accent);
+		cursor: pointer;
+		padding: 0.4rem 0.8rem;
+		border-radius: 4px;
+		transition: all 0.3s;
+        font-family: var(--sans);
+        font-size: 0.7rem;
+        font-weight: bold;
+        min-width: 40px;
+	}
+
+	.lang-btn:hover {
+		background: var(--accent);
+		color: #000;
+	}
+
+    .progress-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 2px;
+        background: var(--accent);
+        width: 0%;
+        transition: width 0.1s;
     }
 
     /* Layout Components */

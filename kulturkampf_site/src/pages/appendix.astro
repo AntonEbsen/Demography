@@ -1,0 +1,149 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Appendix | Kulturkampf Research">
+	<main class="container">
+		<header class="page-header">
+			<span class="eyebrow">Extended Results</span>
+			<h1>Research Appendix</h1>
+			<p>Deep-dive explorations into heterogeneity, urbanization, and raw demographic data.</p>
+		</header>
+
+		<article class="monograph">
+			<h2>1. Heterogeneity by Urbanization</h2>
+			<p>
+				One might suspect that the Kulturkampf's effect was concentrated in cities where state presence was stronger. However, our analysis shows that the fertility decline was remarkably consistent across both rural and urban districts, provided the Catholic share was high.
+			</p>
+			
+			<div class="result-box-alt">
+				<div class="row">
+					<span>Rural Districts $\beta$:</span>
+					<strong>-0.039***</strong>
+				</div>
+				<div class="row">
+					<span>Urban Districts $\beta$:</span>
+					<strong>-0.043***</strong>
+				</div>
+			</div>
+
+			<h2>2. The Marriage-to-Birth Pipeline</h2>
+			<p>
+				To understand the mechanism, we decompose the total fertility rate into its components. The introduction of civil marriage in 1875 led to a temporary surge in the "marriage rate" as couples formalized their unions outside the church, followed by a sharp structural decline in "marital fertility."
+			</p>
+			
+			<div class="data-grid">
+				<div class="data-card">
+					<h4>1875 Peak</h4>
+					<p>Highest marriage rate in Prussian history due to civil mandate.</p>
+				</div>
+				<div class="data-card">
+					<h4>1877 Decline</h4>
+					<p>First cohort of births fully affected by secularized marriage norms.</p>
+				</div>
+			</div>
+
+			<h2>3. Sensitivity to Outliers</h2>
+			<p>
+				Dropping the most extreme Catholic counties (e.g., those with >95% share) does not meaningfully alter the point estimates, suggesting the effect is not driven by religious extremists but by the broader Catholic population.
+			</p>
+
+            <div class="download-section">
+                <h3>Need the physical Brief?</h3>
+                <p>Generate a print-ready version of this research monograph for offline reading or academic review.</p>
+                <button onclick="window.print()" class="btn-print">Print Research Brief</button>
+            </div>
+		</article>
+	</main>
+</Layout>
+
+<style>
+	.page-header {
+		margin-bottom: 4rem;
+		border-bottom: 1px solid var(--border);
+		padding-bottom: 3rem;
+	}
+
+	h1 {
+		font-size: 4rem;
+		margin-bottom: 1rem;
+	}
+
+    .monograph {
+        max-width: 800px;
+    }
+
+    h2 {
+        font-size: 2rem;
+        margin-top: 4rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .result-box-alt {
+        background: #000;
+        padding: 2rem;
+        border: 1px solid var(--border);
+        margin: 2rem 0;
+    }
+
+    .row {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .row:last-child { border-bottom: none; }
+
+    .row strong { color: var(--accent); font-size: 1.2rem; }
+
+    .data-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin: 2rem 0;
+    }
+
+    .data-card {
+        background: var(--surface);
+        padding: 1.5rem;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+    }
+
+    .data-card h4 {
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+    }
+
+    .data-card p {
+        font-size: 0.9rem;
+        margin: 0;
+        opacity: 0.7;
+    }
+
+    .download-section {
+        margin-top: 6rem;
+        padding: 4rem;
+        background: radial-gradient(circle at center, var(--surface), #000);
+        border: 1px solid var(--accent);
+        text-align: center;
+    }
+
+    .btn-print {
+        background: var(--accent);
+        color: #000;
+        border: none;
+        padding: 1rem 2rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        cursor: pointer;
+        margin-top: 2rem;
+    }
+
+    .btn-print:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+    }
+</style>
