@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software or research data, please cite it as below."
+authors:
+  - family-names: "Ebsen Jørgensen"
+    given-names: "Anton Meier"
+    orcid: "https://orcid.org/0000-0000-0000-0000" # Placeholder - update if you have one
+title: "The Iron and the Altar: Institutional Conflict and the Demographic Transition in Prussia"
+version: 0.1.0
+doi: 10.5281/zenodo.0000000 # Placeholder - update after Zenodo upload
+date-released: 2026-05-01
+url: "https://github.com/AntonEbsen/Demography"
+repository-code: "https://github.com/AntonEbsen/Demography"
+keywords:
+  - "Economic History"
+  - "Demography"
+  - "Kulturkampf"
+  - "Fertility Transition"
+  - "Prussia"
+  - "Secularization"
+license: MIT

@@ -1,0 +1,37 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "license": "https://spdx.org/licenses/MIT.html",
+  "codeRepository": "https://github.com/AntonEbsen/Demography",
+  "datePublished": "2026-05-01",
+  "name": "The Iron and the Altar: Kulturkampf Research Suite",
+  "version": "0.1.0",
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Anton Meier",
+      "familyName": "Ebsen Jørgensen",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "University of Copenhagen"
+      }
+    }
+  ],
+  "description": "A production-grade Python suite for analyzing the demographic impact of the Prussian Kulturkampf.",
+  "programmingLanguage": [
+    "Python",
+    "Astro",
+    "JavaScript"
+  ],
+  "runtimePlatform": [
+    "Python 3.10",
+    "Node.js"
+  ],
+  "keywords": [
+    "Economic History",
+    "Demography",
+    "Kulturkampf",
+    "Prussia",
+    "Reproducible Research"
+  ]
+}
