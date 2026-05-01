@@ -11,7 +11,8 @@ import logging
 import pandas as pd
 import numpy as np
 from linearmodels.panel import PanelOLS
-from typing import Optional
+from linearmodels.panel.results import PanelEffectsResults
+from typing import Optional, Dict, List, Union
 
 from src.analysis.utils import safe_panel_ols
 
@@ -29,9 +30,9 @@ def run_baseline_did(
     df: pd.DataFrame,
     outcome: str = "cbr",
     treatment: str = "continuous",
-    controls: Optional[list] = None,
+    controls: Optional[List[str]] = None,
     cluster: str = "Code",
-) -> dict:
+) -> Dict[str, Union[PanelEffectsResults, str]]:
     """
     Run the baseline DiD specification.
     
@@ -101,8 +102,8 @@ def run_event_study(
     treatment_var: str = "cath_share",
     ref_year: int = 1872,
     cluster: str = "Code",
-    controls: Optional[list] = None,
-) -> dict:
+    controls: Optional[List[str]] = None,
+) -> Dict[str, Union[PanelEffectsResults, pd.DataFrame]]:
     """
     Run an event-study specification around the Kulturkampf.
     

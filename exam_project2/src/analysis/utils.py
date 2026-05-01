@@ -11,11 +11,19 @@ import logging
 import pandas as pd
 import numpy as np
 from linearmodels.panel import PanelOLS
+from linearmodels.panel.results import PanelEffectsResults
+from typing import List
 
 logger = logging.getLogger(__name__)
 
 
-def safe_panel_ols(df, outcome, exog_vars, entity="Code", time="Year"):
+def safe_panel_ols(
+    df: pd.DataFrame, 
+    outcome: str, 
+    exog_vars: List[str], 
+    entity: str = "Code", 
+    time: str = "Year"
+) -> PanelEffectsResults:
     """
     Deduplicate, drop NaN, set multi-index, and fit PanelOLS with
     entity-clustered standard errors.

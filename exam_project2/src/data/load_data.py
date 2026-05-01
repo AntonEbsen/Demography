@@ -13,7 +13,7 @@ import logging
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ def load_rel1871(path: Optional[Path] = None) -> pd.DataFrame:
 # 2.  POP files – Population census (for interpolation)
 # ===================================================================
 
-def load_pop_census(data_dir: Optional[Path] = None, years=None) -> pd.DataFrame:
+def load_pop_census(data_dir: Optional[Path] = None, years: Optional[List[int]] = None) -> pd.DataFrame:
     """
     Load POP census files and extract population by county.
     Returns DataFrame with Code, Year, Pop_census (Type 0, Code < 900).
