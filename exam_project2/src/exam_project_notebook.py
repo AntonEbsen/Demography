@@ -28,10 +28,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.load_data import load_rel1871, load_vit_panel, load_ipehd_master
-from src.build_dataset import build_analysis_panel
-from src.regressions import run_baseline_did, run_event_study, run_robustness
-from src.plots import (
+from src.data.load_data import load_rel1871, load_vit_panel, load_ipehd_master
+from src.data.build_dataset import build_analysis_panel
+from src.analysis.regressions import run_baseline_did, run_event_study, run_robustness
+from src.visualization.plots import (
     plot_fertility_trends, 
     plot_event_study, 
     plot_cath_distribution,
@@ -40,7 +40,7 @@ from src.plots import (
 
 # Paths
 DATA_RAW = project_root / "data" / "raw"
-OUTPUTS = project_root / "outputs"
+OUTPUTS = project_root / "outputs" / "figures"
 OUTPUTS.mkdir(exist_ok=True)
 
 print("Setup complete.")
