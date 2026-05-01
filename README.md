@@ -13,10 +13,10 @@ Welcome to the research repository for the **MSc Economics - Demography** course
 - **📁 Research Hub:** [exam_project2/](./exam_project2/)
 - **🛠️ Methodology:** Two-Way Fixed Effects (TWFE), Event Studies, Triple-Differences.
 
-## 🏭 Project 2: The "Cost of Quality" (Factory Acts)
+## 🏭 Project 2: The "Cost of Quality" (Factory Acts) [ARCHIVED]
 **Legislative Shocks to Child Labor and the Fertility Transition in 19th-Century Britain**
 
-- **📊 Analysis Notebook:** [exam_project.ipynb](./exam_project/notebooks/exam_project.ipynb)
+- **📊 Archived Website:** [archived/portfolio/](archived/portfolio/)
 - **🛠️ Methodology:** Difference-in-Differences (DiD).
 
 ---
