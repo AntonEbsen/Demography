@@ -1,0 +1,165 @@
+---
+const events = [
+    {
+        year: "1871",
+        title: "German Unification",
+        desc: "Proclamation of the German Empire. Bismarck views the Catholic Church as a 'state within a state' (Ultramontanism).",
+        impact: "Contextual tension"
+    },
+    {
+        year: "1872",
+        title: "The School Inspection Act",
+        desc: "Clergy are removed from their roles as state school inspectors. The conflict enters the educational sphere.",
+        impact: "Early secularization"
+    },
+    {
+        year: "1873",
+        title: "The May Laws (Maigesetze)",
+        desc: "Strict state control over clergy education and appointments. Hundreds of priests are imprisoned or exiled.",
+        impact: "Institutional Shock"
+    },
+    {
+        year: "1875",
+        title: "Civil Marriage Act",
+        desc: "Marriage is mandated as a civil ceremony, bypassing the parish. Religious oversight of household formation is broken.",
+        impact: "Demographic Catalyst"
+    },
+    {
+        year: "1878",
+        title: "Pope Leo XIII elected",
+        desc: "A more diplomatic Pope begins negotiations with Bismarck. The most aggressive enforcement phase ends.",
+        impact: "Transition phase"
+    },
+    {
+        year: "1880-87",
+        title: "The Rollback (Milderung)",
+        desc: "Gradual repeal of the most punitive laws. However, the state-run secular infrastructure remains permanent.",
+        impact: "Permanent Regime Shift"
+    }
+];
+---
+
+<div class="timeline-container">
+    <div class="timeline-line"></div>
+    {events.map((event, index) => (
+        <div class="timeline-item" data-index={index}>
+            <div class="timeline-year">{event.year}</div>
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+                <h3>{event.title}</h3>
+                <p>{event.desc}</p>
+                <div class="impact-tag">
+                    <span class="tag-label">Impact:</span>
+                    <span class="tag-value">{event.impact}</span>
+                </div>
+            </div>
+        </div>
+    ))}
+</div>
+
+<style>
+    .timeline-container {
+        position: relative;
+        max-width: 800px;
+        margin: 4rem auto;
+        padding: 2rem 0;
+    }
+
+    .timeline-line {
+        position: absolute;
+        left: 2rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: linear-gradient(to bottom, transparent, var(--border), var(--border), transparent);
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-left: 5rem;
+        margin-bottom: 4rem;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.3s;
+    }
+
+    .timeline-year {
+        position: absolute;
+        left: -1rem;
+        top: 0;
+        font-family: var(--serif);
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: var(--accent);
+        background: var(--bg);
+        padding: 0.5rem;
+        z-index: 2;
+    }
+
+    .timeline-dot {
+        position: absolute;
+        left: calc(2rem - 6px);
+        top: 1rem;
+        width: 14px;
+        height: 14px;
+        background: var(--bg);
+        border: 2px solid var(--accent);
+        border-radius: 50%;
+        z-index: 3;
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    }
+
+    .timeline-content {
+        background: var(--surface);
+        padding: 2rem;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        transition: border-color 0.3s, transform 0.3s;
+    }
+
+    .timeline-item:hover .timeline-content {
+        border-color: var(--accent);
+        transform: translateX(10px);
+    }
+
+    .timeline-content h3 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .timeline-content p {
+        font-size: 0.95rem;
+        opacity: 0.8;
+        margin-bottom: 1.5rem;
+    }
+
+    .impact-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(212, 175, 55, 0.05);
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        border: 1px solid rgba(212, 175, 55, 0.1);
+    }
+
+    .tag-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        opacity: 0.5;
+    }
+
+    .tag-value {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--accent);
+    }
+
+    @media (max-width: 600px) {
+        .timeline-line { left: 1rem; }
+        .timeline-item { padding-left: 3rem; }
+        .timeline-year { left: -3.5rem; font-size: 1rem; }
+        .timeline-dot { left: calc(1rem - 6px); }
+    }
+</style>

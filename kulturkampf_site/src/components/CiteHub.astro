@@ -1,0 +1,188 @@
+---
+---
+<div class="cite-wrapper">
+    <button id="cite-trigger" class="cite-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2 1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"></path><path d="M15 7h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7"></path><path d="M13 3v4a1 1 0 0 0 1 1h4"></path></svg>
+        Cite Research
+    </button>
+
+    <div id="cite-modal" class="cite-modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cite this Project</h3>
+                <button id="close-cite">&times;</button>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="bibtex">BibTeX</button>
+                <button class="tab-btn" data-tab="apa">APA</button>
+            </div>
+            <div class="tab-content">
+                <pre id="bibtex-content">
+@article{ebsen2026kulturkampf,
+  title={The Iron and the Altar: Institutional Conflict and 
+         the Demographic Transition in Prussia},
+  author={Ebsen, Anton},
+  year={2026},
+  url={https://AntonEbsen.github.io/Demography/kulturkampf}
+}</pre>
+                <div id="apa-content" class="hidden">
+                    Ebsen, A. (2026). <i>The Iron and the Altar: Institutional Conflict and the Demographic Transition in Prussia</i>. Retrieved from https://AntonEbsen.github.io/Demography/kulturkampf
+                </div>
+            </div>
+            <button id="copy-cite" class="copy-btn">Copy to Clipboard</button>
+        </div>
+    </div>
+</div>
+
+<script is:inline>
+    const trigger = document.getElementById('cite-trigger');
+    const modal = document.getElementById('cite-modal');
+    const close = document.getElementById('close-cite');
+    const copy = document.getElementById('copy-cite');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+
+    const toggleModal = () => modal.classList.toggle('hidden');
+
+    trigger.onclick = toggleModal;
+    close.onclick = toggleModal;
+    window.onclick = (e) => { if (e.target === modal) toggleModal(); };
+
+    tabBtns.forEach(btn => {
+        btn.onclick = () => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const isBib = btn.dataset.tab === 'bibtex';
+            document.getElementById('bibtex-content').classList.toggle('hidden', !isBib);
+            document.getElementById('apa-content').classList.toggle('hidden', isBib);
+        };
+    });
+
+    copy.onclick = () => {
+        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+        const text = activeTab === 'bibtex' 
+            ? document.getElementById('bibtex-content').innerText 
+            : document.getElementById('apa-content').innerText;
+        
+        navigator.clipboard.writeText(text);
+        const originalText = copy.innerText;
+        copy.innerText = 'Copied!';
+        setTimeout(() => copy.innerText = originalText, 2000);
+    };
+</script>
+
+<style>
+    .cite-wrapper {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 1000;
+    }
+
+    .cite-btn {
+        background: var(--accent);
+        color: #000;
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 50px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        transition: transform 0.3s;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05rem;
+    }
+
+    .cite-btn:hover {
+        transform: scale(1.05);
+    }
+
+    .cite-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 2rem;
+        width: 100%;
+        max-width: 500px;
+        border-radius: 8px;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    #close-cite {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 2rem;
+        cursor: pointer;
+    }
+
+    .tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-weight: 600;
+        padding-bottom: 0.3rem;
+        border-bottom: 2px solid transparent;
+    }
+
+    .tab-btn.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+    }
+
+    .tab-content {
+        background: #000;
+        padding: 1.5rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.85rem;
+        min-height: 150px;
+        overflow-x: auto;
+    }
+
+    pre { margin: 0; white-space: pre-wrap; }
+
+    .copy-btn {
+        width: 100%;
+        background: var(--accent);
+        color: #000;
+        border: none;
+        padding: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .hidden { display: none; }
+</style>

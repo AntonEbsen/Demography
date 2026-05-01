@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import CountyExplorer from '../components/CountyExplorer.astro';
 ---
 
 <Layout title="Evidence & Results | Kulturkampf Research">
@@ -30,6 +31,12 @@ import Layout from '../layouts/Layout.astro';
                         </p>
                     </div>
                 </div>
+            </div>
+
+            <div class="container">
+                <h2>Regional Trajectories</h2>
+                <p>Select a county to explore its individual fertility response during the conflict years.</p>
+                <CountyExplorer />
             </div>
 		</section>
 

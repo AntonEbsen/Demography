@@ -1,0 +1,231 @@
+---
+const counties = [
+    {
+        name: "Cologne (Rhineland)",
+        catholic: 88,
+        desc: "A Catholic bastion in the West. Faced early and aggressive enforcement of the May Laws.",
+        data: [42, 41, 40, 39, 36, 34, 33, 32, 32] // CBR 1868-1884
+    },
+    {
+        name: "Posen (East)",
+        catholic: 65,
+        desc: "Polish-majority province where the Kulturkampf merged with Germanization policies.",
+        data: [45, 44, 43, 44, 40, 38, 37, 36, 35]
+    },
+    {
+        name: "Berlin (Center)",
+        catholic: 12,
+        desc: "Protestant metropole and state center. Minimal institutional shock from the religious laws.",
+        data: [38, 39, 37, 38, 38, 39, 38, 37, 37]
+    }
+];
+
+const years = [1868, 1870, 1872, 1873, 1875, 1878, 1880, 1882, 1884];
+---
+
+<div class="explorer-card">
+    <div class="explorer-header">
+        <div class="select-wrapper">
+            <label for="county-select">Select Region:</label>
+            <select id="county-select">
+                {counties.map(c => <option value={c.name}>{c.name}</option>)}
+            </select>
+        </div>
+        <div id="county-info" class="county-info">
+            <div class="info-stat">
+                <span class="label">Catholic Share (1871):</span>
+                <span id="info-cath" class="value">88%</span>
+            </div>
+            <p id="info-desc">A Catholic bastion in the West. Faced early and aggressive enforcement of the May Laws.</p>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart-y-axis">
+            <span>45</span>
+            <span>40</span>
+            <span>35</span>
+            <span>30</span>
+        </div>
+        <div class="chart-area">
+            <svg id="trajectory-svg" viewBox="0 0 800 300" preserveAspectRatio="none">
+                <!-- Grid Lines -->
+                <line x1="0" y1="50" x2="800" y2="50" stroke="rgba(255,255,255,0.05)" />
+                <line x1="0" y1="150" x2="800" y2="150" stroke="rgba(255,255,255,0.05)" />
+                <line x1="0" y1="250" x2="800" y2="250" stroke="rgba(255,255,255,0.05)" />
+                
+                <!-- Conflict Marker -->
+                <rect x="266" y="0" width="200" height="300" fill="rgba(192, 57, 43, 0.08)" />
+                <text x="366" y="20" text-anchor="middle" fill="#c0392b" font-size="12" font-weight="bold">KULTURKAMPF</text>
+
+                <!-- Data Path -->
+                <path id="trajectory-path" d="" fill="none" stroke="#d4af37" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+                <g id="data-points"></g>
+            </svg>
+        </div>
+        <div class="chart-x-axis">
+            {years.map(y => <span>{y}</span>)}
+        </div>
+    </div>
+    <p class="chart-legend">Trajectory: Crude Birth Rate (CBR) per 1,000 citizens.</p>
+</div>
+
+<script is:inline define:vars={{ counties, years }}>
+    const select = document.getElementById('county-select');
+    const path = document.getElementById('trajectory-path');
+    const pointsGroup = document.getElementById('data-points');
+    const cathVal = document.getElementById('info-cath');
+    const descVal = document.getElementById('info-desc');
+
+    const updateChart = (countyName) => {
+        const county = counties.find(c => c.name === countyName);
+        if (!county) return;
+
+        // Update Text
+        cathVal.innerText = `${county.catholic}%`;
+        descVal.innerText = county.desc;
+
+        // Update Path
+        const xStep = 800 / (years.length - 1);
+        const yScale = (val) => 300 - (val - 30) * 20; // 30-45 scale
+
+        let d = `M 0 ${yScale(county.data[0])}`;
+        pointsGroup.innerHTML = '';
+
+        county.data.forEach((val, i) => {
+            const x = i * xStep;
+            const y = yScale(val);
+            d += ` L ${x} ${y}`;
+
+            // Add point
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", x);
+            circle.setAttribute("cy", y);
+            circle.setAttribute("r", 5);
+            circle.setAttribute("fill", "#d4af37");
+            pointsGroup.appendChild(circle);
+        });
+
+        path.setAttribute('d', d);
+    };
+
+    select.onchange = (e) => updateChart(e.target.value);
+    updateChart(counties[0].name);
+</script>
+
+<style>
+    .explorer-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 3rem;
+        border-radius: 8px;
+        margin: 3rem 0;
+    }
+
+    .explorer-header {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 3rem;
+        margin-bottom: 3rem;
+        align-items: center;
+    }
+
+    .select-wrapper label {
+        display: block;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        margin-bottom: 0.5rem;
+        opacity: 0.6;
+    }
+
+    select {
+        background: #000;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        padding: 0.8rem 1rem;
+        width: 100%;
+        font-family: var(--sans);
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .info-stat {
+        margin-bottom: 1rem;
+    }
+
+    .info-stat .label {
+        font-size: 0.9rem;
+        opacity: 0.7;
+        margin-right: 1rem;
+    }
+
+    .info-stat .value {
+        font-size: 1.5rem;
+        font-family: var(--serif);
+        color: var(--accent);
+        font-weight: bold;
+    }
+
+    #info-desc {
+        font-size: 0.95rem;
+        opacity: 0.8;
+        font-style: italic;
+        margin-bottom: 0;
+    }
+
+    /* Chart Styles */
+    .chart-container {
+        display: flex;
+        flex-direction: column;
+        height: 400px;
+        margin-top: 2rem;
+    }
+
+    .chart-area {
+        flex-grow: 1;
+        position: relative;
+        border-left: 2px solid var(--border);
+        border-bottom: 2px solid var(--border);
+        margin: 0 1rem;
+    }
+
+    svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+    }
+
+    .chart-y-axis {
+        position: absolute;
+        left: -3rem;
+        top: 0;
+        bottom: 2rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        opacity: 0.5;
+        padding-bottom: 1rem;
+    }
+
+    .chart-x-axis {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1rem;
+        padding-left: 1rem;
+        font-size: 0.75rem;
+        opacity: 0.5;
+    }
+
+    .chart-legend {
+        text-align: center;
+        font-size: 0.8rem;
+        opacity: 0.5;
+        margin-top: 2rem;
+    }
+
+    @media (max-width: 700px) {
+        .explorer-header { grid-template-columns: 1fr; gap: 1.5rem; }
+    }
+</style>

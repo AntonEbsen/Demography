@@ -1,0 +1,151 @@
+---
+const specs = [
+    { label: "Baseline", val: -0.041, se: 0.012 },
+    { label: "Urban Controls", val: -0.042, se: 0.013 },
+    { label: "War Excluded", val: -0.039, se: 0.011 },
+    { label: "Excl. Polish", val: -0.035, se: 0.014 },
+    { label: "Lagged Controls", val: -0.038, se: 0.012 },
+    { label: "No High-Growth", val: -0.040, se: 0.013 },
+    { label: "Alternative Post", val: -0.037, se: 0.011 }
+];
+---
+
+<div class="spec-curve-card">
+    <h3>Robustness: Specification Curve</h3>
+    <p>Estimated coefficient ($\beta$) on Catholic Share × Post across alternative model configurations. The result is consistently negative and significant ($p < 0.05$) in all tests.</p>
+    
+    <div class="curve-container">
+        <div class="curve-y-axis">
+            <span>0.00</span>
+            <span>-0.02</span>
+            <span>-0.04</span>
+            <span>-0.06</span>
+        </div>
+        <div class="curve-main">
+            <div class="zero-line"></div>
+            <div class="specs-grid">
+                {specs.map(s => (
+                    <div class="spec-point-group" title={`${s.label}: ${s.val} (SE: ${s.se})`}>
+                        <div class="error-bar" style={`height: ${s.se * 1500}px; top: ${(s.val * -1500) - (s.se * 750) + 100}px;`}></div>
+                        <div class="point" style={`top: ${(s.val * -1500) + 100}px;`}></div>
+                        <div class="spec-label">{s.label}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .spec-curve-card {
+        background: #000;
+        padding: 3rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin: 4rem 0;
+    }
+
+    .spec-curve-card h3 {
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .spec-curve-card p {
+        font-size: 0.9rem;
+        opacity: 0.7;
+        margin-bottom: 3rem;
+    }
+
+    .curve-container {
+        position: relative;
+        height: 300px;
+        margin-left: 3rem;
+        margin-bottom: 4rem;
+        display: flex;
+    }
+
+    .curve-y-axis {
+        position: absolute;
+        left: -3rem;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        opacity: 0.5;
+        padding-bottom: 2rem;
+    }
+
+    .curve-main {
+        flex-grow: 1;
+        position: relative;
+        border-left: 1px solid var(--border);
+    }
+
+    .zero-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100px;
+        height: 1px;
+        background: var(--text-muted);
+        opacity: 0.3;
+    }
+
+    .specs-grid {
+        height: 100%;
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-start;
+        padding-top: 2rem;
+    }
+
+    .spec-point-group {
+        position: relative;
+        width: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: help;
+    }
+
+    .point {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background: var(--accent);
+        border-radius: 50%;
+        z-index: 5;
+    }
+
+    .error-bar {
+        position: absolute;
+        width: 1px;
+        background: var(--accent);
+        opacity: 0.4;
+        z-index: 4;
+    }
+
+    .spec-label {
+        position: absolute;
+        bottom: -4rem;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05rem;
+        transform: rotate(-45deg);
+        transform-origin: top left;
+        white-space: nowrap;
+        opacity: 0.6;
+    }
+
+    .spec-point-group:hover .point {
+        transform: scale(1.5);
+        box-shadow: 0 0 15px var(--accent);
+    }
+
+    .spec-point-group:hover .spec-label {
+        opacity: 1;
+        color: var(--accent);
+    }
+</style>
