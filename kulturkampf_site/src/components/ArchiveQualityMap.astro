@@ -1,0 +1,103 @@
+---
+const provinces = [
+    { name: "Rhineland", quality: 98, missing: "2%", color: "#27ae60" },
+    { name: "Westphalia", quality: 95, missing: "5%", color: "#2ecc71" },
+    { name: "Posen", quality: 82, missing: "18%", color: "#f1c40f" },
+    { name: "Silesia", quality: 88, missing: "12%", color: "#f39c12" },
+    { name: "Brandenburg", quality: 99, missing: "1%", color: "#219150" },
+    { name: "East Prussia", quality: 75, missing: "25%", color: "#e67e22" },
+    { name: "Pomerania", quality: 92, missing: "8%", color: "#27ae60" }
+];
+---
+
+<div class="archive-quality">
+    <h3>Archive Quality Index</h3>
+    <p>Spatial distribution of vital registration completeness (1862–1914). Higher percentages indicate fewer missing year-county observations.</p>
+
+    <div class="quality-grid">
+        {provinces.map(p => (
+            <div class="quality-card" style={`--quality-color: ${p.color}`}>
+                <div class="q-header">
+                    <h4>{p.name}</h4>
+                    <span class="q-val">{p.quality}%</span>
+                </div>
+                <div class="q-bar">
+                    <div class="q-fill" style={`width: ${p.quality}%`}></div>
+                </div>
+                <p class="q-desc">Missingness: {p.missing}</p>
+            </div>
+        ))}
+    </div>
+</div>
+
+<style>
+    .archive-quality {
+        margin: 4rem 0;
+    }
+
+    .archive-quality h3 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .archive-quality p {
+        opacity: 0.7;
+        margin-bottom: 3rem;
+    }
+
+    .quality-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .quality-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 1.5rem;
+        border-radius: 4px;
+        transition: transform 0.3s;
+    }
+
+    .quality-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--quality-color);
+    }
+
+    .q-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .q-header h4 {
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    .q-val {
+        font-weight: bold;
+        color: var(--quality-color);
+    }
+
+    .q-bar {
+        height: 6px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 0.8rem;
+    }
+
+    .q-fill {
+        height: 100%;
+        background: var(--quality-color);
+        box-shadow: 0 0 10px var(--quality-color);
+    }
+
+    .q-desc {
+        font-size: 0.75rem;
+        opacity: 0.5;
+        margin: 0;
+    }
+</style>

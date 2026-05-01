@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import ArchiveQualityMap from '../components/ArchiveQualityMap.astro';
 
 const variables = [
     { name: "CBR", type: "Outcome", desc: "Crude Birth Rate: Live births per 1,000 citizens. Sourced from Galloway VIT." },
@@ -17,6 +18,8 @@ const variables = [
 			<h1>Data Hub</h1>
 			<p>Access the documentation and schemas for the Prussian analysis panel.</p>
 		</header>
+
+        <ArchiveQualityMap />
 
 		<section class="lineage">
 			<h2>Data Lineage</h2>
