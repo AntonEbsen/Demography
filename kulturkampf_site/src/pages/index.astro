@@ -16,9 +16,39 @@ import PrussiaMap from '../components/PrussiaMap.astro';
 				<div class="cta-group">
 					<a href="/methods" class="btn primary">Methodology</a>
 					<a href="/evidence" class="btn secondary">View Evidence</a>
+                    <button id="audio-brief" class="btn audio-btn">
+                        <span class="icon">🔊</span>
+                        Listen to Brief
+                    </button>
 				</div>
 			</div>
 		</section>
+
+        <script is:inline>
+            const audioBtn = document.getElementById('audio-brief');
+            let synthesis = window.speechSynthesis;
+            let utterance;
+
+            audioBtn.onclick = () => {
+                if (synthesis.speaking) {
+                    synthesis.cancel();
+                    audioBtn.innerHTML = '<span class="icon">🔊</span> Listen to Brief';
+                    return;
+                }
+
+                const text = "This study investigates the Kulturkampf, Bismarck’s massive institutional assault on the Catholic Church, as a shock to child-rearing costs. We find a significant decline in birth rates in Catholic-majority counties, revealing how secularization catalyzed the demographic transition.";
+                utterance = new SpeechSynthesisUtterance(text);
+                utterance.pitch = 0.9;
+                utterance.rate = 0.9;
+                
+                utterance.onend = () => {
+                    audioBtn.innerHTML = '<span class="icon">🔊</span> Listen to Brief';
+                };
+
+                synthesis.speak(utterance);
+                audioBtn.innerHTML = '<span class="icon">⏹</span> Stop Brief';
+            };
+        </script>
 
 		<!-- Abstract Section -->
 		<section class="abstract">
@@ -185,6 +215,19 @@ import PrussiaMap from '../components/PrussiaMap.astro';
 		background: rgba(212, 175, 55, 0.1);
 		transform: translateY(-3px);
 	}
+
+    .btn.audio-btn {
+        border: 1px solid var(--state);
+        color: var(--state);
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+
+    .btn.audio-btn:hover {
+        background: rgba(36, 113, 163, 0.1);
+        transform: translateY(-3px);
+    }
 
 	/* Abstract Section */
 	.abstract {

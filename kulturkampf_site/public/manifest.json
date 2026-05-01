@@ -1,0 +1,16 @@
+{
+  "name": "Kulturkampf & Fertility",
+  "short_name": "Kulturkampf",
+  "description": "A research monograph on the Prussian Kulturkampf and its demographic consequences.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0c0e",
+  "theme_color": "#d4af37",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

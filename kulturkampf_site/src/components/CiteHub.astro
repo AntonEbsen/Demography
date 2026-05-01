@@ -15,6 +15,7 @@
             <div class="tabs">
                 <button class="tab-btn active" data-tab="bibtex">BibTeX</button>
                 <button class="tab-btn" data-tab="apa">APA</button>
+                <button class="tab-btn" data-tab="ris">RIS</button>
             </div>
             <div class="tab-content">
                 <pre id="bibtex-content">
@@ -28,8 +29,18 @@
                 <div id="apa-content" class="hidden">
                     Ebsen, A. (2026). <i>The Iron and the Altar: Institutional Conflict and the Demographic Transition in Prussia</i>. Retrieved from https://AntonEbsen.github.io/Demography/kulturkampf
                 </div>
+                <pre id="ris-content" class="hidden">
+TY  - JOUR
+AU  - Ebsen, Anton
+TI  - The Iron and the Altar: Institutional Conflict and the Demographic Transition in Prussia
+PY  - 2026
+UR  - https://AntonEbsen.github.io/Demography/kulturkampf
+ER  - </pre>
             </div>
-            <button id="copy-cite" class="copy-btn">Copy to Clipboard</button>
+            <div class="action-row">
+                <button id="copy-cite" class="copy-btn">Copy to Clipboard</button>
+                <button id="download-ris" class="download-btn">Download RIS</button>
+            </div>
         </div>
     </div>
 </div>
@@ -51,22 +62,30 @@
         btn.onclick = () => {
             tabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            const isBib = btn.dataset.tab === 'bibtex';
-            document.getElementById('bibtex-content').classList.toggle('hidden', !isBib);
-            document.getElementById('apa-content').classList.toggle('hidden', isBib);
+            const target = btn.dataset.tab;
+            document.getElementById('bibtex-content').classList.toggle('hidden', target !== 'bibtex');
+            document.getElementById('apa-content').classList.toggle('hidden', target !== 'apa');
+            document.getElementById('ris-content').classList.toggle('hidden', target !== 'ris');
         };
     });
 
     copy.onclick = () => {
         const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-        const text = activeTab === 'bibtex' 
-            ? document.getElementById('bibtex-content').innerText 
-            : document.getElementById('apa-content').innerText;
+        const text = document.getElementById(`${activeTab}-content`).innerText;
         
         navigator.clipboard.writeText(text);
         const originalText = copy.innerText;
         copy.innerText = 'Copied!';
         setTimeout(() => copy.innerText = originalText, 2000);
+    };
+
+    document.getElementById('download-ris').onclick = () => {
+        const blob = new Blob([document.getElementById('ris-content').innerText], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'kulturkampf_ebsen.ris';
+        a.click();
     };
 </script>
 
@@ -174,7 +193,7 @@
     pre { margin: 0; white-space: pre-wrap; }
 
     .copy-btn {
-        width: 100%;
+        flex-grow: 1;
         background: var(--accent);
         color: #000;
         border: none;
@@ -182,6 +201,22 @@
         font-weight: bold;
         cursor: pointer;
         border-radius: 4px;
+    }
+
+    .action-row {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .download-btn {
+        background: transparent;
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        padding: 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
     }
 
     .hidden { display: none; }
