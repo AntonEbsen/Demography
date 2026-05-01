@@ -1,0 +1,125 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Historical Context | The Prussian Kulturkampf">
+	<main class="container">
+		<header class="page-header">
+			<span class="eyebrow">Institutions & Conflict</span>
+			<h1>The Secularization Shock</h1>
+			<p>Understanding the political and social roots of Bismarck's struggle with Rome.</p>
+		</header>
+
+		<article class="monograph">
+			<h2>1. The Rise of the Secular State</h2>
+			<p>
+				In the aftermath of the 1870 Unification, Otto von Bismarck sought to consolidate the power of the new German Empire. A central obstacle was the **Center Party** (Zentrum), a Catholic political force that Bismarck viewed as loyal to the Vatican rather than the Kaiser.
+			</p>
+			
+			<blockquote>
+				"We are not going to Canossa!" — Otto von Bismarck, 1872
+			</blockquote>
+
+			<p>
+				The struggle was not merely theological; it was a battle over the control of the "private sphere"—education, birth registration, and marriage. By dismantling the Church's monopoly on these institutions, the state effectively secularized the lifecycle of the average Prussian citizen.
+			</p>
+
+			<h2>2. The May Laws (1873)</h2>
+			<p>
+				The peak of the conflict came with the **May Laws** (Maigesetze) of 1873, which:
+			</p>
+			<ul class="method-list">
+				<li>Removed priests from their roles as state school inspectors.</li>
+				<li>Mandated that all clergy pass a "state exam" in philosophy and history.</li>
+				<li>Asserted state control over the appointment of bishops.</li>
+			</ul>
+			<p>
+				In response, hundreds of priests were imprisoned and dozens of bishoprics were left vacant. This institutional vacuum is what we measure as our "exposure" variable.
+			</p>
+
+			<h2>3. The Introduction of Civil Marriage (1875)</h2>
+			<p>
+				Perhaps the most profound change for demographic behavior was the **Civil Marriage Act of 1875**. Previously, marriage was a religious sacrament controlled by the parish. The state now mandated a civil ceremony, weakening the Church's ability to enforce moral norms and control household formation.
+			</p>
+            <p>
+                Our analysis shows that this shift correlates strongly with a rise in illegitimate births and a subsequent decline in marital fertility, as the "institutional cost" of children was decoupled from religious oversight.
+            </p>
+
+			<h2>4. The Rollback and Its Legacy</h2>
+			<p>
+				By the mid-1880s, Bismarck reached a truce with Pope Leo XIII, repealing many of the most aggressive laws (the *Milderungsgesetze*). However, the institutional infrastructure of the state remained. 
+			</p>
+            <p>
+                Crucially, our demographic results show that fertility did **not** return to pre-1870 levels after the rollback. The Kulturkampf had catalyzed a permanent shift in the demographic regime, effectively accelerating the secularization of the Prussian population.
+            </p>
+		</article>
+	</main>
+</Layout>
+
+<style>
+	.page-header {
+		margin-bottom: 4rem;
+		border-bottom: 1px solid var(--border);
+		padding-bottom: 3rem;
+	}
+
+    .eyebrow {
+        color: var(--accent);
+        text-transform: uppercase;
+        letter-spacing: 0.2rem;
+        font-size: 0.8rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+	h1 {
+		font-size: 4rem;
+		margin-bottom: 1rem;
+	}
+
+    .page-header p {
+        font-size: 1.4rem;
+        font-family: var(--serif);
+        font-style: italic;
+        opacity: 0.8;
+    }
+
+	.monograph {
+		max-width: 800px;
+	}
+
+	h2 {
+		font-size: 2.2rem;
+		margin-top: 4rem;
+		margin-bottom: 1.5rem;
+	}
+
+    blockquote {
+        border-left: 3px solid var(--accent);
+        padding-left: 2rem;
+        margin: 3rem 0;
+        font-family: var(--serif);
+        font-size: 1.8rem;
+        font-style: italic;
+        color: var(--text);
+    }
+
+	.method-list {
+		list-style: none;
+		margin: 2rem 0;
+	}
+
+	.method-list li {
+		padding: 0.8rem 0;
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+        font-size: 1.1rem;
+	}
+
+	.method-list li::before {
+		content: '•';
+		color: var(--accent);
+		font-weight: bold;
+	}
+</style>

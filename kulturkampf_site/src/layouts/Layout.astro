@@ -1,0 +1,238 @@
+---
+import { ClientRouter } from 'astro:transitions';
+
+interface Props {
+	title: string;
+    description?: string;
+}
+
+const { title, description = "A research monograph on the Prussian Kulturkampf and its demographic consequences." } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content={description} />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+
+		<!-- Fonts -->
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+		
+        <!-- KaTeX for math -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+		
+		<ClientRouter />
+	</head>
+	<body>
+		<nav>
+			<div class="nav-content">
+				<a href="/" class="logo">
+                    <span class="logo-accent">Kulturkampf</span> & Fertility
+                </a>
+				<div class="links">
+					<a href="/">Overview</a>
+					<a href="/methods">Methodology</a>
+					<a href="/evidence">Evidence</a>
+					<a href="/context">Historical Context</a>
+                    <a href="https://github.com/AntonEbsen/Demography" target="_blank" class="nav-ext">GitHub</a>
+				</div>
+			</div>
+		</nav>
+        
+        <div class="page-transition-wrapper">
+		    <slot />
+        </div>
+
+		<footer>
+			<div class="footer-content">
+				<p>&copy; 2026 Anton Ebsen. Built for PhD Research Portfolio.</p>
+                <div class="footer-links">
+                    <a href="https://antonebsen.dk/" target="_blank">Personal Site</a>
+                    <a href="/methods">Reproducibility</a>
+                </div>
+			</div>
+		</footer>
+
+		<script is:inline>
+			const initTheme = () => {
+				document.documentElement.setAttribute('data-theme', 'dark');
+			};
+			initTheme();
+		</script>
+	</body>
+</html>
+
+<style is:global>
+	:root {
+		--bg: #0b0c0e;
+		--surface: #151619;
+		--text: #e0e0e0;
+		--text-muted: #a0a0a0;
+		--accent: #d4af37; /* Imperial Gold */
+		--church: #c0392b; /* Vatican Crimson */
+		--state: #2471a3;  /* Prussian Blue */
+		--serif: 'EB Garamond', serif;
+		--sans: 'Outfit', sans-serif;
+        --border: rgba(212, 175, 55, 0.2);
+	}
+
+	* {
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+	}
+
+	html {
+		background: var(--bg);
+		color: var(--text);
+		font-family: var(--sans);
+		scroll-behavior: smooth;
+	}
+
+	body {
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+	}
+
+    /* Typography */
+	h1, h2, h3, h4 {
+		font-family: var(--serif);
+		color: var(--accent);
+		font-weight: 400;
+        line-height: 1.2;
+	}
+
+	p {
+		line-height: 1.7;
+		margin-bottom: 1.5rem;
+		font-size: 1.15rem;
+        color: rgba(224, 224, 224, 0.9);
+	}
+
+    /* Navigation */
+	nav {
+		background: rgba(11, 12, 14, 0.9);
+		backdrop-filter: blur(12px);
+		border-bottom: 1px solid var(--border);
+		position: sticky;
+		top: 0;
+		z-index: 100;
+		padding: 1.2rem 0;
+	}
+
+	.nav-content {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 0 2rem;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.logo {
+		font-family: var(--serif);
+		font-size: 1.6rem;
+		font-weight: 700;
+		color: var(--text);
+		text-decoration: none;
+		letter-spacing: 0.02rem;
+	}
+
+    .logo-accent {
+        color: var(--accent);
+    }
+
+	.links {
+		display: flex;
+		gap: 2.5rem;
+	}
+
+	.links a {
+		text-decoration: none;
+		color: var(--text-muted);
+		font-weight: 500;
+		transition: all 0.3s ease;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.12rem;
+	}
+
+	.links a:hover {
+		color: var(--accent);
+        text-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+	}
+
+    .nav-ext {
+        color: var(--accent) !important;
+        opacity: 0.8;
+    }
+
+    /* Layout Components */
+    .container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 4rem 2rem;
+    }
+
+    section {
+        padding: 5rem 0;
+    }
+
+    /* Footer */
+	footer {
+		margin-top: auto;
+		padding: 5rem 0 3rem;
+		background: #000;
+        border-top: 1px solid var(--border);
+	}
+
+    .footer-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .footer-links {
+        display: flex;
+        gap: 2rem;
+    }
+
+    .footer-links a {
+        color: var(--accent);
+        text-decoration: none;
+    }
+
+    .footer-links a:hover {
+        text-decoration: underline;
+    }
+
+    /* Animations */
+    .page-transition-wrapper {
+        animation: fadeIn 0.8s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Print styles */
+    @media print {
+        nav, footer { display: none !important; }
+        body { background: white !important; color: black !important; }
+        h1, h2, h3 { color: black !important; border-bottom: 1px solid black; }
+        p { font-size: 11pt; line-height: 1.5; text-align: justify; }
+    }
+</style>

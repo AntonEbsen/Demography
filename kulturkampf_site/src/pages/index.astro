@@ -1,0 +1,313 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Kulturkampf & Fertility | The Secularization of Prussia">
+	<main>
+		<!-- Hero Section -->
+		<section class="hero">
+			<div class="hero-overlay"></div>
+			<div class="hero-content">
+				<span class="eyebrow">A PhD Research Monograph</span>
+				<h1>The Iron & The Altar</h1>
+				<p class="subtitle">Institutional Conflict, Secularization, and the Demographic Transition in 19th-Century Prussia</p>
+				<div class="cta-group">
+					<a href="/methods" class="btn primary">Methodology</a>
+					<a href="/evidence" class="btn secondary">View Evidence</a>
+				</div>
+			</div>
+		</section>
+
+		<!-- Abstract Section -->
+		<section class="abstract">
+			<div class="container">
+				<div class="abstract-card">
+					<div class="abstract-header">
+						<h2>Executive Abstract</h2>
+						<div class="ornament"></div>
+					</div>
+					<div class="abstract-body">
+						<p>
+							This study investigates the <strong>Kulturkampf (1872–1878)</strong>—Bismarck’s massive institutional assault on the Catholic Church—as an exogenous shock to the cost of child-rearing and institutional secularization. 
+						</p>
+						<p>
+							Using a panel of 400+ Prussian counties, I employ a **Difference-in-Differences** strategy to measure how the dismantling of Catholic oversight over education, marriage, and welfare catalyzed a structural shift in fertility behavior. The findings reveal a significant, persistent decline in birth rates in Catholic-majority counties, particularly in areas where institutional resistance was met with state enforcement.
+						</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Key Findings Grid -->
+		<section class="findings">
+			<div class="container">
+				<h2 class="section-title">Central Findings</h2>
+				<div class="findings-grid">
+					<div class="finding-card">
+						<div class="finding-value">-0.041***</div>
+						<div class="finding-label">CBR Impact</div>
+						<p>Average reduction in the Crude Birth Rate per 10 percentage point increase in Catholic share.</p>
+					</div>
+					<div class="finding-card">
+						<div class="finding-value">+12%</div>
+						<div class="finding-label">Illegitimacy Rise</div>
+						<p>Increase in illegitimate births following the introduction of civil marriage in 1875.</p>
+					</div>
+					<div class="finding-card">
+						<div class="finding-value">1887</div>
+						<div class="finding-label">Persistence</div>
+						<p>The fertility shock persisted even after the "Rollback" laws ended the conflict in the late 1880s.</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- The Conflict Intro -->
+		<section class="conflict-intro">
+			<div class="container grid-2">
+				<div class="text-content">
+					<h2>A State Within a State</h2>
+					<p>
+						In 1871, the newly unified German Empire faced a internal rival: the Roman Catholic Church. Bismarck viewed the Church as a "state within a state" that held too much power over the private lives and education of Prussian citizens.
+					</p>
+					<p>
+						The resulting **Kulturkampf** ("Culture Struggle") was more than a political dispute; it was a wholesale replacement of ecclesiastical oversight with state bureaucracy. By removing priests from schools and mandating civil marriage, the state inadvertently altered the microeconomic incentives of the household.
+					</p>
+					<a href="/context" class="text-link">Explore the Historical Context &rarr;</a>
+				</div>
+				<div class="visual-content">
+					<div class="image-frame">
+						<img src="/images/hero.png" alt="Prussian Conflict Visual" />
+					</div>
+				</div>
+			</div>
+		</section>
+
+        <!-- Final CTA -->
+        <section class="final-cta">
+            <div class="container">
+                <h3>Interested in the Reproducibility?</h3>
+                <p>The entire data pipeline, from raw Galloway census files to the final spatial regressions, is open-source and modularized in Python.</p>
+                <a href="https://github.com/AntonEbsen/Demography" target="_blank" class="btn primary">Explore GitHub Repository</a>
+            </div>
+        </section>
+	</main>
+</Layout>
+
+<style>
+	/* Hero Section */
+	.hero {
+		position: relative;
+		min-height: 90vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: url('/images/hero.png') center/cover no-repeat;
+		padding: 4rem 2rem;
+		text-align: center;
+        overflow: hidden;
+	}
+
+	.hero-overlay {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(to bottom, rgba(11, 12, 14, 0.4), rgba(11, 12, 14, 0.95));
+	}
+
+	.hero-content {
+		position: relative;
+		z-index: 1;
+		max-width: 1000px;
+	}
+
+	.eyebrow {
+		display: block;
+		font-size: 0.9rem;
+		text-transform: uppercase;
+		letter-spacing: 0.3rem;
+		color: var(--accent);
+		margin-bottom: 1.5rem;
+		opacity: 0.8;
+	}
+
+	h1 {
+		font-size: 5.5rem;
+		margin-bottom: 1.5rem;
+        letter-spacing: -0.02rem;
+	}
+
+	.subtitle {
+		font-size: 1.6rem;
+		font-family: var(--serif);
+		max-width: 800px;
+		margin: 0 auto 3rem;
+		opacity: 0.9;
+        font-style: italic;
+	}
+
+	.cta-group {
+		display: flex;
+		gap: 2rem;
+		justify-content: center;
+	}
+
+	.btn {
+		padding: 1.2rem 2.5rem;
+		border-radius: 4px;
+		text-decoration: none;
+		font-weight: 600;
+		font-size: 0.9rem;
+		text-transform: uppercase;
+		letter-spacing: 0.15rem;
+		transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.btn.primary {
+		background: var(--accent);
+		color: #000;
+	}
+
+	.btn.primary:hover {
+		transform: translateY(-5px);
+		box-shadow: 0 15px 30px rgba(212, 175, 55, 0.3);
+	}
+
+	.btn.secondary {
+		border: 1px solid var(--accent);
+		color: var(--accent);
+	}
+
+	.btn.secondary:hover {
+		background: rgba(212, 175, 55, 0.1);
+		transform: translateY(-3px);
+	}
+
+	/* Abstract Section */
+	.abstract {
+		background: #000;
+        margin-top: -4rem;
+        position: relative;
+        z-index: 2;
+	}
+
+	.abstract-card {
+		background: var(--surface);
+		padding: 4rem;
+		border: 1px solid var(--border);
+		box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+		border-radius: 4px;
+	}
+
+	.abstract-header {
+		display: flex;
+		align-items: center;
+		gap: 2rem;
+		margin-bottom: 2rem;
+	}
+
+	.ornament {
+		height: 1px;
+		flex-grow: 1;
+		background: linear-gradient(to right, var(--accent), transparent);
+	}
+
+	/* Findings Section */
+	.findings-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+		gap: 3rem;
+		margin-top: 3rem;
+	}
+
+	.finding-card {
+		text-align: center;
+		padding: 3rem 2rem;
+		background: rgba(212, 175, 55, 0.03);
+		border: 1px solid rgba(212, 175, 55, 0.1);
+        transition: border-color 0.3s;
+	}
+
+    .finding-card:hover {
+        border-color: var(--accent);
+    }
+
+	.finding-value {
+		font-size: 3.5rem;
+		font-family: var(--serif);
+		color: var(--accent);
+		margin-bottom: 0.5rem;
+	}
+
+	.finding-label {
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.2rem;
+		opacity: 0.6;
+		margin-bottom: 1.5rem;
+	}
+
+	/* Conflict Intro */
+	.grid-2 {
+		display: grid;
+		grid-template-columns: 1.2fr 0.8fr;
+		gap: 5rem;
+		align-items: center;
+	}
+
+	.image-frame {
+		position: relative;
+		padding: 1rem;
+		border: 1px solid var(--border);
+	}
+
+	.image-frame img {
+		width: 100%;
+		display: block;
+        filter: grayscale(0.2) contrast(1.1);
+	}
+
+	.image-frame::after {
+		content: '';
+		position: absolute;
+		inset: -1rem;
+		border: 1px solid rgba(212, 175, 55, 0.1);
+		z-index: -1;
+	}
+
+    .text-link {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-block;
+        margin-top: 1rem;
+    }
+
+    .text-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Final CTA */
+    .final-cta {
+        text-align: center;
+        background: radial-gradient(circle at center, #1a1c20, #000);
+        border-top: 1px solid var(--border);
+        padding: 6rem 2rem;
+    }
+
+    .final-cta h3 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .final-cta p {
+        max-width: 600px;
+        margin: 0 auto 3rem;
+        opacity: 0.7;
+    }
+
+	@media (max-width: 900px) {
+		h1 { font-size: 3.5rem; }
+		.grid-2 { grid-template-columns: 1fr; }
+		.hero-content { padding: 0 1rem; }
+	}
+</style>
