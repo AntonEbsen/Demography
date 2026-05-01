@@ -7,10 +7,13 @@ Usage (from notebook):
     from src.data.build_dataset import build_analysis_panel
 """
 
+import logging
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from src.data.load_data import load_rel1871, load_vit_panel, interpolate_population, DATA_RAW, DATA_PROCESSED
 
@@ -57,7 +60,7 @@ def build_analysis_panel(
     # 1. Load religion data (cross-section)
     # ------------------------------------------------------------------
     rel = load_rel1871()
-    print(f"REL1871: {len(rel)} counties loaded")
+    logger.info("REL1871: %d counties loaded", len(rel))
     
     # ------------------------------------------------------------------
     # 2. Load vital registration panel
@@ -74,7 +77,7 @@ def build_analysis_panel(
     # ------------------------------------------------------------------
     n_missing_before = vit["Poptot"].isna().sum()
     if n_missing_before > 0:
-        print(f"Poptot missing for {n_missing_before} obs — interpolating from POP census files...")
+        logger.info("Poptot missing for %d obs — interpolating from POP census files...", n_missing_before)
         vit = interpolate_population(vit, data_dir=data_dir)
     
     # ------------------------------------------------------------------
@@ -88,8 +91,8 @@ def build_analysis_panel(
     
     n_before = vit["Code"].nunique()
     n_after = panel["Code"].nunique()
-    print(f"Merge: {n_before} VIT counties → {n_after} matched with REL1871 "
-          f"({n_before - n_after} dropped)")
+    logger.info("Merge: %d VIT counties -> %d matched with REL1871 (%d dropped)",
+                n_before, n_after, n_before - n_after)
     
     # ------------------------------------------------------------------
     # 4. Construct outcome variables
@@ -161,7 +164,7 @@ def build_analysis_panel(
     panel["cbr_flag"] = (panel["cbr"] > 70) | (panel["cbr"] < 15)
     n_flagged = panel["cbr_flag"].sum()
     if n_flagged > 0:
-        print(f"Warning: {n_flagged} observations with extreme CBR (>70 or <15 per 1000)")
+        logger.warning("%d observations with extreme CBR (>70 or <15 per 1000)", n_flagged)
     
     # ------------------------------------------------------------------
     # 7. Save
@@ -172,16 +175,11 @@ def build_analysis_panel(
         DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
         out_path = DATA_PROCESSED / "analysis_panel.parquet"
         panel.to_parquet(out_path, index=False)
-        print(f"Saved to {out_path}")
+        logger.info("Saved to %s", out_path)
     
-    # Summary
-    print(f"\n{'='*50}")
-    print(f"Analysis panel: {len(panel)} obs, "
-          f"{panel['Code'].nunique()} counties, "
-          f"{panel['Year'].min()}-{panel['Year'].max()}")
-    print(f"High-Catholic counties (>50%): {panel.groupby('Code')['high_cath'].first().sum()}")
-    print(f"Low-Catholic counties (≤50%):  {panel.groupby('Code')['high_cath'].first().apply(lambda x: 1-x).sum()}")
-    print(f"Mean CBR: {panel['cbr'].mean():.1f} per 1,000")
-    print(f"{'='*50}")
+    logger.info("Analysis panel: %d obs, %d counties, %d-%d",
+                len(panel), panel['Code'].nunique(), panel['Year'].min(), panel['Year'].max())
+    logger.info("High-Catholic counties (>50%%): %d", panel.groupby('Code')['high_cath'].first().sum())
+    logger.info("Mean CBR: %.1f per 1,000", panel['cbr'].mean())
     
     return panel

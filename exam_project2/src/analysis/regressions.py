@@ -7,10 +7,15 @@ Usage (from notebook):
     from src.analysis.regressions import run_baseline_did, run_event_study, run_robustness
 """
 
+import logging
 import pandas as pd
 import numpy as np
 from linearmodels.panel import PanelOLS
 from typing import Optional
+
+from src.analysis.utils import safe_panel_ols
+
+logger = logging.getLogger(__name__)
 
 
 def _prepare_panel(df: pd.DataFrame) -> pd.DataFrame:
@@ -234,7 +239,7 @@ def run_robustness(
                 "N_counties": int(y.index.get_level_values(0).nunique()),
             })
         except Exception as e:
-            print(f"  [error] {label}: {e}")
+            logger.error("  [error] %s: %s", label, e)
     
     # 1. Baseline (continuous)
     _run_one("Baseline (continuous CathShare × Post)", df)

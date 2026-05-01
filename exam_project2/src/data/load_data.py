@@ -9,10 +9,13 @@ Usage (from notebook):
     from src.data.load_data import load_pop_census, interpolate_population
 """
 
+import logging
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths – adjust DATA_DIR if your layout differs
@@ -134,7 +137,7 @@ def load_pop_census(data_dir: Optional[Path] = None, years=None) -> pd.DataFrame
             continue
         
         frames.append(df[["Code", "Year", pop_col]].rename(columns={pop_col: "Pop_census"}))
-        print(f"  POP{yr}: {len(df)} counties loaded")
+        logger.info("  POP%d: %d counties loaded", yr, len(df))
     
     if not frames:
         return pd.DataFrame(columns=["Code", "Year", "Pop_census"])
@@ -153,7 +156,7 @@ def interpolate_population(
     pop_census = load_pop_census(data_dir)
     
     if len(pop_census) == 0:
-        print("Warning: No POP census files found, cannot interpolate.")
+        logger.warning("No POP census files found, cannot interpolate.")
         return panel
     
     panel = panel.copy()
@@ -175,9 +178,9 @@ def interpolate_population(
     
     n_still_missing = panel["Poptot"].isna().sum()
     if n_still_missing > 0:
-        print(f"Warning: {n_still_missing} obs still missing Poptot after interpolation")
+        logger.warning("%d obs still missing Poptot after interpolation", n_still_missing)
     else:
-        print("Population interpolation complete — no missing values.")
+        logger.info("Population interpolation complete — no missing values.")
     
     return panel
 
@@ -279,14 +282,14 @@ def load_vit_panel(
     for year in range(year_start, year_end + 1):
         fpath = _find_file(data_dir, f"VIT{year}")
         if fpath is None:
-            print(f"  [skip] VIT{year} not found")
+            logger.debug("  [skip] VIT%d not found", year)
             continue
         
         try:
             df = _load_single_vit(fpath)
             frames.append(df)
         except Exception as e:
-            print(f"  [error] VIT{year}: {e}")
+            logger.error("  [error] VIT%d: %s", year, e)
             continue
 
     if not frames:
@@ -300,9 +303,8 @@ def load_vit_panel(
     
     panel = panel.sort_values(["Code", "Year"]).reset_index(drop=True)
     
-    print(f"Loaded VIT panel: {len(panel)} observations, "
-          f"{panel['Code'].nunique()} counties, "
-          f"years {panel['Year'].min()}-{panel['Year'].max()}")
+    logger.info("Loaded VIT panel: %d observations, %d counties, years %d-%d",
+                len(panel), panel['Code'].nunique(), panel['Year'].min(), panel['Year'].max())
     
     return panel
 

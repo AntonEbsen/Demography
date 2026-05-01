@@ -14,27 +14,18 @@ Usage (from notebook):
     )
 """
 
+import logging
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from linearmodels.panel import PanelOLS
 from typing import Optional
 
+from src.analysis.utils import safe_panel_ols
 
-def _safe_panel_ols(df, outcome, exog_vars, entity="Code", time="Year"):
-    """
-    Safely run PanelOLS: drop duplicates, handle NaN, set index.
-    Returns the fitted result.
-    """
-    cols_needed = [entity, time, outcome] + exog_vars
-    sub = df[cols_needed].drop_duplicates(subset=[entity, time]).dropna().copy()
-    sub = sub.set_index([entity, time])
-    
-    y = sub[outcome]
-    X = sub[exog_vars]
-    
-    mod = PanelOLS(y, X, entity_effects=True, time_effects=True)
-    return mod.fit(cov_type="clustered", cluster_entity=True)
+logger = logging.getLogger(__name__)
+
+# Backward-compatible alias
+_safe_panel_ols = safe_panel_ols
 
 
 # ===================================================================
