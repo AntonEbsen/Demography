@@ -1,0 +1,118 @@
+---
+---
+<div class="hajnal-container">
+    <div class="hajnal-header">
+        <h3>The Hajnal Line & Prussia</h3>
+        <p>John Hajnal’s (1965) famous demarcation between the Western European Marriage Pattern (late marriage, high celibacy) and the Eastern pattern.</p>
+    </div>
+
+    <div class="hajnal-visual">
+        <svg viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
+            <!-- Background Europe (Stylized) -->
+            <rect x="0" y="0" width="800" height="400" fill="rgba(255,255,255,0.02)" rx="8" />
+            
+            <!-- Countries / Regions -->
+            <path d="M 100 100 L 300 80 L 350 150 L 200 200 Z" fill="#2c3e50" opacity="0.5" /> <!-- Western Europe -->
+            <path d="M 400 50 L 700 80 L 750 300 L 450 350 Z" fill="#2c3e50" opacity="0.3" /> <!-- Eastern Europe -->
+            
+            <!-- Prussia Overlay -->
+            <path d="M 300 80 L 550 100 L 600 250 L 350 200 Z" fill="var(--accent)" opacity="0.6" stroke="var(--accent)" stroke-width="2" />
+            
+            <!-- The Hajnal Line -->
+            <line x1="450" y1="20" x2="350" y2="380" stroke="#c0392b" stroke-width="4" stroke-dasharray="10,10" id="hajnal-line" />
+            
+            <!-- Labels -->
+            <text x="150" y="250" fill="white" font-size="14" font-weight="bold">WESTERN PATTERN</text>
+            <text x="550" y="320" fill="white" font-size="14" font-weight="bold">EASTERN PATTERN</text>
+            <text x="450" y="50" fill="var(--accent)" font-size="12" font-weight="bold">PRUSSIA (STRADDLING)</text>
+            <text x="430" y="15" fill="#c0392b" font-size="10" transform="rotate(75, 430, 15)">ST. PETERSBURG</text>
+            <text x="340" y="395" fill="#c0392b" font-size="10" transform="rotate(75, 340, 395)">TRIESTE</text>
+        </svg>
+    </div>
+
+    <div class="hajnal-content">
+        <div class="h-card">
+            <h4>Western Side</h4>
+            <p>Late marriage, nuclear households, and "Malthusian" preventive checks. Most of the Prussian Rhineland falls here.</p>
+        </div>
+        <div class="h-card highlight">
+            <h4>The Prussia Paradox</h4>
+            <p>Prussia was institutionalized as a Western state but geographically extended deep into the Eastern pattern. The Kulturkampf acted as a "Westernizing" shock to Eastern marital norms.</p>
+        </div>
+        <div class="h-card">
+            <h4>Eastern Side</h4>
+            <p>Early/universal marriage, joint households. The Polish provinces of Posen and East Prussia align with this pattern.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hajnal-container {
+        margin: 6rem 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 3rem;
+        border-radius: 8px;
+    }
+
+    .hajnal-header {
+        margin-bottom: 3rem;
+        text-align: center;
+    }
+
+    .hajnal-header h3 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .hajnal-header p {
+        opacity: 0.7;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .hajnal-visual {
+        margin-bottom: 3rem;
+        filter: drop-shadow(0 0 20px rgba(0,0,0,0.5));
+    }
+
+    svg {
+        width: 100%;
+        height: auto;
+    }
+
+    #hajnal-line {
+        filter: drop-shadow(0 0 5px #c0392b);
+    }
+
+    .hajnal-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 2rem;
+    }
+
+    .h-card {
+        padding: 1.5rem;
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+    }
+
+    .h-card h4 {
+        color: var(--accent);
+        margin-bottom: 0.8rem;
+        font-size: 1.1rem;
+    }
+
+    .h-card p {
+        font-size: 0.85rem;
+        line-height: 1.6;
+        opacity: 0.7;
+        margin: 0;
+    }
+
+    .h-card.highlight {
+        border-color: var(--accent);
+        background: rgba(212, 175, 55, 0.05);
+    }
+</style>
