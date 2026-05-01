@@ -190,8 +190,13 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
                 initLang();
                 initProgress();
                 initSearch();
+                if (window.mermaid) {
+                    window.mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+                    window.mermaid.init();
+                }
             });
 		</script>
+        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js" is:inline></script>
 	</body>
 </html>
 

@@ -18,6 +18,46 @@ const variables = [
 			<p>Access the documentation and schemas for the Prussian analysis panel.</p>
 		</header>
 
+		<section class="lineage">
+			<h2>Data Lineage</h2>
+			<p>Visualizing the provenance of the analysis panel—from raw Excel files to the final Parquet dataset.</p>
+            <div class="mermaid-container">
+                <div class="mermaid">
+                    graph TD
+                    subgraph RAW [Raw Inputs]
+                        A[VIT1862-1914 .xlsx]
+                        B[REL1871 .xlsx]
+                        C[POP1861-1890 .xlsx]
+                    end
+                    
+                    subgraph LOAD [Data Loading]
+                        D[load_vit_panel]
+                        E[load_rel1871]
+                        F[load_pop_census]
+                    end
+                    
+                    subgraph PROC [Processing]
+                        G[interpolate_population]
+                        H[build_analysis_panel]
+                    end
+                    
+                    subgraph OUT [Outputs]
+                        I[analysis_panel.parquet]
+                        J[Regressions / Plots]
+                    end
+                    
+                    A --> D
+                    B --> E
+                    C --> F
+                    D --> G
+                    G --> H
+                    E --> H
+                    H --> I
+                    I --> J
+                </div>
+            </div>
+		</section>
+
 		<section class="dictionary">
 			<h2>Data Dictionary</h2>
 			<div class="dict-table-wrapper">
@@ -74,6 +114,20 @@ const variables = [
     .dict-table-wrapper {
         margin: 3rem 0;
         overflow-x: auto;
+    }
+
+    .mermaid-container {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--border);
+        padding: 2rem;
+        margin: 2rem 0 4rem;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .mermaid {
+        background: transparent !important;
     }
 
     .dict-table {
