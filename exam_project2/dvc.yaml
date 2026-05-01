@@ -1,0 +1,19 @@
+stages:
+  build:
+    cmd: python -m exam_project2.src.data.build_dataset
+    deps:
+      - src/data/build_dataset.py
+      - src/data/load_data.py
+      - data/raw/galloway_data/
+      - data/raw/ipehd_data/
+    outs:
+      - data/processed/analysis_panel.parquet
+  analyze:
+    cmd: python -m exam_project2.src.analysis.regressions
+    deps:
+      - src/analysis/regressions.py
+      - src/analysis/utils.py
+      - data/processed/analysis_panel.parquet
+    outs:
+      - outputs/tables/
+      - outputs/figures/

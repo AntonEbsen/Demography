@@ -65,3 +65,22 @@ While the econometric specifications, historical interpretation, and demographic
 - **CI/CD & Automation**: Configuring GitHub Actions, unit tests, and the installable Python package structure.
 - **Reproducibility**: Developing the Binder cloud-environment and Mermaid data lineage.
 - **Professionalization**: Drafting technical documentation and optimizing repo-wide PWA/SEO performance.
+
+---
+
+## 👨‍🔬 Author Profile: Anton Meier Ebsen Jørgensen
+**MSc Student in Economics | University of Copenhagen**
+
+I am a quantitative researcher specializing in **Historical Demography** and **Institutional Economics**. My work focuses on using high-granularity archival data to understand how state-building and institutional shocks drive long-run demographic transitions.
+
+### 🎯 Research Interests
+- **Secularization**: The impact of institutional religious shifts on family limitation.
+- **Human Capital**: The "Quantity-Quality" trade-off during the industrial revolution.
+- **Prussian Economic History**: Regional development and bureaucratic expansion in the 19th century.
+
+### 🚀 The PhD Quest
+I am currently developing this repository as a flagship demonstration of my research capabilities for **PhD applications** in 2026. If you are a recruiter, professor, or fellow researcher interested in the intersection of history and econometrics, I would love to connect.
+
+- **LinkedIn:** [Anton Ebsen](https://linkedin.com/in/antonebsen)
+- **Portfolio:** [https://AntonEbsen.github.io/Demography](https://AntonEbsen.github.io/Demography)
+- **ORCID:** [0000-0000-0000-0000](https://orcid.org)
