@@ -1,0 +1,81 @@
+---
+---
+<div class="map-slider-container">
+    <h3>Spanning Centuries</h3>
+    <p>Slide to compare the 1871 Prussian Kingdom borders with the modern map of Germany and Poland.</p>
+    
+    <div class="slider-wrapper">
+        <div class="map-modern">
+            <img src="/images/modern_map.png" alt="Modern Map" />
+        </div>
+        <div class="map-historical" id="historical-overlay">
+            <img src="/images/map.png" alt="Historical Map" />
+        </div>
+        <input type="range" min="0" max="100" value="50" class="slider" id="map-range" />
+        <div class="slider-handle"></div>
+    </div>
+</div>
+
+<script is:inline>
+    const slider = document.getElementById('map-range');
+    const historical = document.getElementById('historical-overlay');
+
+    slider.oninput = (e) => {
+        historical.style.width = `${e.target.value}%`;
+    };
+</script>
+
+<style>
+    .map-slider-container {
+        margin: 6rem 0;
+        text-align: center;
+    }
+
+    .map-slider-container h3 {
+        font-size: 2.2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .map-slider-container p {
+        opacity: 0.7;
+        margin-bottom: 3rem;
+    }
+
+    .slider-wrapper {
+        position: relative;
+        width: 100%;
+        max-width: 900px;
+        margin: 0 auto;
+        aspect-ratio: 800 / 350;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+
+    .map-modern, .map-historical {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    .map-modern img, .map-historical img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .map-historical {
+        width: 50%;
+        border-right: 2px solid var(--accent);
+    }
+
+    .slider {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: ew-resize;
+        z-index: 10;
+    }
+</style>

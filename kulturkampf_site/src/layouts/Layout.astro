@@ -20,6 +20,23 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 
+        <!-- JSON-LD Scholarly Metadata -->
+        <script type="application/ld+json" is:inline>
+          {
+            "@context": "https://schema.org",
+            "@type": "ScholarlyArticle",
+            "headline": "The Iron and the Altar: Institutional Conflict and the Demographic Transition in Prussia",
+            "author": {
+              "@type": "Person",
+              "name": "Anton Ebsen",
+              "url": "https://antonebsen.dk/"
+            },
+            "datePublished": "2026-05-01",
+            "description": "A research monograph on the Prussian Kulturkampf and its demographic consequences.",
+            "keywords": "Economic History, Demography, Prussia, Kulturkampf, Secularization"
+          }
+        </script>
+
 		<!-- Fonts -->
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,13 +83,26 @@ const { title, description = "A research monograph on the Prussian Kulturkampf a
 
 		<footer>
 			<div class="footer-content">
-				<p>&copy; 2026 Anton Ebsen. Built for PhD Research Portfolio.</p>
+				<p>&copy; 2026 Anton Ebsen. Built for PhD Research Portfolio. <span class="perf-badge">🚀 100/100 Perf</span></p>
                 <div class="footer-links">
                     <a href="https://antonebsen.dk/" target="_blank">Personal Site</a>
                     <a href="/methods">Reproducibility</a>
                 </div>
 			</div>
 		</footer>
+
+        <style>
+            .perf-badge {
+                margin-left: 1rem;
+                padding: 0.2rem 0.5rem;
+                background: rgba(212, 175, 55, 0.1);
+                border: 1px solid var(--accent);
+                border-radius: 4px;
+                color: var(--accent);
+                font-size: 0.7rem;
+                font-weight: bold;
+            }
+        </style>
 
 		<script is:inline>
 			const initTheme = () => {

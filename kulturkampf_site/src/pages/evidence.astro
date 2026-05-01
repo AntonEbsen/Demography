@@ -2,6 +2,8 @@
 import Layout from '../layouts/Layout.astro';
 import CountyExplorer from '../components/CountyExplorer.astro';
 import MechanismGrid from '../components/MechanismGrid.astro';
+import MapSlider from '../components/MapSlider.astro';
+import AuthorCard from '../components/AuthorCard.astro';
 ---
 
 <Layout title="Evidence & Results | Kulturkampf Research">
@@ -43,6 +45,12 @@ import MechanismGrid from '../components/MechanismGrid.astro';
             <div class="container">
                 <MechanismGrid />
             </div>
+
+            <div class="container">
+                <MapSlider />
+            </div>
+
+            <AuthorCard />
 		</section>
 
 		<!-- Results Browser -->
