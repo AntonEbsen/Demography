@@ -19,7 +19,7 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_RAW = PROJECT_ROOT / "data" / "raw"
-DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
+DATA_PROCESSED = PROJECT_ROOT / "data" / "processed" / "galloway_data"
 
 
 def _find_file(data_dir: Path, basename: str) -> Optional[Path]:
