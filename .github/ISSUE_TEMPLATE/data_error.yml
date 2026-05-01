@@ -1,0 +1,28 @@
+name: 📊 Data Error Report
+description: Report an inconsistency or error in the archival data or cleaning pipeline.
+title: "[DATA ERROR]: "
+labels: ["data-integrity"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve the accuracy of this research!
+  - type: input
+    id: county_code
+    attributes:
+      label: County Code / Year
+      description: Which specific observation is affected?
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the Error
+      description: What is wrong with the data? (e.g., impossible birth rate, wrong population denominator)
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence / Reference
+      description: Please provide a link to the original archival source or a comparison dataset.

@@ -1,0 +1,23 @@
+name: 🧪 New Specification Request
+description: Suggest an alternative econometric specification or robustness check.
+title: "[SPEC]: "
+labels: ["methodology"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest an improvement to the econometric identification strategy.
+  - type: textarea
+    id: specification
+    attributes:
+      label: Specification Details
+      description: Describe the proposed model (e.g., "Add province-by-year fixed effects").
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale
+      description: Why would this specification improve the results? (e.g., "Addresses spatial autocorrelation").
+    validations:
+      required: true
