@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Paths – adjust DATA_DIR if your layout differs
 # ---------------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_RAW = PROJECT_ROOT / "data" / "raw" / "galloway_data"
 DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
 
