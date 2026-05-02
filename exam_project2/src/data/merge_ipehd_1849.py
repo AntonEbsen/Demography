@@ -30,7 +30,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from src.merge_ipehd import build_crosswalk, _clean_name
+from src.data.merge_ipehd import build_crosswalk, _clean_name
 
 
 # =====================================================================
@@ -225,18 +225,19 @@ def merge_ipehd_1849(
     -------
     pd.DataFrame : panel with new 1849 variable columns.
     """
-    from src.load_data import DATA_RAW
-    
+    from src.data.load_data import DATA_RAW
+
     if data_dir is None:
         data_dir = DATA_RAW
     if files_and_vars is None:
         files_and_vars = VARS_BY_FILE
-    
+
     ipehd_master_path = data_dir / "ipehd_qje2009_master.dta"
-    
+
     # Step 1: Galloway Code -> kreiskey1871 (existing)
-    from src.load_data import _find_file
-    rel_path = _find_file(data_dir, "REL1871")
+    # REL1871 lives in the Galloway directory, not the iPEHD one.
+    from src.data.load_data import _find_file, DATA_RAW as _GALLOWAY_RAW
+    rel_path = _find_file(_GALLOWAY_RAW, "REL1871")
     
     if verbose:
         print("Step 1: Build Galloway Code -> kreiskey1871 crosswalk")

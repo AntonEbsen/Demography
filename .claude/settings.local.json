@@ -3,7 +3,11 @@
     "allow": [
       "Bash(gh pr create --base main --title 'Fix data paths in 01_data_and_eda notebook' --body ' *)",
       "PowerShell(gh --version 2>&1)",
-      "PowerShell($gh = \"$env:ProgramFiles\\\\GitHub CLI\\\\gh.exe\"; if \\(Test-Path $gh\\) { & $gh --version; & $gh auth status 2>&1 } else { \"not found at $gh\" })"
+      "PowerShell($gh = \"$env:ProgramFiles\\\\GitHub CLI\\\\gh.exe\"; if \\(Test-Path $gh\\) { & $gh --version; & $gh auth status 2>&1 } else { \"not found at $gh\" })",
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
