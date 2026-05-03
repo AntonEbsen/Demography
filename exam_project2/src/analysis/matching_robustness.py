@@ -114,19 +114,27 @@ def pretreatment_balance_table(
         })
     
     table = pd.DataFrame(rows)
-    
+
     print("=" * 70)
     print(f"PRE-TREATMENT BALANCE TABLE")
     print(f"(High-Catholic = >{cath_threshold:.0f}% Catholic, "
           f"Low-Catholic = <={cath_threshold:.0f}% Catholic)")
     print("=" * 70)
+
+    if table.empty:
+        missing = [v for v in variables.values() if v not in cross.columns]
+        print("No variables available for the balance table.")
+        print(f"Missing columns in panel: {missing}")
+        print("→ Did you call `merge_ipehd_controls(panel)` before this?")
+        return table
+
     print(table.to_string(index=False))
-    
+
     n_imbalanced = (table["p-value"] < 0.05).sum()
     print(f"\n{n_imbalanced} of {len(table)} variables show significant "
           f"imbalance (p < 0.05)")
     print("→ This motivates the matched-sample robustness check.")
-    
+
     return table
 
 

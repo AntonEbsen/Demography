@@ -241,9 +241,13 @@ def merge_ipehd_controls(
         Unmatched counties retain NaN for iPEHD variables.
     """
     from src.data.load_data import DATA_RAW
-    
+
+    # The iPEHD master .dta lives under data/raw/ipehd_data/, not in the
+    # galloway_data subdir that DATA_RAW points to.
+    ipehd_dir = DATA_RAW.parent / "ipehd_data"
+
     if ipehd_path is None:
-        ipehd_path = DATA_RAW / "ipehd_qje2009_master.dta"
+        ipehd_path = ipehd_dir / "ipehd_qje2009_master.dta"
     if rel_path is None:
         from src.data.load_data import _find_file
         rel_path = _find_file(DATA_RAW, "REL1871")
