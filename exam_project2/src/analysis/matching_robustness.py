@@ -16,7 +16,7 @@ Option C: pre-treatment balance table
    characteristics. Goes in the data section of the paper.
 
 Usage (from notebook):
-    from src.matching_robustness import (
+    from src.analysis.matching_robustness import (
         pretreatment_balance_table,
         matched_sample_did,
     )
@@ -26,7 +26,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional
 
-from src.regressions import run_baseline_did
+from src.analysis.regressions import run_baseline_did
 
 
 # ===================================================================
