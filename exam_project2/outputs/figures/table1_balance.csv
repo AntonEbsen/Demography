@@ -1,0 +1,8 @@
+Variable,High-Cath mean,Low-Cath mean,Difference,p-value,N high,N low
+"Population (log, 1871)",10.732,10.75,-0.018,0.684,123,228
+Urban share (%),19.008,24.427,-5.419,0.0,123,228
+Jewish share (%),1.561,0.846,0.715,0.0,123,228
+Young (under 15) share (%),25.435,24.752,0.682,0.009,123,228
+Female share (%),51.074,51.236,-0.161,0.292,123,228
+Born in locality (%),65.47,58.165,7.305,0.0,123,228
+Household size,4.89,4.739,0.151,0.0,123,228

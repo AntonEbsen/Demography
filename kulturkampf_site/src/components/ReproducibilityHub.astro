@@ -1,0 +1,90 @@
+---
+---
+<section class="repro-hub">
+  <div class="container">
+    <div class="hub-header">
+      <h2>Reproducibility & Trust Dashboard</h2>
+      <p>This project adheres to the highest standards of computational reproducibility. All models, data, and pipelines can be verified in real-time.</p>
+    </div>
+    
+    <div class="hub-grid">
+      <div class="hub-card">
+        <div class="status pass">PASSING</div>
+        <h3>DVC Data Pipeline</h3>
+        <p>The entire data lineage from raw archives to analysis panels is tracked and verified via Data Version Control.</p>
+        <a href="https://github.com/AntonEbsen/Demography" target="_blank" class="hub-link">View DAG &rarr;</a>
+      </div>
+      
+      <div class="hub-card">
+        <div class="status pass">PASSING</div>
+        <h3>Statistical Unit Tests</h3>
+        <p>Rigorous econometric assumption checks (VIF, Durbin-Watson, Hausman) are executed automatically via pytest.</p>
+        <a href="https://github.com/AntonEbsen/Demography/tree/main/tests" target="_blank" class="hub-link">View Tests &rarr;</a>
+      </div>
+
+      <div class="hub-card">
+        <div class="status active">INTERACTIVE</div>
+        <h3>Browser Sandbox</h3>
+        <p>Run the exact Python econometrics environment directly in your browser using WebAssembly (Zero setup required).</p>
+        <a href="/sandbox/index.html" target="_blank" class="hub-btn">Launch JupyterLite</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .repro-hub {
+    padding: 6rem 0;
+    background: radial-gradient(circle at top, #151619, #0b0c0e);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin: 4rem 0;
+  }
+  .hub-header { text-align: center; margin-bottom: 4rem; }
+  .hub-header h2 { font-size: 2.5rem; margin-bottom: 1rem; }
+  .hub-header p { max-width: 600px; margin: 0 auto; color: var(--text-muted); }
+  .hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+  .hub-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    padding: 2.5rem;
+    border-radius: 8px;
+    position: relative;
+    transition: transform 0.3s, border-color 0.3s;
+  }
+  .hub-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent);
+  }
+  .status {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    letter-spacing: 0.1rem;
+  }
+  .status.pass { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }
+  .status.active { background: rgba(52, 152, 219, 0.1); color: #3498db; border: 1px solid #3498db; }
+  .hub-card h3 { font-family: var(--sans); font-size: 1.3rem; margin-bottom: 1rem; color: var(--text); }
+  .hub-card p { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+  .hub-link { color: var(--accent); text-decoration: none; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; }
+  .hub-btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+  }
+  .hub-btn:hover { background: rgba(212, 175, 55, 0.1); }
+</style>

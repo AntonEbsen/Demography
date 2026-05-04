@@ -1,10 +1,10 @@
-name: Deploy Portfolio
+name: Deploy Digital Monograph
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'portfolio/**'
+      - 'kulturkampf_site/**'
       - '.github/workflows/deploy-portfolio.yml'
 
 permissions:
@@ -24,12 +24,12 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: portfolio/package-lock.json
+          cache-dependency-path: kulturkampf_site/package-lock.json
 
       - name: Install, build, and upload with Astro
         uses: withastro/action@v3
         with:
-          path: portfolio
+          path: kulturkampf_site
           node-version: 22
 
   deploy:

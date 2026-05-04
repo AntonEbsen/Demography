@@ -8,6 +8,18 @@ stages:
       - data/raw/ipehd_data/
     outs:
       - data/processed/analysis_panel.parquet
+  audit:
+    cmd: python -m exam_project2.src.data.audit_schema
+    deps:
+      - src/data/audit_schema.py
+      - data/processed/analysis_panel.parquet
+  export_metadata:
+    cmd: python -m exam_project2.src.data.export_datapackage
+    deps:
+      - src/data/export_datapackage.py
+      - data/processed/analysis_panel.parquet
+    outs:
+      - data/processed/datapackage.json
   analyze:
     cmd: python -m exam_project2.src.analysis.regressions
     deps:

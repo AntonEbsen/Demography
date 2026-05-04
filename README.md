@@ -42,10 +42,11 @@ Welcome to the research repository for the **MSc Economics - Demography** course
 
 ## 🛠️ Repository Structure
 
-- `exam_project/`: Main research project files, including data and notebooks.
+- `exam_project2/`: Main research project files, including data, analysis, and DVC pipeline.
+- `kulturkampf_site/`: Astro-based digital monograph and research hub.
 - `lectures/`: Course lecture materials and notes.
 - `translation_of_STATA_code/`: Python implementations of econometric models originally in STATA.
-- `research_papers/`: Key literature referenced during the course.
+- `archived/`: Legacy projects and archived code.
 
 ---
 

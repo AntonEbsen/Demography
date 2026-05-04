@@ -1,0 +1,41 @@
+name: Build JupyterLite Sandbox
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'exam_project2/notebooks/**'
+
+jobs:
+  build-jupyterlite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install JupyterLite
+        run: |
+          python -m pip install jupyterlite-core jupyterlite-pyodide
+          
+      - name: Build WebAssembly Jupyter Environment
+        run: |
+          jupyter lite build --contents exam_project2/notebooks --output-dir jupyterlite_build
+          
+      - name: Sync to Astro Digital Monograph
+        run: |
+          mkdir -p kulturkampf_site/public/sandbox
+          cp -r jupyterlite_build/* kulturkampf_site/public/sandbox/
+          
+      - name: Commit and Push Sandbox
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "feat: compile browser-based JupyterLite sandbox"
+          file_pattern: "kulturkampf_site/public/sandbox/**"

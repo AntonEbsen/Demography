@@ -63,7 +63,7 @@ def run_baseline_did(
     dict with keys: 'result' (PanelOLS result), 'summary' (string)
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = ["ln_pop", "infant_mortality_rate"]
     
     panel = _prepare_panel(df)
     
@@ -134,7 +134,7 @@ def run_event_study(
                     (for plotting)
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = ["ln_pop", "infant_mortality_rate"]
     
     panel = _prepare_panel(df)
     
@@ -197,6 +197,7 @@ def run_event_study(
 def run_robustness(
     df: pd.DataFrame,
     outcome: str = "cbr",
+    controls: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
     Run a battery of robustness checks and return a summary table.
@@ -215,16 +216,28 @@ def run_robustness(
     -------
     pd.DataFrame with columns: Specification, Coefficient, SE, p_value, N, N_counties
     """
+    if controls is None:
+        controls = ["ln_pop", "infant_mortality_rate"]
+        
     results = []
     
     def _run_one(label, data, treat_var="cath_share_x_post"):
         try:
             panel = _prepare_panel(data)
-            mask = panel[outcome].notna() & panel["ln_pop"].notna()
+            
+            # Require non-missing outcome and all controls
+            mask = panel[outcome].notna()
+            for c in controls:
+                if c in panel.columns:
+                    mask = mask & panel[c].notna()
             panel = panel[mask]
             
             y = panel[outcome]
-            X = panel[[treat_var, "ln_pop"]]
+            
+            # Exogenous variables
+            exog_vars = [treat_var] + [c for c in controls if c in panel.columns]
+            X = panel[exog_vars]
+            
             valid = y.notna() & X.notna().all(axis=1)
             y, X = y[valid], X[valid]
             

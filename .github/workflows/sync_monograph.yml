@@ -1,0 +1,31 @@
+name: Sync Analysis to Monograph
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'exam_project2/outputs/figures/**'
+      - 'exam_project2/outputs/tables/**'
+
+jobs:
+  sync-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Copy Outputs to Astro Public Assets
+        run: |
+          mkdir -p kulturkampf_site/public/assets/figures
+          mkdir -p kulturkampf_site/public/assets/tables
+          cp -R exam_project2/outputs/figures/* kulturkampf_site/public/assets/figures/ 2>/dev/null || true
+          cp -R exam_project2/outputs/tables/* kulturkampf_site/public/assets/tables/ 2>/dev/null || true
+
+      - name: Commit and Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: sync analysis outputs to monograph site"
+          file_pattern: "kulturkampf_site/public/assets/**"

@@ -3,8 +3,8 @@
 # Variables
 PYTHON = python
 PIP = pip
-NOTEBOOK = exam_project/notebooks/exam_project.ipynb
-OUTPUT_DIR = exam_project/notebooks
+NOTEBOOK = exam_project2/notebooks/exam_project.ipynb
+OUTPUT_DIR = exam_project2/notebooks
 
 .PHONY: install analysis clean help lint format test check-all
 
@@ -26,18 +26,20 @@ install:
 	$(PIP) install -r requirements.txt
 
 analysis:
+	cd exam_project2 && dvc repro analyze
 	jupyter nbconvert --to html --execute $(NOTEBOOK) --output-dir=$(OUTPUT_DIR)
 
 clean:
-	rm -rf exam_project/data/processed/*.csv
+	rm -rf exam_project2/data/processed/*.parquet
+	rm -rf exam_project2/data/processed/*.csv
 	rm -rf dist/
 	rm -rf build/
 
 data:
-	python exam_project/src/data/process_data.py
+	cd exam_project2 && dvc repro build
 
 app:
-	streamlit run exam_project/src/app.py
+	@echo "App has been moved to Astro Digital Monograph (kulturkampf_site/)"
 
 lint:
 	ruff check .
@@ -48,8 +50,13 @@ format:
 test:
 	pytest
 
+lock:
+	pip install pip-tools
+	pip-compile requirements.txt -o requirements.lock
+	@if [ -f exam_project2/requirements.txt ]; then cd exam_project2 && pip-compile requirements.txt -o requirements.lock; fi
+
 audit:
-	python exam_project/src/data/audit.py
+	cd exam_project2 && python -m src.data.audit_schema
 
 spatial:
 	python scripts/spatial_diagnostics.py
