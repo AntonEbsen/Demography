@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: kulturkampf_site/package-lock.json
 
       - name: Install, build, and upload with Astro
-        uses: withastro/action@v3
+        uses: withastro/action@v6
         with:
           path: kulturkampf_site
           node-version: 22
