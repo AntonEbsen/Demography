@@ -1,0 +1,153 @@
+schema: '2.0'
+stages:
+  build:
+    cmd: python -m src.data.build_dataset
+    deps:
+    - path: data/raw/galloway_data/
+      hash: md5
+      md5: f7a6de1399dc427b110c4061a16dcc1a.dir
+      size: 18561089
+      nfiles: 71
+    - path: data/raw/ipehd_data/
+      hash: md5
+      md5: f701360d96ee322d54f7e1a2614c74f9.dir
+      size: 401219
+      nfiles: 10
+    - path: src/data/build_dataset.py
+      hash: md5
+      md5: a65ac94126c763b6109bcaeaf0d43023
+      size: 9276
+    - path: src/data/load_data.py
+      hash: md5
+      md5: 5c0342107f8861db5094c269576c9c05
+      size: 11471
+    outs:
+    - path: data/processed/analysis_panel.parquet
+      hash: md5
+      md5: e7998f6bddf82f1b60d401f0c5a23945
+      size: 1007634
+  audit:
+    cmd: python -m src.data.audit_schema
+    deps:
+    - path: data/processed/analysis_panel.parquet
+      hash: md5
+      md5: e7998f6bddf82f1b60d401f0c5a23945
+      size: 1007634
+    - path: src/data/audit_schema.py
+      hash: md5
+      md5: 9ec8aca1112dd9450daff9bf591f2082
+      size: 2001
+  export_metadata:
+    cmd: python -m src.data.export_datapackage
+    deps:
+    - path: data/processed/analysis_panel.parquet
+      hash: md5
+      md5: e7998f6bddf82f1b60d401f0c5a23945
+      size: 1007634
+    - path: src/data/export_datapackage.py
+      hash: md5
+      md5: 91f809cf87ccb6196f64c58eaa687cae
+      size: 2467
+    outs:
+    - path: data/processed/datapackage.json
+      hash: md5
+      md5: 65c458bb96947e8f25dd8dd263fe8aee
+      size: 8541
+  analyze:
+    cmd: python -m src.analysis.regressions
+    deps:
+    - path: data/processed/analysis_panel.parquet
+      hash: md5
+      md5: e7998f6bddf82f1b60d401f0c5a23945
+      size: 1007634
+    - path: src/analysis/regressions.py
+      hash: md5
+      md5: e6a660c57d8ecdea10d23019f8f33ef8
+      size: 20269
+    - path: src/analysis/utils.py
+      hash: md5
+      md5: 95a9ba63726421b478529b585c70b464
+      size: 1577
+  tables:
+    cmd: python -m src.analysis.latex_tables
+    deps:
+    - path: data/processed/analysis_panel.parquet
+      hash: md5
+      md5: e7998f6bddf82f1b60d401f0c5a23945
+      size: 1007634
+    - path: data/processed/centroids.parquet
+      hash: md5
+      md5: b219f22e0aca0f169f406f2c63b45946
+      size: 11101
+    - path: src/analysis/channels.py
+      hash: md5
+      md5: 636b4b78243e5d94c95dc3cad3abdf0d
+      size: 5721
+    - path: src/analysis/cohort_translation.py
+      hash: md5
+      md5: 787e8dce309937c374aa69fab0936068
+      size: 3418
+    - path: src/analysis/conley_se.py
+      hash: md5
+      md5: b6a310c06e5ea662fd2822a8c9647db1
+      size: 4911
+    - path: src/analysis/dcdh_diagnostic.py
+      hash: md5
+      md5: 15caa5def5890f3e704ae003c1d99d45
+      size: 3611
+    - path: src/analysis/honest_did.py
+      hash: md5
+      md5: debb824c942b09faef7899ee8e11d202
+      size: 5012
+    - path: src/analysis/latex_tables.py
+      hash: md5
+      md5: 0f8ee98c5616ec33fea48945f74584b5
+      size: 51273
+    - path: src/analysis/magnitudes.py
+      hash: md5
+      md5: 710fd90924d5e9ae6616ecdc4d61bb1b
+      size: 3225
+    - path: src/analysis/multiple_testing.py
+      hash: md5
+      md5: b018ef31c432fdd51b2443894a8155fc
+      size: 1430
+    - path: src/analysis/permutation_inference.py
+      hash: md5
+      md5: fd4658ead6ee8a2f7f1ca5eaa8966bde
+      size: 4050
+    - path: src/analysis/polish_german.py
+      hash: md5
+      md5: 385d57b1aebfaa4b9460df684a1059e0
+      size: 3719
+    - path: src/analysis/regressions.py
+      hash: md5
+      md5: e6a660c57d8ecdea10d23019f8f33ef8
+      size: 20269
+    - path: src/analysis/rollback.py
+      hash: md5
+      md5: b8899342d6f301b8f4a3b0ff1b64a4ba
+      size: 4076
+    - path: src/analysis/variance_decomposition.py
+      hash: md5
+      md5: 3171424404e6335bf38cad398ea188cc
+      size: 3656
+  centroids:
+    cmd: python -m src.data.centroids
+    deps:
+    - path: data/raw/gis_data/German_Empire_1871_v.1.0.dbf
+      hash: md5
+      md5: 3037be5f884ab2522d1f38cfb0c2d7aa
+      size: 366110
+    - path: data/raw/gis_data/German_Empire_1871_v.1.0.shp
+      hash: md5
+      md5: a85ed7bb69555ffaa39d9b966e5d4dc8
+      size: 2045840
+    - path: src/data/centroids.py
+      hash: md5
+      md5: dd9a58d2352315a78ce2fe1620426158
+      size: 3062
+    outs:
+    - path: data/processed/centroids.parquet
+      hash: md5
+      md5: b219f22e0aca0f169f406f2c63b45946
+      size: 11101

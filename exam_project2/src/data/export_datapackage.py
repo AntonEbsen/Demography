@@ -5,9 +5,13 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
+
+
 def generate_frictionless_datapackage():
-    data_path = Path("exam_project2/data/processed/analysis_panel.parquet")
-    output_path = Path("exam_project2/data/processed/datapackage.json")
+    data_path = DATA_PROCESSED / "analysis_panel.parquet"
+    output_path = DATA_PROCESSED / "datapackage.json"
     
     if not data_path.exists():
         logging.warning(f"Data file {data_path} not found. Cannot generate Data Package.")

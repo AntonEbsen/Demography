@@ -40,7 +40,7 @@ IPEHD_CONTROL_VARS = [
     "f_dumb",          # Share mute
     "kmwittenberg",    # Distance to Wittenberg (km)
     "f_miss",          # Share with missing education data
-    "f_litrate",       # Literacy rate
+    "school1517",      # School enrollment rate, ages 15-17 (literacy proxy)
 ]
 
 # Manual crosswalk: Galloway Code -> iPEHD kreiskey1871
@@ -90,7 +90,7 @@ _MANUAL_CROSSWALK = {
     584: 372,   # OBERLAHNKREIS / Oberlahnkreis (Weilburg)
     586: 373,   # UNTERLAHNKREIS / Unterlahnkreis (Diez)
     588: 374,   # RHEINGAUKREIS / Rheingau-Kreis
-    594: 375,   # OBERTAUNUSKREIS → Mainkreis (Wiesbaden)
+    594: 375,   # OBERTAUNUSKREIS -> Mainkreis (Wiesbaden)
     592: 378,   # UNTERTAUNUSKREIS / Untertaunus
     579: 380,   # BIEDENKOPF / Hinterlandkreis
     623: 399,   # MULHEIM (DUS) / Mülheim a. d. Ruhr
@@ -168,7 +168,7 @@ def build_crosswalk(
     )[['Code', 'kreiskey1871']]
     direct, bad_direct = _validate(direct_raw)
     if verbose:
-        print(f"Step 1 — Direct code match: {len(direct_raw)} candidates → "
+        print(f"Step 1 — Direct code match: {len(direct_raw)} candidates -> "
               f"{len(direct)} valid (dropped {bad_direct})")
     
     # Step 2: Manual crosswalk (then validate)
@@ -179,7 +179,7 @@ def build_crosswalk(
     manual_raw = manual_raw[~manual_raw['Code'].isin(direct['Code'])]
     manual, bad_manual = _validate(manual_raw)
     if verbose:
-        print(f"Step 2 — Manual crosswalk: {len(manual_raw)} candidates → "
+        print(f"Step 2 — Manual crosswalk: {len(manual_raw)} candidates -> "
               f"{len(manual)} valid (dropped {bad_manual})")
     
     # Step 3: Name match (then validate)
@@ -198,7 +198,7 @@ def build_crosswalk(
     ).drop_duplicates(subset='Code')[['Code', 'kreiskey1871']]
     name_match, bad_name = _validate(name_raw)
     if verbose:
-        print(f"Step 3 — Name match: {len(name_raw)} candidates → "
+        print(f"Step 3 — Name match: {len(name_raw)} candidates -> "
               f"{len(name_match)} valid (dropped {bad_name})")
     
     # Combine
@@ -296,8 +296,8 @@ def merge_ipehd_controls(
         corr = both_counties['cath_share'].corr(both_counties['f_cath'])
         print(f"\n  Validation: corr(Galloway cath_share, iPEHD f_cath) = {corr:.4f}")
         if corr > 0.95:
-            print(f"  ✓ Crosswalk validated — religion shares match closely.")
+            print(f"  OK Crosswalk validated — religion shares match closely.")
         else:
-            print(f"  ⚠ Low correlation — check crosswalk for errors!")
+            print(f"  WARN Low correlation — check crosswalk for errors!")
     
     return panel_merged

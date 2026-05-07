@@ -1,6 +1,5 @@
 ['remote "gdrive"']
     url = gdrive://root
-    auth = ask
 [core]
     autostage = true
     remote = gdrive

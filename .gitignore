@@ -91,9 +91,6 @@ env/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site/
-
 # mypy
 .mypy_cache/
 
@@ -114,3 +111,13 @@ yarn-error.log*
 # Diagnostics
 data_processing.log
 temp_frames/
+
+# Legacy archives — do not re-commit
+exam_project_legacy.zip
+
+# Local dev scratchpad
+scratch/
+
+# DVC-managed analytical artifacts (regenerate via `dvc repro`)
+exam_project2/data/processed/*.parquet
+exam_project2/data/processed/datapackage.json

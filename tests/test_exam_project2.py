@@ -228,3 +228,19 @@ class TestRegressionOutputStructure:
         assert "Specification" in result.columns
         assert "Coefficient" in result.columns
         assert len(result) > 0
+
+    def test_baseline_did_coefficient_stability(self, did_panel):
+        # Snapshot test: pins the headline DiD coefficient on the synthetic
+        # fixture (seed=99, no true treatment effect) so silent drift in
+        # regression construction or covariate handling fails loudly.
+        # Baseline captured 2026-05-07 against linearmodels PanelOLS.
+        from src.analysis.regressions import run_baseline_did
+
+        result = run_baseline_did(did_panel, outcome="cbr", treatment="continuous")
+        coef = float(result["result"].params["cath_share_x_post"])
+        baseline = -0.000913
+        assert abs(coef - baseline) < 0.05, (
+            f"Headline DiD coefficient drifted: got {coef:.6f}, "
+            f"baseline {baseline:.6f}. Investigate regressions.py or "
+            f"the cath_share_x_post construction."
+        )

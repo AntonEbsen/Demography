@@ -16,6 +16,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from src.data.load_data import load_rel1871, load_vit_panel, interpolate_population, DATA_RAW, DATA_PROCESSED
+from src.data.merge_ipehd import merge_ipehd_controls
 
 
 def build_analysis_panel(
@@ -160,12 +161,46 @@ def build_analysis_panel(
     # Drop observations where population is missing or zero
     panel = panel[panel["Poptot"].notna() & (panel["Poptot"] > 0)].copy()
     
-    # Flag extreme birth rates (likely data errors)
+    # Flag extreme birth rates (likely boundary-reform artifacts or data
+    # errors) and nullify the derived rate columns so downstream regressions
+    # — and the Pandera audit — drop them via NaN handling rather than
+    # treating them as real values.
     panel["cbr_flag"] = (panel["cbr"] > 70) | (panel["cbr"] < 15)
     n_flagged = panel["cbr_flag"].sum()
     if n_flagged > 0:
-        logger.warning("%d observations with extreme CBR (>70 or <15 per 1000)", n_flagged)
-    
+        logger.warning("%d observations with extreme CBR (>70 or <15 per 1000); "
+                       "rate columns set to NaN", n_flagged)
+        rate_cols = ["cbr", "legitimate_br", "illegitimate_br",
+                     "illegitimacy_ratio", "marriage_rate"]
+        panel.loc[panel["cbr_flag"], rate_cols] = np.nan
+
+    # ------------------------------------------------------------------
+    # 6b. Merge iPEHD controls (cross-sectional, time-invariant).
+    # The crosswalk currently covers ~88% of Type-0 counties; unmatched
+    # counties keep NaN for these columns. Required for the IV strategy
+    # using distance to Wittenberg and for additional iPEHD covariates.
+    # ------------------------------------------------------------------
+    try:
+        panel = merge_ipehd_controls(panel)
+    except FileNotFoundError as exc:
+        logger.warning("iPEHD merge skipped (file not found): %s", exc)
+
+    # Enforce panel-key uniqueness. Source files occasionally contain a
+    # duplicate (Code, Year) — most often a mislabeled year in a city/county
+    # split — which would silently double-weight that observation.
+    n_before = len(panel)
+    dup_mask = panel.duplicated(["Code", "Year"], keep=False)
+    if dup_mask.any():
+        dup_keys = (
+            panel.loc[dup_mask, ["Code", "Kreis", "Year"]]
+            .drop_duplicates()
+            .to_dict("records")
+        )
+        logger.warning("Dropping duplicate (Code, Year) rows (keeping first): %s",
+                       dup_keys)
+        panel = panel.drop_duplicates(["Code", "Year"], keep="first")
+        logger.warning("Dropped %d duplicate row(s)", n_before - len(panel))
+
     # ------------------------------------------------------------------
     # 7. Save
     # ------------------------------------------------------------------
@@ -181,5 +216,11 @@ def build_analysis_panel(
                 len(panel), panel['Code'].nunique(), panel['Year'].min(), panel['Year'].max())
     logger.info("High-Catholic counties (>50%%): %d", panel.groupby('Code')['high_cath'].first().sum())
     logger.info("Mean CBR: %.1f per 1,000", panel['cbr'].mean())
-    
+
     return panel
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s - %(levelname)s - %(message)s")
+    build_analysis_panel()
