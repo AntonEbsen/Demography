@@ -1,6 +1,6 @@
 stages:
   build:
-    cmd: python -m exam_project2.src.data.build_dataset
+    cmd: python -m src.data.build_dataset
     deps:
       - src/data/build_dataset.py
       - src/data/load_data.py
@@ -9,23 +9,56 @@ stages:
     outs:
       - data/processed/analysis_panel.parquet
   audit:
-    cmd: python -m exam_project2.src.data.audit_schema
+    cmd: python -m src.data.audit_schema
     deps:
       - src/data/audit_schema.py
       - data/processed/analysis_panel.parquet
   export_metadata:
-    cmd: python -m exam_project2.src.data.export_datapackage
+    cmd: python -m src.data.export_datapackage
     deps:
       - src/data/export_datapackage.py
       - data/processed/analysis_panel.parquet
     outs:
       - data/processed/datapackage.json
   analyze:
-    cmd: python -m exam_project2.src.analysis.regressions
+    # Figures are git-tracked (consumed by the Astro monograph via
+    # .github/workflows/sync_monograph.yml), so they are intentionally
+    # not declared as DVC outs. DVC re-runs this stage when its deps change.
+    cmd: python -m src.analysis.regressions
     deps:
       - src/analysis/regressions.py
       - src/analysis/utils.py
       - data/processed/analysis_panel.parquet
+  centroids:
+    # County centroid crosswalk for spatial HAC standard errors.
+    # Pulls coordinates from the German Empire 1871 shapefile and matches
+    # to Galloway Code by name. ~97% coverage.
+    cmd: python -m src.data.centroids
+    deps:
+      - src/data/centroids.py
+      - data/raw/gis_data/German_Empire_1871_v.1.0.shp
+      - data/raw/gis_data/German_Empire_1871_v.1.0.dbf
     outs:
-      - outputs/tables/
-      - outputs/figures/
+      - data/processed/centroids.parquet
+  tables:
+    # JEH-style LaTeX tables for the Overleaf manuscript. Outputs are
+    # git-tracked alongside figures so the paper repo can `\input` them
+    # without a separate DVC pull step.
+    cmd: python -m src.analysis.latex_tables
+    deps:
+      - src/analysis/latex_tables.py
+      - src/analysis/regressions.py
+      - src/analysis/channels.py
+      - src/analysis/polish_german.py
+      - src/analysis/rollback.py
+      - src/analysis/conley_se.py
+      - src/analysis/honest_did.py
+      - src/analysis/dcdh_diagnostic.py
+      - src/analysis/permutation_inference.py
+      - src/analysis/cohort_translation.py
+      - src/analysis/variance_decomposition.py
+      - src/analysis/multiple_testing.py
+      - src/analysis/magnitudes.py
+      - src/analysis/wild_bootstrap.py
+      - data/processed/analysis_panel.parquet
+      - data/processed/centroids.parquet

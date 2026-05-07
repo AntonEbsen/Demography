@@ -17,26 +17,34 @@ def data():
 
 def test_multicollinearity_vif(data):
     """
-    Test that Variance Inflation Factor (VIF) is below critical thresholds (usually 10).
-    Severe multicollinearity inflates standard errors and destabilizes coefficients.
-    """
-    # Assuming 'year', 'population' and 'fertility_rate' are standard columns in your IPEHD 1849 data.
-    # We dynamically select numeric columns that aren't IDs or targets to test independent variables.
-    numeric_cols = data.select_dtypes(include=[np.number]).columns
-    # Drop obvious non-predictors
-    cols_to_check = [c for c in numeric_cols if c not in ['id', 'year', 'fertility_rate']]
-    
-    if len(cols_to_check) < 2:
-        pytest.skip("Not enough numeric columns for VIF test.")
+    Test VIF on the baseline DiD covariate set — not the whole panel.
 
-    df_clean = data[cols_to_check].dropna()
-    vif_data = pd.DataFrame()
-    vif_data["feature"] = df_clean.columns
-    vif_data["VIF"] = [variance_inflation_factor(df_clean.values, i) for i in range(len(df_clean.columns))]
-    
-    # Assert no feature has VIF > 10 (common econometric threshold)
+    The full analysis_panel contains intentional linear combinations
+    (cath_share + prot_share = 100, cbr = legitimate_br + illegitimate_br,
+    Birtot = Birlegtot + Birbastot, treat_x_post = high_cath * post_kulturkampf,
+    ...) which are not all meant to enter the same regression. VIF is only
+    meaningful for a *specific specification's* RHS.
+    """
+    baseline_covariates = ["cath_share_x_post", "ln_pop", "infant_mortality_rate"]
+    missing = [c for c in baseline_covariates if c not in data.columns]
+    if missing:
+        pytest.skip(f"Baseline covariates not in panel: {missing}")
+
+    df_clean = data[baseline_covariates].dropna()
+    if len(df_clean) < len(baseline_covariates) + 1:
+        pytest.skip("Not enough complete rows for VIF test.")
+
+    vif_data = pd.DataFrame({
+        "feature": df_clean.columns,
+        "VIF": [variance_inflation_factor(df_clean.values, i)
+                for i in range(len(df_clean.columns))],
+    })
+
     high_vif = vif_data[vif_data["VIF"] > 10]
-    assert high_vif.empty, f"High multicollinearity detected:\n{high_vif}"
+    assert high_vif.empty, (
+        f"High multicollinearity in baseline DiD covariates:\n{high_vif}\n"
+        "Investigate before trusting standard errors."
+    )
 
 def test_stationarity_adfuller(data):
     """
