@@ -23,6 +23,71 @@ COLORS = {
 }
 
 
+def plot_counterfactual_paths(
+    df: pd.DataFrame,
+    iv_coef: float,
+    outcome: str = "cbr",
+    ylabel: str = "Crude birth rate (per 1,000)",
+    title: str = "Observed vs.\\ counterfactual fertility paths (no Kulturkampf)",
+    high_threshold: float = 75.0,
+    low_threshold: float = 25.0,
+    savepath: str | None = None,
+):
+    """
+    Observed and IV-counterfactual outcome paths by Catholic share.
+
+    For each county-year observation, the counterfactual outcome is
+
+        Y_{it}^{cf} = Y_{it} - beta_IV * cath_share_i * 1[t >= 1873]
+
+    i.e. the realised outcome with the Kulturkampf-attributable component
+    netted out using the 2SLS estimate from ``run_iv_did``. Plots the
+    observed and counterfactual annual means for high-Catholic
+    (cath_share > high_threshold) and low-Catholic (cath_share < low_threshold)
+    counties side by side.
+    """
+    df = df.copy()
+    df["post"] = (df["Year"] >= 1873).astype(int)
+    df["cf"] = df[outcome] - iv_coef * df["cath_share"] * df["post"]
+
+    df["group"] = pd.cut(
+        df["cath_share"],
+        bins=[-0.001, low_threshold, high_threshold, 100.001],
+        labels=["low", "mid", "high"],
+    )
+    keep = df[df["group"].isin(["low", "high"])].copy()
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    styles = {
+        "high": {"color": COLORS["catholic"], "label_obs": "High Catholic ($>$75\\%)"},
+        "low": {"color": COLORS["protestant"], "label_obs": "Low Catholic ($<$25\\%)"},
+    }
+    for grp, st in styles.items():
+        sub = keep[keep["group"] == grp]
+        obs = sub.groupby("Year")[outcome].mean()
+        cf = sub.groupby("Year")["cf"].mean()
+        ax.plot(obs.index, obs.values, color=st["color"], linewidth=2,
+                label=f"{st['label_obs']}, observed")
+        ax.plot(cf.index, cf.values, color=st["color"], linewidth=1.5,
+                linestyle="--", alpha=0.85,
+                label=f"{st['label_obs']}, counterfactual")
+
+    ax.axvspan(1872, 1878, alpha=0.15, color=COLORS["kulturkampf"],
+               label="Kulturkampf (1872--1878)")
+    ax.axvline(1873, color="grey", linestyle=":", linewidth=0.8, alpha=0.6)
+
+    ax.set_xlabel("Year", fontsize=11)
+    ax.set_ylabel(ylabel, fontsize=11)
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.legend(loc="best", frameon=True, fontsize=9)
+    ax.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    return fig, ax
+
+
 def plot_fertility_trends(
     df: pd.DataFrame,
     outcome: str = "cbr",
