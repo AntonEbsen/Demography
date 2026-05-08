@@ -23,6 +23,97 @@ COLORS = {
 }
 
 
+def plot_population_and_migration(
+    panel: pd.DataFrame,
+    enforcement_years: tuple[int, int] = (1872, 1878),
+    rollback_years: tuple[int, int] = (1880, 1887),
+    savepath: str | None = None,
+):
+    """
+    Two-panel figure: (left) regional population indices (1862 = 100),
+    (right) implied net migration rate per 1{,}000 population, by sub-region.
+
+    Net migration is computed residually: implied_migration = pop_change -
+    natural_increase, where natural_increase = Birtot - Dthtot. This is
+    standard in historical demography when direct migration registers are
+    unavailable.
+
+    Polish provinces (POS, BRO), German Catholic provinces (KOL, KOB, TRI,
+    AAC, OPP, MUN), and Protestant (rest) are shown separately so the
+    reader can see whether the post-1873 demographic response in Polish
+    Catholic counties is driven by emigration rather than fertility.
+    """
+    polish_rbs = ("POS", "BRO")
+    german_cath_rbs = ("KOL", "KOB", "TRI", "AAC", "OPP", "MUN")
+
+    df = panel.copy()
+    df["region"] = np.where(
+        df["Rb"].isin(polish_rbs), "Polish",
+        np.where(df["Rb"].isin(german_cath_rbs), "German Catholic",
+                 "Protestant (rest)"),
+    )
+
+    # Net migration estimate: pop change - natural increase.
+    df = df.sort_values(["Code", "Year"])
+    df["pop_change"] = df.groupby("Code")["Poptot"].diff()
+    df["natural_increase"] = df["Birtot"] - df["Dthtot"]
+    df["implied_migration"] = df["pop_change"] - df["natural_increase"]
+    df["migration_rate"] = df["implied_migration"] / df["Poptot"] * 1000.0
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+    region_colors = {
+        "Polish": COLORS["catholic"],
+        "German Catholic": COLORS["protestant"],
+        "Protestant (rest)": COLORS["neutral"],
+    }
+
+    # Left panel: population index (1862 = 100)
+    ax_l = axes[0]
+    pop = df.groupby(["region", "Year"])["Poptot"].sum().unstack("region")
+    base = pop.loc[pop.index.min()]
+    pop_index = pop / base * 100.0
+    for region in ("Polish", "German Catholic", "Protestant (rest)"):
+        ax_l.plot(pop_index.index, pop_index[region], color=region_colors[region],
+                  linewidth=2, marker="o", markersize=3, label=region)
+    ax_l.axvspan(*enforcement_years, alpha=0.15, color=COLORS["kulturkampf"])
+    ax_l.axvspan(*rollback_years, alpha=0.12, color=COLORS["protestant"])
+    ax_l.axhline(100, color="black", linewidth=0.6, linestyle=":")
+    ax_l.set_xlabel("Year", fontsize=11)
+    ax_l.set_ylabel("Population index (1862 = 100)", fontsize=11)
+    ax_l.set_title("Population trajectory by sub-region", fontsize=12, fontweight="bold")
+    ax_l.legend(loc="upper left", fontsize=9)
+    ax_l.grid(axis="y", alpha=0.3)
+
+    # Right panel: 5-year rolling median net migration rate by region
+    ax_r = axes[1]
+    # Use median to suppress year-on-year noise from county-boundary edits.
+    mig_by_year = (
+        df.groupby(["region", "Year"])["migration_rate"]
+        .median()
+        .unstack("region")
+    )
+    smoothed = mig_by_year.rolling(window=3, center=True, min_periods=1).mean()
+    for region in ("Polish", "German Catholic", "Protestant (rest)"):
+        ax_r.plot(smoothed.index, smoothed[region], color=region_colors[region],
+                  linewidth=2, marker="o", markersize=3, label=region)
+    ax_r.axvspan(*enforcement_years, alpha=0.15, color=COLORS["kulturkampf"],
+                 label=f"Kulturkampf ({enforcement_years[0]}--{enforcement_years[1]})")
+    ax_r.axvspan(*rollback_years, alpha=0.12, color=COLORS["protestant"],
+                 label=f"Rollback ({rollback_years[0]}--{rollback_years[1]})")
+    ax_r.axhline(0, color="black", linewidth=0.6, linestyle="-")
+    ax_r.set_xlabel("Year", fontsize=11)
+    ax_r.set_ylabel("Implied net migration rate (per 1{,}000 pop)", fontsize=11)
+    ax_r.set_title("Net migration: pop change − natural increase",
+                   fontsize=12, fontweight="bold")
+    ax_r.legend(loc="lower left", fontsize=8, ncol=1)
+    ax_r.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    return fig, axes
+
+
 def plot_lexis_diagram(
     title: str = "Lexis diagram: cohorts and the Kulturkampf",
     year_range: tuple[int, int] = (1822, 1900),
