@@ -431,12 +431,13 @@ plt.show()"""),
 NB03 = [
     md("""# Part 3: Mechanisms, Heterogeneity, and Falsifications
 
-Notebook 02 established that the marriage-rate finding is robust under TWFE-style inference but the fertility findings are not. This notebook asks *why* and stress-tests the results with formal falsifications.
+Notebook 02 established that the marriage-rate finding is robust under TWFE-style inference but the fertility findings are not. This notebook asks *why* and stress-tests the results with formal falsifications, then sets the result inside a Princeton-style demographic-transition decomposition.
 
 **Headline takeaways:**
-1. The "Catholic effect" is essentially a *Polish-provinces* effect. German Catholic counties show no negative response (and possibly a positive one).
-2. The Jewish-share placebo is *not* null — a serious caveat. Whatever post-1873 force operates, it loads on minority-religious composition broadly.
-3. Marriage rate is the only outcome that survives every falsification."""),
+1. **Demographic mechanism** (Coale-Watkins decomposition): the Kulturkampf operated through *nuptiality* (marriage formation), not within-marriage fertility ($I_g$). This is the textbook demographic-transition channel for an institutional shock.
+2. The "Catholic effect" is essentially a *Polish-provinces* effect. German Catholic counties show no negative response (and possibly a positive one).
+3. The Jewish-share placebo is *not* null — a serious caveat. Whatever post-1873 force operates, it loads on minority-religious composition broadly.
+4. Marriage rate is the only outcome that survives every falsification."""),
     md("""## 1. Setup"""),
     code(PREAMBLE + """
 
@@ -448,15 +449,74 @@ from src.analysis.regressions import (
     run_heterogeneity_did,
 )
 from src.analysis.channels import infant_mortality_analysis
+from src.analysis.coale_indices import (
+    compute_coale_indices,
+    aggregate_by_group_period as coale_aggregate,
+    did_on_indices as coale_did,
+)
 from src.analysis.polish_german import polish_german_rollback
 from src.analysis.rollback import rollback_event_study
 from src.analysis.wild_bootstrap import wild_cluster_bootstrap
 from src.analysis.magnitudes import magnitude_decomposition
 from src.analysis.cohort_translation import cohort_translation
+from src.visualization.plots import plot_lexis_diagram
 
 panel = pd.read_parquet(DATA_PROCESSED / "analysis_panel.parquet")
 print(f"Loaded panel: {len(panel):,} obs.")"""),
-    md("""## 2. Polish vs German Catholics: separate sub-sample regressions
+    md("""## 2. Demographic decomposition: Princeton EFP indices
+
+To frame the Kulturkampf shock inside the demographic-transition literature, we compute the three Princeton European Fertility Project indices (Coale & Watkins 1986):
+
+- $I_f$ = overall fertility, benchmarked to Hutterite age-specific rates
+- $I_g$ = marital fertility (legitimate births / married women, Hutterite-benchmarked)
+- $I_h$ = non-marital fertility (illegitimate births / unmarried women)
+
+Plus the **observed marriage rate** as the nuptiality marker. The decomposition is the canonical demographic-transition test: a fall in overall fertility ($I_f$) can come from either marital fertility ($I_g$, contraception/abstinence within marriage) or nuptiality (delayed/foregone marriage). For a one-time institutional shock like the Kulturkampf, the demographic question is exactly this.
+
+**Calibration caveat.** Galloway lacks age structure of women and married women, so we approximate using Coale-Demeny "West" age distribution and a Hajnal-line-eastern nuptiality schedule (~64% marriage prevalence among women 15–49). Absolute index levels are therefore approximations; the empirical analysis relies on cross-county and pre/post *differences*, which are robust to the calibration."""),
+    code("""panel_with = compute_coale_indices(panel)
+print("=" * 70)
+print("COALE INDICES — group means by Catholic share x period")
+print("=" * 70)
+print(coale_aggregate(panel_with).to_string(index=False, float_format=lambda x: f"{x:.3f}"))
+
+print("\\n" + "=" * 70)
+print("DiD ON EACH COMPONENT — coefficient on cath_share x post")
+print("=" * 70)
+did = coale_did(panel_with)
+for _, r in did.iterrows():
+    star = "***" if r["p"] < .01 else "**" if r["p"] < .05 else "*" if r["p"] < .10 else ""
+    digits = 3 if r["index"] == "marriage_rate" else 5
+    print(f"  {r['index']:>15s}: {r['coef']:+.{digits}f}{star:<3} (SE={r['se']:.{digits}f}, p={r['p']:.4f})")"""),
+    md("""**Interpretation — the textbook Coale-Watkins decomposition.** The DiD coefficients separate cleanly:
+
+| Component | DiD coef | Significance |
+|---|---|---|
+| $I_f$ (overall fertility) | $-0.00002$ | n.s. |
+| $I_g$ (**marital fertility**) | $+0.00001$ | **n.s.** |
+| $I_h$ (illegitimate fertility) | $-0.00014$ | $***$ |
+| **Marriage rate** | $-0.004$ | $***$ |
+
+The Kulturkampf had **no effect on marital fertility** and a **strong negative effect on the marriage rate**. In the Bongaarts (1978) proximate-determinants framework, this isolates the *nuptiality* channel as the operative one — exactly what a shock to Catholic *parish control over marriage formation* should produce, and exactly what the Princeton EFP literature finds for institutional shocks during the European Marriage Pattern era.
+
+This is the central demographic finding: the paper's empirical result is not "the Kulturkampf reduced fertility" but "the Kulturkampf reduced nuptiality, with marital fertility unchanged". For a JEH or demography-journal submission, this distinction matters — it places the result inside an established theoretical framework (Hajnal 1965, Coale-Watkins 1986, Bongaarts 1978) rather than as a free-standing econometric finding."""),
+    md("""## 3. Lexis diagram: which cohorts crossed the policy windows?
+
+The Kulturkampf is a *period* shock (1872–1878 enforcement, 1880–1887 rollback). The cohorts whose reproductive careers (ages 15–49) intersected either policy window are the ones whose marriage and fertility decisions could be affected. A Lexis diagram visualises this overlap directly.
+
+The shaded reproductive band (15–49) and the two policy windows together delimit the cohort range affected. The bounding cohorts (b. 1823, the last cohort still in reproductive years at the start of enforcement, and b. 1872, the first cohort entering reproductive years by the end of the rollback) are highlighted in black."""),
+    code("""fig, ax = plot_lexis_diagram(savepath=str(OUTPUTS / "fig_lexis.png"))
+plt.show()"""),
+    md("""**Interpretation.** Cohorts born ~1823–1872 had at least part of their reproductive career intersect the Kulturkampf and/or rollback windows. This is a large 50-year cohort range — the period effects we estimate aggregate over many overlapping cohort experiences. Two implications:
+
+1. The Coale indices computed above are *period* measures aggregating over these cohorts at each point in time. They cannot distinguish whether early cohorts (b. 1820s, near end of reproductive career) responded differently from late cohorts (b. 1860s, just starting). For that, age-specific or cohort-specific data would be required — Galloway does not have it.
+2. The *cohort fertility translation* in section 12 below uses an overlap factor (~0.6) to scale the period TFR effect into a CCF (completed cohort fertility) effect, partially correcting for this period-cohort discrepancy.
+
+For the paper, the Lexis diagram serves three purposes:
+- **Demographic literacy.** Standard tool in demography papers; signals the analysis is grounded in proper period-cohort thinking.
+- **Mechanism plausibility.** The bounding cohorts make it clear which women (b. 1843–1858, in their 20s and 30s during enforcement) would have been most affected by Catholic-marriage disruption.
+- **Caveat illustration.** Visualises why we can't run a clean cohort analysis with the data we have."""),
+    md("""## 4. Polish vs German Catholics: separate sub-sample regressions
 
 We split the Catholic counties into three groups by the Regierungsbezirk (Rb) administrative region:
 - **Polish provinces** (Posen, Bromberg) — Catholic *and* Polish-speaking. Bismarck pursued explicit Germanisation policies here in parallel with the Kulturkampf.
@@ -483,7 +543,7 @@ plt.show()"""),
 - **German Catholic provinces** show small *positive* coefficients (rollback $+0.031^{**}$, post-rollback $+0.039^{***}$) — a sign-flip relative to the Polish sub-sample.
 
 This is the central reframing of the paper: the "Catholic fertility effect" is mostly an ethnic-conflict effect in the Polish provinces, with possibly the opposite sign in German Catholic counties."""),
-    md("""## 3. Triple-difference: formal Polish heterogeneity test
+    md("""## 5. Triple-difference: formal Polish heterogeneity test
 
 The sub-sample regressions above test the Polish-vs-German pattern descriptively. For statistical inference, the cleaner version is a single regression with a triple interaction:
 
@@ -501,7 +561,7 @@ for outcome in ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"):
     print(f"      main:   {r['main_effect']:+.5f}{main_star:<3} (p={r['main_p']:.3f})")
     print(f"      triple: {r['triple_coef']:+.5f}{triple_star:<3} (p={r['triple_p']:.3f})")"""),
     md("""**Interpretation.** The triple coefficient is highly significant ($p<0.001$) and large in magnitude for both CBR ($-0.07$) and marriage rate ($-0.023$), while the main effect on the German-Catholic majority is essentially zero for CBR. Formal confirmation of the descriptive pattern: the Catholic effect is a Polish-province effect."""),
-    md("""## 4. Heterogeneity by literacy and urban share
+    md("""## 6. Heterogeneity by literacy and urban share
 
 The iPEHD merge brings in $f\\_$urban (urban population share) and school1517 (school enrolment, a literacy proxy). We test whether the Kulturkampf effect varied with these covariates — economic-development theories of fertility transition would predict urban-led adjustment."""),
     code("""print("=" * 75)
@@ -522,7 +582,7 @@ for moderator, label in [("school1517", "School enrolment 15–17"), ("f_urban",
 - **Urban share x marriage rate.** Triple is $-0.0001^{**}$ (small but significant) — marriage effect *slightly larger* in urban counties.
 
 The marriage finding is uniform across both moderators (no significant interaction), suggesting it doesn't operate through education or urbanisation specifically."""),
-    md("""## 5. Falsification 1: Jewish-share placebo
+    md("""## 7. Falsification 1: Jewish-share placebo
 
 The Kulturkampf was a Catholic–Protestant institutional conflict. Replacing cath\\_share with $f\\_jew$ (Jewish population share) and re-running the baseline DiD should yield null effects. If it doesn't, then *whatever* post-1873 shock our DiD picks up isn't Catholic-specific."""),
     code("""print("=" * 75)
@@ -537,7 +597,7 @@ What this likely means:
 - Either way, the cath_share x post coefficient does not isolate a Catholic-specific causal mechanism. The triple-difference results above are more credible because they explicitly compare *within* the Catholic-share dimension across regions.
 
 This caveat needs to appear prominently in the paper."""),
-    md("""## 6. Falsification 2: Pre-1872 fake-treatment placebo
+    md("""## 8. Falsification 2: Pre-1872 fake-treatment placebo
 
 Drop everything from 1872+ and pretend the Kulturkampf happened in 1865 instead. The DiD coefficient should be null, since the actual treatment hasn't happened yet within the restricted sample."""),
     code("""print("=" * 75)
@@ -550,7 +610,7 @@ print(fp.to_string(index=False, float_format=lambda x: f'{x:.4f}'))"""),
 - **Marriage rate IS null** ($p=0.13$). No detectable pre-trend.
 
 This is internally consistent: the pre-trends Wald test rejected for marriage too, but the *fake-treatment* placebo specifically asks whether a fake DiD design would detect an effect. Marriage rate's pre-trend is small and noisy; CBR's is large and systematic. Yet another reason to centre the paper on marriage rate."""),
-    md("""## 7. Wild cluster bootstrap (full panel + sub-samples)
+    md("""## 9. Wild cluster bootstrap (full panel + sub-samples)
 
 Conventional cluster-robust SEs are unreliable below ~50 clusters. Polish provinces have only 24 counties; the wild cluster bootstrap (Cameron-Gelbach-Miller 2008) is the canonical fix. We compute exact $p$-values for the full panel and the three sub-regions."""),
     code("""samples = {
@@ -582,14 +642,14 @@ for label, sf in samples.items():
 German Catholic counties had a *positive* CBR response to the Kulturkampf. Polish counties had a strongly *negative* response. The full-panel coefficient near zero is the average of two opposing-sign sub-effects.
 
 This is mechanistic reframing material: the Kulturkampf legislation may have actually pushed German Catholic populations toward higher fertility (perhaps as a "demographic resistance" to state encroachment, or via reduced marriage delay / institutional control), while it depressed Polish-Catholic fertility through the parallel Germanisation campaign (priest expulsions, language laws, school closures — which were applied much more aggressively in Polish areas)."""),
-    md("""## 8. Channel: infant mortality (1875+ only due to definition break)
+    md("""## 10. Channel: infant mortality (1875+ only due to definition break)
 
 Galloway's infant mortality measure changes definition in 1875, so we restrict this analysis to 1875+ and use the rollback period (1880+) as the treatment cut-off."""),
     code("""imr = infant_mortality_analysis(panel)
 imr["fig"].savefig(OUTPUTS / "fig11_infant_mortality.png", dpi=300, bbox_inches="tight")
 plt.show()"""),
     md("""**Interpretation.** The infant-mortality DiD on the rollback period gives a small, marginally significant positive coefficient — high-Catholic counties saw slightly higher infant mortality during the rollback. Plausibly consistent with Catholic charitable health services being disrupted, but the magnitude is modest and the sample is restricted."""),
-    md("""## 9. Magnitude decomposition (using IV CBR coefficient)
+    md("""## 11. Magnitude decomposition (using IV CBR coefficient)
 
 We translate the IV coefficient (estimated in notebook 04) into an interpretable magnitude: how much of the observed differential change in CBR between high- and low-Catholic counties does the Kulturkampf explain?"""),
     code("""mag = magnitude_decomposition(panel)
@@ -603,7 +663,7 @@ print(mag[display_cols].to_string(index=False, float_format=lambda x: f'{x:+.3f}
 - **counterfactual_gap.** What the differential gap *would have been* absent the Kulturkampf, $= \\text{observed} - \\text{IV-implied}$.
 
 For CBR, the IV says the Kulturkampf depressed the high-low CBR gap by $-3.46$ per 1,000; observed gap widened by only $+0.62$; so absent the Kulturkampf, high-Catholic counties would have had a $+4.09$ wider CBR advantage. The Kulturkampf prevented a fertility *divergence* rather than caused a *convergence*."""),
-    md("""## 10. Cohort fertility translation
+    md("""## 12. Cohort fertility translation
 
 Translate the IV CBR coefficient into period TFR and cohort CCF terms using a simple constant-share approximation. Useful for the demography audience and for the abstract."""),
     code("""from src.analysis.regressions import run_iv_did
@@ -620,7 +680,7 @@ print(f"  Cumulative birth deficit (per 1,000):   {ct['cumulative_per_1000']:+.1
 print(f"  Implied TFR effect (period):            {ct['tfr_diff']:+.3f}")
 print(f"  Implied CCF effect (cohort):            {ct['ccf_diff']:+.3f}")"""),
     md("""**Interpretation.** A 0.47-point reduction in TFR is large — roughly 20–30% of modern developed-country TFR levels, or equivalently ~62 fewer births per 1,000 population over the 1873–90 period for a county at the high-vs-low Catholic-share contrast. *Conditional on the IV being credible* (notebook 04 evaluates that), this is a demographically meaningful magnitude."""),
-    md("""## 11. What's next
+    md("""## 13. What's next
 
 - **Notebook 04** brings the spatial dimension and the identification strategy to bear: distance-to-Wittenberg as a Becker–Woessmann instrument, distance-to-bishop's-seat as an alternative instrument, multi-instrument 2SLS with the Wooldridge over-identification test, Conley HAC standard errors for spatial autocorrelation, and the IV-implied counterfactual fertility paths."""),
 ]

@@ -23,6 +23,120 @@ COLORS = {
 }
 
 
+def plot_lexis_diagram(
+    title: str = "Lexis diagram: cohorts and the Kulturkampf",
+    year_range: tuple[int, int] = (1822, 1900),
+    age_range: tuple[int, int] = (0, 50),
+    repro_age_range: tuple[int, int] = (15, 49),
+    enforcement_years: tuple[int, int] = (1872, 1878),
+    rollback_years: tuple[int, int] = (1880, 1887),
+    cohort_step: int = 5,
+    savepath: str | None = None,
+):
+    """
+    Lexis diagram showing cohorts crossing the Kulturkampf and the rollback
+    period.
+
+    The diagram plots calendar year (x-axis) against age (y-axis). Each
+    diagonal line represents a single birth cohort progressing through life.
+    The reproductive-age band (15--49) and the two policy windows are shaded
+    so that the reader sees at a glance which cohorts had reproductive
+    careers intersecting either or both.
+
+    Useful for the demographic-mechanism narrative: the cohorts in the
+    intersection (born roughly 1823--1872) are the ones whose marriage and
+    fertility decisions could be affected by the Kulturkampf.
+    """
+    fig, ax = plt.subplots(figsize=(12, 7))
+
+    # Reproductive-age band (highlighted)
+    ax.axhspan(repro_age_range[0], repro_age_range[1], alpha=0.10,
+               color="#888888", zorder=0)
+
+    # Policy windows
+    ax.axvspan(*enforcement_years, alpha=0.20, color=COLORS["catholic"],
+               label=f"Kulturkampf enforcement ({enforcement_years[0]}–{enforcement_years[1]})")
+    ax.axvspan(*rollback_years, alpha=0.18, color=COLORS["protestant"],
+               label=f"Rollback ({rollback_years[0]}–{rollback_years[1]})")
+
+    # Cohort diagonal lines: a person born in year c is at age (year - c).
+    cohort_first = year_range[0] - age_range[1]
+    cohort_last = year_range[1] - age_range[0]
+    cohorts = np.arange(cohort_first, cohort_last + 1)
+    annotated_cohorts = list(range(cohort_first - cohort_first % cohort_step,
+                                    cohort_last, cohort_step))
+
+    for c in cohorts:
+        years = np.arange(max(year_range[0], c + age_range[0]),
+                          min(year_range[1], c + age_range[1]) + 1)
+        if len(years) < 2:
+            continue
+        ages = years - c
+        is_annotated = c in annotated_cohorts
+        ax.plot(years, ages,
+                color="#444444" if is_annotated else "#cccccc",
+                linewidth=1.2 if is_annotated else 0.4,
+                alpha=0.95 if is_annotated else 0.6,
+                zorder=2 if is_annotated else 1)
+        if is_annotated and years[-1] >= year_range[1] - cohort_step:
+            ax.annotate(
+                f"b. {c}",
+                xy=(years[-1], ages[-1]),
+                xytext=(2, 0), textcoords="offset points",
+                fontsize=7, color="#444444", va="center",
+            )
+
+    # Highlight the cohorts whose reproductive years intersect the Kulturkampf
+    enforce_lo = enforcement_years[0] - repro_age_range[1]  # b. 1823 turns 49 in 1872
+    enforce_hi = enforcement_years[1] - repro_age_range[0]  # b. 1863 turns 15 in 1878
+    rollback_lo = rollback_years[0] - repro_age_range[1]
+    rollback_hi = rollback_years[1] - repro_age_range[0]
+    intersect_lo = min(enforce_lo, rollback_lo)
+    intersect_hi = max(enforce_hi, rollback_hi)
+
+    for c in (intersect_lo, intersect_hi):
+        years = np.arange(max(year_range[0], c + age_range[0]),
+                          min(year_range[1], c + age_range[1]) + 1)
+        if len(years) < 2:
+            continue
+        ages = years - c
+        ax.plot(years, ages, color="#000000", linewidth=2.0, alpha=0.9,
+                zorder=4, label=f"Bounding cohort (b. {c})" if c == intersect_lo else None)
+
+    # Reference horizontal lines at boundaries of the reproductive interval
+    for y in repro_age_range:
+        ax.axhline(y, color="#444444", linewidth=0.6, linestyle=":")
+
+    # Labels and aesthetics
+    ax.set_xlim(*year_range)
+    ax.set_ylim(*age_range)
+    ax.set_xlabel("Calendar year", fontsize=11)
+    ax.set_ylabel("Age", fontsize=11)
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.legend(loc="upper left", frameon=True, fontsize=9)
+    ax.grid(axis="both", alpha=0.2)
+
+    # Annotation: which cohorts intersect
+    note = (
+        f"Cohorts born {intersect_lo}–{intersect_hi} had at least part of\n"
+        f"their reproductive career (ages {repro_age_range[0]}–{repro_age_range[1]})\n"
+        f"intersect the Kulturkampf and/or rollback window."
+    )
+    ax.annotate(
+        note,
+        xy=(year_range[0] + 2, age_range[1] - 8),
+        fontsize=9,
+        bbox=dict(boxstyle="round,pad=0.4", facecolor="#FFFFEE",
+                  edgecolor="#888888"),
+        ha="left", va="top",
+    )
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    return fig, ax
+
+
 def plot_counterfactual_paths(
     df: pd.DataFrame,
     iv_coef: float,

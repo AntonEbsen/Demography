@@ -28,6 +28,11 @@ import numpy as np
 import pandas as pd
 
 from src.analysis.channels import infant_mortality_analysis
+from src.analysis.coale_indices import (
+    aggregate_by_group_period as coale_aggregate,
+    compute_coale_indices,
+    did_on_indices as coale_did,
+)
 from src.analysis.cohort_translation import cohort_translation
 from src.analysis.conley_se import spatial_did_se
 from src.analysis.dcdh_diagnostic import diagnostic as dcdh_diagnostic
@@ -657,6 +662,9 @@ def iv_results_table(
         + "Partial $R^{2}$ (instrument) & "
         + " & ".join(f"{c['first_stage_partial_r2']:.3f}" for c in cols)
         + r" \\" + "\n"
+        + "Wu--Hausman $p$ (endogeneity) & "
+        + " & ".join(f"{c['wu_hausman_p']:.3f}" for c in cols)
+        + r" \\" + "\n"
         + "County FE & "
         + " & ".join("Yes" for _ in cols)
         + r" \\" + "\n"
@@ -686,8 +694,13 @@ def iv_results_table(
             "to Wittenberg (the cradle of the Reformation). Sample shrinks because "
             "iPEHD coverage is $\\sim$90\\% of Galloway counties. "
             "First-stage $F$ tests joint significance of the excluded instrument; "
-            "values above 10 indicate instrument relevance. Standard errors clustered "
-            "at the county level. $^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+            "the Stock--Yogo (2005) critical value for ``10\\% maximal IV size'' is "
+            "$F = 16.38$ with one instrument, so values above this threshold are "
+            "considered strong. The Wu--Hausman test rejects the null that "
+            "$\\mathrm{CathShare} \\times \\mathrm{Post}$ is exogenous in OLS, "
+            "indicating that 2SLS is required for consistent estimates. Standard "
+            "errors clustered at the county level. $^{*}\\,p<0.10$, $^{**}\\,p<0.05$, "
+            "$^{***}\\,p<0.01$."
         ),
     )
     _write(out_path, out)
@@ -1466,6 +1479,12 @@ def iv_overid_table(
         + "Wooldridge over-id $p$ & "
         + " & ".join(f"{c['j_p']:.3f}" for c in cols)
         + r" \\" + "\n"
+        + "Wu--Hausman $p$ (endogeneity) & "
+        + " & ".join(f"{c['wu_hausman_p']:.3f}" for c in cols)
+        + r" \\" + "\n"
+        + "Anderson--Rubin $p$ (weak-IV robust) & "
+        + " & ".join(f"{c['ar_p']:.3f}" for c in cols)
+        + r" \\" + "\n"
         + "Observations & "
         + " & ".join(f"{c['n']:,}" for c in cols)
         + r" \\" + "\n"
@@ -1487,9 +1506,16 @@ def iv_overid_table(
             "\\mathrm{Post}$ for $z \\in \\{\\mathrm{Wittenberg}, "
             "\\mathrm{Bishop}\\}$. The Wooldridge $p$-value tests the "
             "over-identifying restriction (failure to reject is consistent with "
-            "instrument exogeneity). A first-stage $F$ above 10 indicates "
-            "instrument relevance. Standard errors clustered at the county "
-            "level. $^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+            "instrument exogeneity). The Stock--Yogo (2005) critical value for "
+            "``10\\% maximal IV size'' with two instruments is $F = 19.93$, so "
+            "all reported first-stage $F$ values are well above the strong-instrument "
+            "threshold. The Wu--Hausman test rejects exogeneity (so 2SLS is "
+            "required); the Anderson--Rubin $p$-value tests "
+            "$H_0\\!: \\beta = 0$ in a way that is robust to weak instruments. "
+            "Where AR and the standard 2SLS $p$-value disagree, AR is the more "
+            "conservative (and weak-instrument-defensible) inference. Standard "
+            "errors clustered at the county level. "
+            "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
         ),
     )
     _write(out_path, out)
@@ -1573,6 +1599,121 @@ def wild_bootstrap_table(
             "counties) where conventional cluster-robust standard errors are "
             "unreliable. $^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$ "
             "stars are based on the wild bootstrap $p$-value."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
+def coale_decomposition_table(
+    panel: pd.DataFrame,
+    out_path: Path | None = None,
+) -> str:
+    """
+    Princeton-EFP-style fertility decomposition: I_f, I_g, I_h, marriage rate.
+
+    Two panels: (A) group means by Catholic share x period, and (B) DiD on
+    each component. The decomposition isolates whether the Kulturkampf
+    operated through marital fertility (I_g) or nuptiality (marriage rate).
+    """
+    out_path = out_path or TABLES_DIR / "coale_decomposition.tex"
+    panel_with = compute_coale_indices(panel)
+
+    means = coale_aggregate(panel_with).set_index(["group", "period"])
+    did = coale_did(panel_with).set_index("index")
+
+    index_labels = {
+        "I_f": "$I_f$ (overall fertility)",
+        "I_g": "$I_g$ (marital fertility)",
+        "I_h": "$I_h$ (illegitimate fertility)",
+        "marriage_rate": "Marriage rate (per 1{,}000)",
+    }
+
+    # Panel A: pre/post means by group
+    panel_a_rows = []
+    for idx_name, idx_label in index_labels.items():
+        if idx_name not in means.columns:
+            continue
+        cells = []
+        for grp in ("Low Cath", "High Cath"):
+            for per in ("Pre", "Post"):
+                try:
+                    val = means.loc[(grp, per), idx_name]
+                    cells.append(f"{val:.3f}")
+                except KeyError:
+                    cells.append("")
+        panel_a_rows.append(f"{idx_label} & " + " & ".join(cells) + r" \\")
+
+    # Panel B: DiD coefficients (scientific-style precision since the
+    # Hutterite-benchmarked indices vary by 10^{-4} per pp of cath_share).
+    def _fmt_small(x: float, p: float, digits: int = 5) -> str:
+        if pd.isna(x):
+            return ""
+        return f"{x:+.{digits}f}{_stars(p)}"
+
+    panel_b_rows = []
+    for idx_name, idx_label in index_labels.items():
+        if idx_name not in did.index:
+            continue
+        r = did.loc[idx_name]
+        digits = 3 if idx_name == "marriage_rate" else 5
+        coef_str = _fmt_small(r["coef"], r["p"], digits=digits)
+        se_str = (f"({r['se']:.{digits}f})" if not pd.isna(r["se"]) else "")
+        panel_b_rows.append(
+            f"{idx_label} & {coef_str} & {se_str} & {int(r['n']):,} \\\\"
+        )
+
+    body = (
+        "\\begin{tabular}{lcccc}\n"
+        "\\toprule\n"
+        " & \\multicolumn{2}{c}{Low Catholic ($\\le$50\\%)} & "
+        "\\multicolumn{2}{c}{High Catholic ($>$50\\%)} \\\\\n"
+        "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\n"
+        " & Pre & Post & Pre & Post \\\\\n"
+        "\\midrule\n"
+        + f"\\multicolumn{{5}}{{l}}{{\\textit{{Panel A: Group means}}}} \\\\\n"
+        + "\n".join(panel_a_rows)
+        + "\n\\midrule\n"
+        + "\\multicolumn{5}{l}{\\textit{Panel B: DiD coefficient on "
+          "$\\mathrm{CathShare} \\times \\mathrm{Post}$ "
+          "(coefficient, SE, observations)}} \\\\\n"
+        + "Outcome & Coefficient & SE & $N$ & \\\\\n"
+        + "\\cmidrule(lr){1-4}\n"
+    )
+    for row in panel_b_rows:
+        body += row + "\n"
+    body = body.rstrip("\n") + "\n\\bottomrule\n\\end{tabular}\n"
+
+    out = _wrap_table(
+        body,
+        caption=(
+            "Princeton fertility decomposition (Coale and Watkins 1986): "
+            "marital fertility $I_g$ vs.\\ nuptiality (marriage rate)"
+        ),
+        label="tab:coale_decomposition",
+        n_cols=5,
+        notes=(
+            "$I_f$, $I_g$, and $I_h$ are Hutterite-benchmarked Princeton EFP "
+            "indices for overall, marital, and non-marital fertility. They "
+            "are computed using the Coale-Demeny ``West'' female age "
+            "distribution and an assumed nuptiality schedule (calibrated to a "
+            "weighted-mean marriage prevalence of 64\\% among women 15--49, "
+            "consistent with the eastern side of the Hajnal line). Because "
+            "Galloway lacks age structure of women and married women, the "
+            "absolute index levels depend on the calibration and should be "
+            "read alongside the cross-county and pre/post differences. "
+            "The Princeton I_m index is omitted because it is constant under "
+            "the calibration; the observed marriage rate (Martot / Poptot per "
+            "1{,}000) serves as the nuptiality marker. Panel~A reports group "
+            "means; Panel~B reports the coefficient on $\\mathrm{CathShare} "
+            "\\times \\mathrm{Post}$ from a county- and year-fixed-effects "
+            "regression with $\\ln(\\mathrm{Pop})$ as a control. The "
+            "demographic interpretation: $I_g$ shows no DiD effect, but the "
+            "marriage rate shows a strong negative effect, implying that the "
+            "Kulturkampf operated through marriage formation (nuptiality), "
+            "not within-marriage childbearing. Standard errors clustered at "
+            "the county level. $^{*}\\,p<0.10$, $^{**}\\,p<0.05$, "
+            "$^{***}\\,p<0.01$."
         ),
     )
     _write(out_path, out)
@@ -1703,6 +1844,17 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "wild_bootstrap.tex")
     wild_bootstrap_table(panel, out_path=written[-1])
+
+    written.append(out_dir / "coale_decomposition.tex")
+    coale_decomposition_table(panel, out_path=written[-1])
+
+    # Lexis diagram pairs with the Coale decomposition: shows which cohorts'
+    # reproductive careers intersect the Kulturkampf and rollback windows.
+    from src.visualization.plots import plot_lexis_diagram
+    lexis_path = FIGURES_DIR / "fig_lexis.png"
+    lexis_path.parent.mkdir(parents=True, exist_ok=True)
+    plot_lexis_diagram(savepath=str(lexis_path))
+    logger.info("Wrote %s", lexis_path)
 
     written.append(out_dir / "conley_robustness.tex")
     conley_robustness_table(panel, out_path=written[-1])

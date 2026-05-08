@@ -15,11 +15,13 @@ CathShare $\times$ Post & -0.012$^{*}$ & -0.013$^{**}$ & 0.007$^{*}$ & -0.010$^{
 First-stage $F$ & 175.6 & 175.6 & 175.6 & 175.6 \\
 Partial $R^{2}$ & 0.282 & 0.282 & 0.282 & 0.282 \\
 Wooldridge over-id $p$ & 0.000 & 0.000 & 0.000 & 0.121 \\
+Wu--Hausman $p$ (endogeneity) & 0.000 & 0.000 & 0.000 & 0.000 \\
+Anderson--Rubin $p$ (weak-IV robust) & 0.000 & 0.000 & 0.000 & 0.068 \\
 Observations & 9,379 & 9,379 & 9,379 & 9,379 \\
 \bottomrule
 \end{tabular}
 \begin{minipage}{\linewidth}
 \vspace{0.5em}
-\footnotesize \textit{Notes:} Both instruments enter the first stage as $\mathrm{km}_z \times \mathrm{Post}$ for $z \in \{\mathrm{Wittenberg}, \mathrm{Bishop}\}$. The Wooldridge $p$-value tests the over-identifying restriction (failure to reject is consistent with instrument exogeneity). A first-stage $F$ above 10 indicates instrument relevance. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
+\footnotesize \textit{Notes:} Both instruments enter the first stage as $\mathrm{km}_z \times \mathrm{Post}$ for $z \in \{\mathrm{Wittenberg}, \mathrm{Bishop}\}$. The Wooldridge $p$-value tests the over-identifying restriction (failure to reject is consistent with instrument exogeneity). The Stock--Yogo (2005) critical value for ``10\% maximal IV size'' with two instruments is $F = 19.93$, so all reported first-stage $F$ values are well above the strong-instrument threshold. The Wu--Hausman test rejects exogeneity (so 2SLS is required); the Anderson--Rubin $p$-value tests $H_0\!: \beta = 0$ in a way that is robust to weak instruments. Where AR and the standard 2SLS $p$-value disagree, AR is the more conservative (and weak-instrument-defensible) inference. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
 \end{minipage}
 \end{table}

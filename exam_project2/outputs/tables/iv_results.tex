@@ -19,6 +19,7 @@ CathShare $\times$ Post & -0.039$^{***}$ & -0.047$^{***}$ & 0.031$^{***}$ & -0.0
 \midrule
 First-stage $F$ & 24.7 & 24.7 & 24.7 & 24.7 \\
 Partial $R^{2}$ (instrument) & 0.099 & 0.099 & 0.099 & 0.099 \\
+Wu--Hausman $p$ (endogeneity) & 0.000 & 0.000 & 0.000 & 0.003 \\
 County FE & Yes & Yes & Yes & Yes \\
 Year FE & Yes & Yes & Yes & Yes \\
 Observations & 9,639 & 9,639 & 9,639 & 9,639 \\
@@ -26,6 +27,6 @@ Observations & 9,639 & 9,639 & 9,639 & 9,639 \\
 \end{tabular}
 \begin{minipage}{\linewidth}
 \vspace{0.5em}
-\footnotesize \textit{Notes:} Panel~A reproduces the OLS coefficient from Table~\ref{tab:baseline_did} for comparison. Panel~B reports 2SLS estimates with the Becker--Woessmann instrument $\mathrm{kmwittenberg}_i \times \mathrm{Post}_t$, where $\mathrm{kmwittenberg}_i$ is the great-circle distance from each county to Wittenberg (the cradle of the Reformation). Sample shrinks because iPEHD coverage is $\sim$90\% of Galloway counties. First-stage $F$ tests joint significance of the excluded instrument; values above 10 indicate instrument relevance. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
+\footnotesize \textit{Notes:} Panel~A reproduces the OLS coefficient from Table~\ref{tab:baseline_did} for comparison. Panel~B reports 2SLS estimates with the Becker--Woessmann instrument $\mathrm{kmwittenberg}_i \times \mathrm{Post}_t$, where $\mathrm{kmwittenberg}_i$ is the great-circle distance from each county to Wittenberg (the cradle of the Reformation). Sample shrinks because iPEHD coverage is $\sim$90\% of Galloway counties. First-stage $F$ tests joint significance of the excluded instrument; the Stock--Yogo (2005) critical value for ``10\% maximal IV size'' is $F = 16.38$ with one instrument, so values above this threshold are considered strong. The Wu--Hausman test rejects the null that $\mathrm{CathShare} \times \mathrm{Post}$ is exogenous in OLS, indicating that 2SLS is required for consistent estimates. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
 \end{minipage}
 \end{table}
