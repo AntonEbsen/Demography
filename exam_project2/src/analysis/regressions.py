@@ -236,6 +236,21 @@ def run_iv_did_multi(
     j_p = float(j_test.pval)
     j_df = int(j_test.df)
 
+    # Wu--Hausman test of endogeneity. Rejection means OLS is inconsistent
+    # and 2SLS is required; failure to reject means OLS is fine.
+    wh = iv.wu_hausman()
+    wh_stat = float(wh.stat)
+    wh_p = float(wh.pval)
+
+    # Anderson--Rubin test of $H_0: \beta_{\mathrm{endog}} = 0$. Robust to
+    # weak instruments because it does not condition on the (potentially
+    # noisy) first-stage estimate. Reported alongside the standard 2SLS
+    # $p$-value as a sensitivity check against weak-instrument concerns.
+    ar = iv.anderson_rubin
+    ar_stat = float(ar.stat) if hasattr(ar, "stat") else float("nan")
+    ar_p = float(ar.pval) if hasattr(ar, "pval") else float("nan")
+    ar_df = int(ar.df) if hasattr(ar, "df") else 0
+
     return {
         "iv": iv,
         "instruments": list(instruments),
@@ -247,6 +262,11 @@ def run_iv_did_multi(
         "j_stat": j_stat,
         "j_p": j_p,
         "j_df": j_df,
+        "wu_hausman_stat": wh_stat,
+        "wu_hausman_p": wh_p,
+        "ar_stat": ar_stat,
+        "ar_p": ar_p,
+        "ar_df": ar_df,
         "n": int(iv.nobs),
     }
 
@@ -596,6 +616,11 @@ def run_iv_did(
     ols_se = float(ols_res.std_errors["cath_share_x_post"])
     ols_p = float(ols_res.pvalues["cath_share_x_post"])
 
+    # Wu--Hausman test of endogeneity (rejection => OLS inconsistent, IV needed).
+    wh = iv.wu_hausman()
+    wh_stat = float(wh.stat)
+    wh_p = float(wh.pval)
+
     return {
         "iv": iv,
         "iv_coef": float(iv.params["cath_share_x_post"]),
@@ -606,6 +631,8 @@ def run_iv_did(
         "ols_coef": ols_coef,
         "ols_se": ols_se,
         "ols_p": ols_p,
+        "wu_hausman_stat": wh_stat,
+        "wu_hausman_p": wh_p,
         "n": int(iv.nobs),
     }
 

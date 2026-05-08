@@ -60,5 +60,6 @@ stages:
       - src/analysis/multiple_testing.py
       - src/analysis/magnitudes.py
       - src/analysis/wild_bootstrap.py
+      - src/analysis/coale_indices.py
       - data/processed/analysis_panel.parquet
       - data/processed/centroids.parquet
