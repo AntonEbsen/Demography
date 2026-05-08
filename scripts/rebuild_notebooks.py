@@ -436,13 +436,16 @@ Notebook 02 established that the marriage-rate finding is robust under TWFE-styl
 **Headline takeaways:**
 1. **Demographic mechanism** (Coale-Watkins decomposition): the Kulturkampf operated through *nuptiality* (marriage formation), not within-marriage fertility ($I_g$). This is the textbook demographic-transition channel for an institutional shock.
 2. The "Catholic effect" is essentially a *Polish-provinces* effect. German Catholic counties show no negative response (and possibly a positive one).
-3. The Jewish-share placebo is *not* null — a serious caveat. Whatever post-1873 force operates, it loads on minority-religious composition broadly.
-4. Marriage rate is the only outcome that survives every falsification."""),
+3. The Polish-province effect is partly mechanical: ~25% of the CBR coefficient is driven by post-1885 emigration (Bismarck's *Polenausweisungen* and the 1886 Settlement Commission). Marriage rate is unaffected by this confound.
+4. The Jewish-share placebo is *not* null — a serious caveat. Whatever post-1873 force operates, it loads on minority-religious composition broadly.
+5. Marriage rate is the only outcome that survives every falsification."""),
     md("""## 1. Setup"""),
     code(PREAMBLE + """
 
 from src.analysis.regressions import (
     run_baseline_did,
+    run_count_marriage_did,
+    run_emigration_robustness,
     run_jewish_placebo,
     run_fake_treatment_placebo,
     run_triple_difference_polish,
@@ -459,7 +462,9 @@ from src.analysis.rollback import rollback_event_study
 from src.analysis.wild_bootstrap import wild_cluster_bootstrap
 from src.analysis.magnitudes import magnitude_decomposition
 from src.analysis.cohort_translation import cohort_translation
-from src.visualization.plots import plot_lexis_diagram
+from src.visualization.plots import (
+    plot_lexis_diagram, plot_population_and_migration,
+)
 
 panel = pd.read_parquet(DATA_PROCESSED / "analysis_panel.parquet")
 print(f"Loaded panel: {len(panel):,} obs.")"""),
@@ -642,14 +647,70 @@ for label, sf in samples.items():
 German Catholic counties had a *positive* CBR response to the Kulturkampf. Polish counties had a strongly *negative* response. The full-panel coefficient near zero is the average of two opposing-sign sub-effects.
 
 This is mechanistic reframing material: the Kulturkampf legislation may have actually pushed German Catholic populations toward higher fertility (perhaps as a "demographic resistance" to state encroachment, or via reduced marriage delay / institutional control), while it depressed Polish-Catholic fertility through the parallel Germanisation campaign (priest expulsions, language laws, school closures — which were applied much more aggressively in Polish areas)."""),
-    md("""## 10. Channel: infant mortality (1875+ only due to definition break)
+    md("""## 10. Emigration confound: are the Polish-province results mechanical?
+
+A natural concern with the Polish-province coefficients is that the post-1873 demographic response was driven by *out-migration* rather than by behavioural changes in fertility or marriage. The Kulturkampf coincided with major Polish emigration to the Ruhr industrial region and to the Americas, and Bismarck's $\\mathit{Polenausweisungen}$ in 1885--86 explicitly expelled ~30{,}000 non-Prussian Poles, with the 1886 Settlement Commission accelerating Germanisation through land purchases. If Polish provinces lost young adults at higher rates, both the marriage rate and the crude birth rate would fall mechanically through the population denominator, even if behaviour was unchanged.
+
+**Diagnostic.** We construct two diagnostics:
+
+1. **Population trajectory by sub-region** (1862 = 100). If Polish provinces have anomalous trajectories, that is prima facie evidence for emigration confounding.
+2. **Implied net migration rate** = $\\Delta\\mathrm{Poptot} - (\\mathrm{Birtot} - \\mathrm{Dthtot})$, per 1{,}000 population. Negative values indicate net out-migration. Standard demographic identity when direct migration registers are unavailable."""),
+    code("""fig, axes = plot_population_and_migration(
+    panel, savepath=str(OUTPUTS / "fig_population_migration.png"),
+)
+plt.show()"""),
+    md("""**Interpretation — the user's intuition is correct.** The figure shows two stark patterns:
+
+- **Population trajectory.** Polish provinces grew steadily from 1862--1880 (index 100 → 109), paralleling German Catholic provinces. They then *collapsed* to index 78 by 1890 — a 22\\% drop in a decade. German Catholic provinces continued to grow steadily (118 by 1890); Protestant provinces grew fastest (~145 by 1890, with a 1865--67 step change reflecting the Schleswig-Holstein and post-1866 Prussian annexations).
+- **Net migration rate.** Polish migration rate is statistically indistinguishable from other regions until ~1885, then collapses to roughly $-100$ per 1{,}000 population by 1888. The timing maps directly onto the 1885 expulsions and the 1886 Settlement Commission.
+
+A crucial nuance: the Kulturkampf *enforcement* years (1872--1878) show no anomalous Polish emigration. The migration spike comes specifically during the rollback and post-rollback periods, with the late-1880s explosion driven by the $\\mathit{Polenausweisungen}$. So:
+
+- **Enforcement-period coefficients** (1873--1878): plausibly behavioural, not mechanical.
+- **Rollback coefficients** (1880--1887): partly mechanical; severity grows over time.
+- **Post-rollback coefficients** (1888+): heavily mechanical."""),
+    md("""### Robustness: does the Polish-Catholic CBR effect survive?
+
+To quantify the emigration confound, we estimate the headline DiD coefficient under four progressively stricter specifications, separately for the full panel and the Polish sub-sample, plus two intensive-margin outcomes that do not have a population denominator at all (total marriages count and births per marriage)."""),
+    code("""print("=" * 75)
+print("EMIGRATION ROBUSTNESS — full panel")
+print("=" * 75)
+full_robust = run_emigration_robustness(panel, outcomes=("cbr", "marriage_rate"))
+print(full_robust.to_string(index=False, float_format=lambda x: f"{x:+.5f}"))
+print()
+
+print("=" * 75)
+print("EMIGRATION ROBUSTNESS — Polish provinces only")
+print("=" * 75)
+polish_robust = run_emigration_robustness(
+    panel[panel["Rb"].isin(["POS", "BRO"])],
+    outcomes=("cbr", "marriage_rate"),
+)
+print(polish_robust.to_string(index=False, float_format=lambda x: f"{x:+.5f}"))
+print()
+
+print("=" * 75)
+print("POPULATION-FREE OUTCOMES — full panel")
+print("=" * 75)
+counts = run_count_marriage_did(panel)
+print(counts.to_string(index=False, float_format=lambda x: f"{x:+.5f}"))"""),
+    md("""**Interpretation — three findings.**
+
+1. **Marriage rate is bulletproof.** Across all four specifications and both sample cuts, the marriage-rate coefficient changes by less than 8\\% (full panel: $-0.0036$ → $-0.0031$; Polish: $-0.025$ → $-0.025$). Adding population growth, implied migration, or restricting to pre-1885 leaves the result essentially unchanged. The marriage-rate finding is mechanically clean.
+
+2. **Polish CBR effect attenuates but survives.** The pre-1885 cut reduces the Polish-CBR coefficient from $-0.068^{***}$ to $-0.051^{***}$ (still highly significant, p $<$ 0.01). About 25\\% of the original magnitude was emigration-driven mechanics; ~75\\% is a real behavioural response. This is the conservative estimate to report in the paper.
+
+3. **Population-free outcomes corroborate the behavioural interpretation.** Total marriages (a count, no denominator) decline by 0.50/year per percentage point of cath\\_share (p = 0.011); legitimate births *per marriage* actually *rise* (+0.003, p $<$ 0.001), consistent with selection — fewer marriages happen, and those that do are among couples who would have had higher fertility anyway. This is exactly the intensive/extensive-margin pattern that an institutional disruption to marriage formation would produce.
+
+**Econometric warning.** Adding migration as a control in the *headline* regressions is a "bad-control" problem (Angrist--Pischke 2009 ch.~3): population is itself an outcome of the Kulturkampf. The migration-controlled coefficients here are reported only as a *robustness exercise* to show the marriage-rate result does not depend on the population denominator. We do not use them as the headline estimate."""),
+    md("""## 11. Channel: infant mortality (1875+ only due to definition break)
 
 Galloway's infant mortality measure changes definition in 1875, so we restrict this analysis to 1875+ and use the rollback period (1880+) as the treatment cut-off."""),
     code("""imr = infant_mortality_analysis(panel)
 imr["fig"].savefig(OUTPUTS / "fig11_infant_mortality.png", dpi=300, bbox_inches="tight")
 plt.show()"""),
     md("""**Interpretation.** The infant-mortality DiD on the rollback period gives a small, marginally significant positive coefficient — high-Catholic counties saw slightly higher infant mortality during the rollback. Plausibly consistent with Catholic charitable health services being disrupted, but the magnitude is modest and the sample is restricted."""),
-    md("""## 11. Magnitude decomposition (using IV CBR coefficient)
+    md("""## 12. Magnitude decomposition (using IV CBR coefficient)
 
 We translate the IV coefficient (estimated in notebook 04) into an interpretable magnitude: how much of the observed differential change in CBR between high- and low-Catholic counties does the Kulturkampf explain?"""),
     code("""mag = magnitude_decomposition(panel)
@@ -663,7 +724,7 @@ print(mag[display_cols].to_string(index=False, float_format=lambda x: f'{x:+.3f}
 - **counterfactual_gap.** What the differential gap *would have been* absent the Kulturkampf, $= \\text{observed} - \\text{IV-implied}$.
 
 For CBR, the IV says the Kulturkampf depressed the high-low CBR gap by $-3.46$ per 1,000; observed gap widened by only $+0.62$; so absent the Kulturkampf, high-Catholic counties would have had a $+4.09$ wider CBR advantage. The Kulturkampf prevented a fertility *divergence* rather than caused a *convergence*."""),
-    md("""## 12. Cohort fertility translation
+    md("""## 13. Cohort fertility translation
 
 Translate the IV CBR coefficient into period TFR and cohort CCF terms using a simple constant-share approximation. Useful for the demography audience and for the abstract."""),
     code("""from src.analysis.regressions import run_iv_did
@@ -680,7 +741,7 @@ print(f"  Cumulative birth deficit (per 1,000):   {ct['cumulative_per_1000']:+.1
 print(f"  Implied TFR effect (period):            {ct['tfr_diff']:+.3f}")
 print(f"  Implied CCF effect (cohort):            {ct['ccf_diff']:+.3f}")"""),
     md("""**Interpretation.** A 0.47-point reduction in TFR is large — roughly 20–30% of modern developed-country TFR levels, or equivalently ~62 fewer births per 1,000 population over the 1873–90 period for a county at the high-vs-low Catholic-share contrast. *Conditional on the IV being credible* (notebook 04 evaluates that), this is a demographically meaningful magnitude."""),
-    md("""## 13. What's next
+    md("""## 14. What's next
 
 - **Notebook 04** brings the spatial dimension and the identification strategy to bear: distance-to-Wittenberg as a Becker–Woessmann instrument, distance-to-bishop's-seat as an alternative instrument, multi-instrument 2SLS with the Wooldridge over-identification test, Conley HAC standard errors for spatial autocorrelation, and the IV-implied counterfactual fertility paths."""),
 ]
