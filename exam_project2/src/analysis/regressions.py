@@ -13,7 +13,7 @@ import numpy as np
 from linearmodels.iv import IV2SLS
 from linearmodels.panel import PanelOLS
 from linearmodels.panel.results import PanelEffectsResults
-from typing import Optional, Dict, List, Union
+from typing import Optional, Dict, List, Sequence, Union
 
 from src.analysis.utils import safe_panel_ols
 
@@ -27,6 +27,30 @@ def _prepare_panel(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def _county_baselines(
+    panel: pd.DataFrame, variables: Sequence[str]
+) -> Dict[str, Dict[int, float]]:
+    """
+    Return county-level baseline values for the requested variables, keyed
+    by county Code. Picks each county's *first non-missing* observation,
+    treating these characteristics as time-invariant pre-treatment
+    measurements (the iPEHD merge uses 1871 cross-sectional values, which
+    are the pre-Kulturkampf baseline).
+    """
+    out: Dict[str, Dict[int, float]] = {}
+    df = panel.reset_index() if "Code" not in panel.columns else panel
+    for var in variables:
+        if var not in df.columns:
+            continue
+        first = (
+            df.dropna(subset=[var])
+              .sort_values(["Code", "Year"])
+              .groupby("Code")[var].first()
+        )
+        out[var] = first.to_dict()
+    return out
+
+
 def run_baseline_did(
     df: pd.DataFrame,
     outcome: str = "cbr",
@@ -35,6 +59,8 @@ def run_baseline_did(
     cluster: str = "Code",
     fe_design: str = "twfe",
     two_way_cluster: bool = False,
+    pretreatment_trends: Optional[Sequence[str]] = None,
+    pretreatment_trends_form: str = "year_dummies",
 ) -> Dict[str, Union[PanelEffectsResults, str]]:
     """
     Run the baseline DiD specification.
@@ -92,6 +118,46 @@ def run_baseline_did(
 
     y = panel[outcome]
     X = panel[exog_vars]
+
+    # Pre-treatment-characteristic time trends (Bai 2009; Hsiao 2014):
+    # adds X_baseline_i × <year-trend> for each baseline characteristic, so
+    # counties with different baseline urbanisation/literacy/etc. are allowed
+    # to follow different trajectories. Identification of beta then comes from
+    # *deviations* from those trajectories at 1873.
+    if pretreatment_trends:
+        baselines = _county_baselines(panel, pretreatment_trends)
+        years_arr = np.asarray(
+            panel.index.get_level_values("Year"), dtype=float
+        )
+        codes_arr = np.asarray(panel.index.get_level_values("Code"))
+        if pretreatment_trends_form == "year_dummies":
+            year_index = pd.Series(years_arr, index=panel.index)
+            year_dummies = pd.get_dummies(year_index, prefix="yr", drop_first=True)
+            year_dummies.index = panel.index
+            for var in pretreatment_trends:
+                if var not in baselines:
+                    continue
+                baseline_obs = pd.Series(
+                    [baselines[var].get(c, np.nan) for c in codes_arr],
+                    index=panel.index,
+                ).astype(float)
+                inter = year_dummies.multiply(baseline_obs, axis=0)
+                inter = inter.add_prefix(f"{var}_x_")
+                X = pd.concat([X, inter], axis=1)
+        elif pretreatment_trends_form == "linear":
+            year_centered = years_arr - years_arr.mean()
+            for var in pretreatment_trends:
+                if var not in baselines:
+                    continue
+                baseline_obs = np.array(
+                    [baselines[var].get(c, np.nan) for c in codes_arr], dtype=float
+                )
+                X[f"{var}_x_year"] = baseline_obs * year_centered
+        else:
+            raise ValueError(
+                f"pretreatment_trends_form must be 'year_dummies' or 'linear'; "
+                f"got {pretreatment_trends_form!r}"
+            )
 
     # Drop any remaining NaN
     valid = y.notna() & X.notna().all(axis=1)
@@ -334,15 +400,24 @@ def pretrends_wald_test(
     treatment_var: str = "cath_share",
     ref_year: int = 1872,
     pre_cutoff: int = 1872,
+    pretreatment_trends: Optional[Sequence[str]] = None,
+    pretreatment_trends_form: str = "linear",
 ) -> Dict[str, float]:
     """
     Joint Wald test that all pre-treatment event-study coefficients are zero.
 
     Returns the F-statistic, degrees of freedom, and p-value for
     H_0: β_t = 0  for all t < pre_cutoff (excluding the omitted ref_year).
+
+    The optional ``pretreatment_trends`` argument is forwarded to the
+    underlying event-study so the test can be re-run conditional on
+    pre-treatment-characteristic × year interactions, which is the right
+    diagnostic to ask whether those trends *explain* the pre-trend rejection.
     """
     es = run_event_study(
-        df, outcome=outcome, treatment_var=treatment_var, ref_year=ref_year
+        df, outcome=outcome, treatment_var=treatment_var, ref_year=ref_year,
+        pretreatment_trends=pretreatment_trends,
+        pretreatment_trends_form=pretreatment_trends_form,
     )
     res = es["result"]
 
@@ -431,6 +506,67 @@ def run_heterogeneity_did(
         "triple_p": float(res.pvalues["triple"]),
         "n": int(res.nobs),
     }
+
+
+def run_pretreatment_trends_robustness(
+    df: pd.DataFrame,
+    outcomes: tuple[str, ...] = ("cbr", "marriage_rate"),
+    form: str = "year_dummies",
+) -> pd.DataFrame:
+    """
+    Pretreatment-characteristic time-trend robustness (Bai 2009; Hsiao 2014).
+
+    Estimates the headline DiD coefficient under five progressively more
+    flexible specifications. Each adds an interaction between pre-treatment
+    iPEHD characteristics (county-level constants from 1871) and either
+    year fixed effects (the most flexible form) or a centred linear trend.
+    The interaction lets counties with different baseline characteristics
+    follow different trajectories, identifying the Kulturkampf effect from
+    *deviations* from those trajectories rather than from the overall
+    differential trend across treatment status.
+
+    Specifications:
+      (1) Baseline TWFE
+      (2) + literacy (school1517) x trend
+      (3) + literacy + urbanisation (f_urban) x trend
+      (4) + lit + urban + Prussian citizenship (f_pruss) x trend
+      (5) + lit + urban + pruss + Jewish share (f_jew) x trend
+
+    Note: f_jew x trend likely absorbs the differential dynamics of eastern
+    Polish provinces (where Jewish share is high), so the gap between (4)
+    and (5) is informative about how much of the Kulturkampf coefficient
+    operates through the Polish-province channel.
+    """
+    specs = [
+        ("(1) Baseline (no pretreatment trends)", None),
+        ("(2) + literacy x trend", ("school1517",)),
+        ("(3) + lit + urban x trend", ("school1517", "f_urban")),
+        ("(4) + lit + urban + pruss x trend", ("school1517", "f_urban", "f_pruss")),
+        ("(5) + lit + urban + pruss + jew x trend",
+            ("school1517", "f_urban", "f_pruss", "f_jew")),
+    ]
+
+    rows = []
+    for outcome in outcomes:
+        for label, pt in specs:
+            try:
+                res = run_baseline_did(
+                    df, outcome=outcome, treatment="continuous",
+                    pretreatment_trends=pt,
+                    pretreatment_trends_form=form,
+                )["result"]
+                rows.append({
+                    "outcome": outcome,
+                    "spec": label,
+                    "coef": float(res.params["cath_share_x_post"]),
+                    "se": float(res.std_errors["cath_share_x_post"]),
+                    "p": float(res.pvalues["cath_share_x_post"]),
+                    "n": int(res.nobs),
+                })
+            except Exception as exc:
+                logger.warning("pretreatment trends %s/%s failed: %s",
+                               outcome, label, exc)
+    return pd.DataFrame(rows)
 
 
 def run_emigration_robustness(
@@ -738,6 +874,8 @@ def run_event_study(
     ref_year: int = 1872,
     cluster: str = "Code",
     controls: Optional[List[str]] = None,
+    pretreatment_trends: Optional[Sequence[str]] = None,
+    pretreatment_trends_form: str = "linear",
 ) -> Dict[str, Union[PanelEffectsResults, pd.DataFrame]]:
     """
     Run an event-study specification around the Kulturkampf.
@@ -792,14 +930,44 @@ def run_event_study(
     # Exogenous variables
     interact_cols = [f"treat_x_{yr}" for yr in interact_years]
     exog_vars = interact_cols + [c for c in controls if c in panel.columns]
-    
+
     y = panel[outcome]
     X = panel[exog_vars]
-    
+
+    # Optional: pretreatment-characteristic time-trend interactions
+    if pretreatment_trends:
+        baselines = _county_baselines(panel, pretreatment_trends)
+        years_arr = np.asarray(
+            panel.index.get_level_values("Year"), dtype=float
+        )
+        codes_arr = np.asarray(panel.index.get_level_values("Code"))
+        if pretreatment_trends_form == "linear":
+            year_centered = years_arr - years_arr.mean()
+            for var in pretreatment_trends:
+                if var not in baselines:
+                    continue
+                baseline_obs = np.array(
+                    [baselines[var].get(c, np.nan) for c in codes_arr], dtype=float
+                )
+                X[f"{var}_x_year"] = baseline_obs * year_centered
+        else:
+            year_index = pd.Series(years_arr, index=panel.index)
+            year_dummies = pd.get_dummies(year_index, prefix="yr", drop_first=True)
+            year_dummies.index = panel.index
+            for var in pretreatment_trends:
+                if var not in baselines:
+                    continue
+                baseline_obs = pd.Series(
+                    [baselines[var].get(c, np.nan) for c in codes_arr],
+                    index=panel.index,
+                ).astype(float)
+                inter = year_dummies.multiply(baseline_obs, axis=0)
+                X = pd.concat([X, inter.add_prefix(f"{var}_x_")], axis=1)
+
     valid = y.notna() & X.notna().all(axis=1)
     y = y[valid]
     X = X[valid]
-    
+
     mod = PanelOLS(y, X, entity_effects=True, time_effects=True)
     res = mod.fit(cov_type="clustered", cluster_entity=True)
     

@@ -53,6 +53,7 @@ from src.analysis.regressions import (
     run_iv_did_multi,
     run_jewish_placebo,
     run_long_difference,
+    run_pretreatment_trends_robustness,
     run_robustness,
     run_start_year_sensitivity,
     run_triple_difference_polish,
@@ -1823,6 +1824,87 @@ def emigration_robustness_table(
     return out
 
 
+def pretreatment_trends_table(
+    panel: pd.DataFrame,
+    out_path: Path | None = None,
+) -> str:
+    """
+    Pretreatment-characteristic time-trend robustness (Bai 2009, Hsiao 2014).
+
+    Five-row table reporting the headline DiD coefficient on cath_share x post
+    when progressively more iPEHD-1871 baseline characteristics are interacted
+    with year fixed effects (linear-trend form for parsimony).
+    """
+    out_path = out_path or TABLES_DIR / "pretreatment_trends.tex"
+
+    df = run_pretreatment_trends_robustness(
+        panel, outcomes=("cbr", "marriage_rate"), form="linear",
+    )
+
+    rows: list[str] = []
+    for spec in df["spec"].drop_duplicates():
+        sub = df[df["spec"] == spec]
+        cbr_sub = sub[sub["outcome"] == "cbr"]
+        mar_sub = sub[sub["outcome"] == "marriage_rate"]
+        cbr = cbr_sub.iloc[0] if len(cbr_sub) else None
+        mar = mar_sub.iloc[0] if len(mar_sub) else None
+        cbr_coef = _fmt_coef(cbr["coef"], cbr["p"], digits=4) if cbr is not None else ""
+        cbr_se = _fmt_se(cbr["se"], digits=4) if cbr is not None else ""
+        mar_coef = _fmt_coef(mar["coef"], mar["p"], digits=4) if mar is not None else ""
+        mar_se = _fmt_se(mar["se"], digits=4) if mar is not None else ""
+        n_val = int(cbr["n"]) if cbr is not None else int(mar["n"])
+        rows.append(
+            f"{_latex_escape(spec)} & {cbr_coef} & {mar_coef} & {n_val:,} \\\\"
+        )
+        rows.append(f" & {cbr_se} & {mar_se} & \\\\")
+
+    body = (
+        "\\begin{tabular}{lccc}\n"
+        "\\toprule\n"
+        " & CBR & Marriage rate & $N$ \\\\\n"
+        " & (1) & (2) & \\\\\n"
+        "\\midrule\n"
+        + "\n".join(rows) + "\n"
+        + "\\bottomrule\n"
+        "\\end{tabular}\n"
+    )
+
+    out = _wrap_table(
+        body,
+        caption=(
+            "Pretreatment-characteristic time-trend robustness "
+            "(Bai 2009; Hsiao 2014)"
+        ),
+        label="tab:pretreatment_trends",
+        n_cols=4,
+        notes=(
+            "Each row is a separate two-way fixed-effects regression of the "
+            "outcome on $\\mathrm{CathShare} \\times \\mathrm{Post}$, "
+            "$\\ln(\\mathrm{Pop})$, and the listed baseline iPEHD-1871 "
+            "characteristics interacted with a centred linear time trend. "
+            "The interactions allow counties with different pre-treatment "
+            "literacy ($\\mathrm{school1517}$), urbanisation "
+            "($f_{\\mathrm{urban}}$), Prussian-citizenship share "
+            "($f_{\\mathrm{pruss}}$), and Jewish-population share "
+            "($f_{\\mathrm{jew}}$) to follow different trajectories. The "
+            "Kulturkampf coefficient is then identified from deviations from "
+            "those trajectories at 1873. The marriage-rate coefficient is "
+            "essentially unchanged when literacy, urbanisation, and Prussian "
+            "citizenship are added (rows 2--4) but attenuates by ~50\\% when "
+            "Jewish share is added (row 5), which absorbs differential "
+            "dynamics in eastern provinces with high Jewish settlement and "
+            "thus partially captures the same Polish-province channel "
+            "documented in Tables~\\ref{tab:falsifications} and "
+            "\\ref{tab:emigration_robustness}. Sample shrinks slightly "
+            "because the iPEHD merge covers $\\sim$90\\% of Galloway "
+            "counties. Standard errors clustered at the county level. "
+            "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
 def event_study_table(
     panel: pd.DataFrame,
     *,
@@ -1953,6 +2035,9 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "emigration_robustness.tex")
     emigration_robustness_table(panel, out_path=written[-1])
+
+    written.append(out_dir / "pretreatment_trends.tex")
+    pretreatment_trends_table(panel, out_path=written[-1])
 
     # Lexis diagram pairs with the Coale decomposition: shows which cohorts'
     # reproductive careers intersect the Kulturkampf and rollback windows.
