@@ -44,6 +44,8 @@ from src.analysis.polish_german import polish_german_rollback
 from src.analysis.regressions import (
     pretrends_wald_test,
     run_baseline_did,
+    run_count_marriage_did,
+    run_emigration_robustness,
     run_event_study,
     run_fake_treatment_placebo,
     run_heterogeneity_did,
@@ -1720,6 +1722,107 @@ def coale_decomposition_table(
     return out
 
 
+def emigration_robustness_table(
+    panel: pd.DataFrame,
+    out_path: Path | None = None,
+) -> str:
+    """
+    Address the post-1885 Polish-province emigration confound. Reports the
+    headline DiD coefficient on cath_share x post under four specifications,
+    separately for the full panel and the Polish sub-sample, plus the
+    population-free intensive-margin outcomes (total marriages count, births
+    per marriage).
+    """
+    out_path = out_path or TABLES_DIR / "emigration_robustness.tex"
+
+    full = run_emigration_robustness(panel, outcomes=("cbr", "marriage_rate"))
+    polish = run_emigration_robustness(
+        panel[panel["Rb"].isin(["POS", "BRO"])],
+        outcomes=("cbr", "marriage_rate"),
+    )
+    counts = run_count_marriage_did(panel)
+
+    def _block(rows: pd.DataFrame, header_label: str) -> str:
+        out = (
+            f"\\multicolumn{{4}}{{l}}{{\\textit{{{header_label}}}}} \\\\\n"
+        )
+        # Group by spec; within each spec, two outcomes (cbr, marriage_rate)
+        for spec in rows["spec"].drop_duplicates():
+            sub = rows[rows["spec"] == spec]
+            cbr_row = sub[sub["outcome"] == "cbr"].iloc[0] if len(sub[sub["outcome"] == "cbr"]) else None
+            mar_row = sub[sub["outcome"] == "marriage_rate"].iloc[0] if len(sub[sub["outcome"] == "marriage_rate"]) else None
+            cbr_str = (_fmt_coef(cbr_row["coef"], cbr_row["p"], digits=4) if cbr_row is not None else "")
+            cbr_se = (_fmt_se(cbr_row["se"], digits=4) if cbr_row is not None else "")
+            mar_str = (_fmt_coef(mar_row["coef"], mar_row["p"], digits=4) if mar_row is not None else "")
+            mar_se = (_fmt_se(mar_row["se"], digits=4) if mar_row is not None else "")
+            n_str = f"{int(cbr_row['n']):,}" if cbr_row is not None else f"{int(mar_row['n']):,}"
+            out += f"{_latex_escape(spec)} & {cbr_str} & {mar_str} & {n_str} \\\\\n"
+            out += f" & {cbr_se} & {mar_se} & \\\\\n"
+        return out
+
+    # Panel C: each row is one outcome with its own coefficient.
+    # Format: outcome label | coefficient | SE | N -- same shape as Panels A/B.
+    counts_block = ""
+    for _, r in counts.iterrows():
+        counts_block += (
+            f"{_latex_escape(r['outcome'])} & "
+            f"{_fmt_coef(r['coef'], r['p'], digits=4)} & "
+            f"{_fmt_se(r['se'], digits=4)} & "
+            f"{int(r['n']):,} \\\\\n"
+        )
+    panel_c_header = (
+        "\\multicolumn{4}{l}{\\textit{Panel C: "
+        "Population-free outcomes (one outcome per row)}} \\\\\n"
+        " & Coefficient & SE & $N$ \\\\\n"
+        "\\cmidrule(lr){1-4}\n"
+    )
+
+    body = (
+        "\\begin{tabular}{lccc}\n"
+        "\\toprule\n"
+        " & CBR & Marriage rate & $N$ \\\\\n"
+        " & (1) & (2) & \\\\\n"
+        "\\midrule\n"
+        + _block(full, "Panel A: Full panel")
+        + "\\addlinespace\n"
+        + _block(polish, "Panel B: Polish provinces (POS, BRO)")
+        + "\\midrule\n"
+        + panel_c_header
+        + counts_block
+        + "\\bottomrule\n"
+        "\\end{tabular}\n"
+    )
+
+    out = _wrap_table(
+        body,
+        caption=(
+            "Emigration robustness: addressing the post-1885 "
+            "$\\mathit{Polenausweisungen}$ confound"
+        ),
+        label="tab:emigration_robustness",
+        n_cols=4,
+        notes=(
+            "All entries are the DiD coefficient (and clustered SE in "
+            "parentheses) on $\\mathrm{CathShare} \\times \\mathrm{Post}$ from "
+            "a county- and year-fixed-effects regression. Panel~A reports the "
+            "headline specification on the full panel under four control sets: "
+            "(1) baseline with $\\ln(\\mathrm{Pop})$ only; (2) adds the "
+            "annual population growth rate; (3) adds an implied net migration "
+            "rate (population change minus natural increase, per 1{,}000 "
+            "population); (4) restricts the sample to $t < 1885$, before the "
+            "Bismarck-era $\\mathit{Polenausweisungen}$ and the 1886 "
+            "Settlement Commission. Panel~B repeats the four specifications "
+            "on the Polish sub-sample (Posen and Bromberg). Panel~C reports "
+            "outcomes that do not depend on the population denominator and "
+            "therefore cannot be mechanical artefacts of out-migration. "
+            "Standard errors clustered at the county level. "
+            "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
 def event_study_table(
     panel: pd.DataFrame,
     *,
@@ -1848,13 +1951,23 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
     written.append(out_dir / "coale_decomposition.tex")
     coale_decomposition_table(panel, out_path=written[-1])
 
+    written.append(out_dir / "emigration_robustness.tex")
+    emigration_robustness_table(panel, out_path=written[-1])
+
     # Lexis diagram pairs with the Coale decomposition: shows which cohorts'
     # reproductive careers intersect the Kulturkampf and rollback windows.
-    from src.visualization.plots import plot_lexis_diagram
+    from src.visualization.plots import (
+        plot_lexis_diagram,
+        plot_population_and_migration,
+    )
     lexis_path = FIGURES_DIR / "fig_lexis.png"
     lexis_path.parent.mkdir(parents=True, exist_ok=True)
     plot_lexis_diagram(savepath=str(lexis_path))
     logger.info("Wrote %s", lexis_path)
+
+    pop_mig_path = FIGURES_DIR / "fig_population_migration.png"
+    plot_population_and_migration(panel, savepath=str(pop_mig_path))
+    logger.info("Wrote %s", pop_mig_path)
 
     written.append(out_dir / "conley_robustness.tex")
     conley_robustness_table(panel, out_path=written[-1])

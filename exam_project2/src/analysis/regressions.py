@@ -433,6 +433,100 @@ def run_heterogeneity_did(
     }
 
 
+def run_emigration_robustness(
+    df: pd.DataFrame,
+    outcomes: tuple[str, ...] = ("cbr", "marriage_rate"),
+) -> pd.DataFrame:
+    """
+    Three robustness specifications addressing the post-1885 Polish-province
+    emigration confound:
+
+    (1) Baseline TWFE with ln_pop only -- the existing default.
+    (2) TWFE with ln_pop + population growth rate as additional control.
+    (3) TWFE with ln_pop + implied net migration rate (= pop_change -
+        natural_increase, per 1{,}000 pop) as additional control. The
+        migration variable is itself an outcome of the Kulturkampf, so this
+        is a "bad-control" specification -- but if the headline coefficient
+        survives, the result clearly is not just emigration mechanics.
+    (4) Sample restricted to pre-1885, before the Bismarck-era
+        Polenausweisungen and Settlement Commission. Cleanest cut.
+    """
+    work = df.copy().sort_values(["Code", "Year"])
+    work["pop_change"] = work.groupby("Code")["Poptot"].diff()
+    work["pop_growth_rate"] = (
+        work["pop_change"] / work.groupby("Code")["Poptot"].shift(1) * 1000.0
+    )
+    work["natural_increase"] = work["Birtot"] - work["Dthtot"]
+    work["implied_migration"] = work["pop_change"] - work["natural_increase"]
+    work["migration_rate"] = work["implied_migration"] / work["Poptot"] * 1000.0
+
+    rows = []
+    for outcome in outcomes:
+        for label, controls, sample_filter in [
+            ("(1) Baseline (ln_pop only)", ["ln_pop"], None),
+            ("(2) + pop growth rate",      ["ln_pop", "pop_growth_rate"], None),
+            ("(3) + implied migration",    ["ln_pop", "migration_rate"], None),
+            ("(4) Restrict to pre-1885",   ["ln_pop"], lambda d: d["Year"] < 1885),
+        ]:
+            sub = work if sample_filter is None else work[sample_filter(work)]
+            try:
+                res = run_baseline_did(
+                    sub, outcome=outcome, treatment="continuous", controls=controls
+                )["result"]
+                coef = float(res.params["cath_share_x_post"])
+                se = float(res.std_errors["cath_share_x_post"])
+                p = float(res.pvalues["cath_share_x_post"])
+                rows.append({
+                    "outcome": outcome,
+                    "spec": label,
+                    "coef": coef,
+                    "se": se,
+                    "p": p,
+                    "n": int(res.nobs),
+                })
+            except Exception as exc:
+                logger.warning("emigration robustness %s/%s failed: %s",
+                               outcome, label, exc)
+    return pd.DataFrame(rows)
+
+
+def run_count_marriage_did(
+    df: pd.DataFrame,
+    outcome: str = "Martot",
+) -> pd.DataFrame:
+    """
+    Total marriages (count) as outcome rather than marriage *rate*. Eliminates
+    the population denominator, so changes in count cannot be mechanical
+    population-shrinkage artefacts. Returns the headline coefficient.
+
+    Also reports legitimate births per marriage (Birlegtot / Martot), which
+    is a marital-fertility intensive-margin measure that does not depend on
+    population at all.
+    """
+    work = df.copy()
+    work["bir_per_mar"] = work["Birlegtot"] / work["Martot"].replace(0, np.nan)
+
+    rows = []
+    for label, outcome_col in [
+        ("Total marriages (count)", "Martot"),
+        ("Births per marriage", "bir_per_mar"),
+    ]:
+        try:
+            res = run_baseline_did(
+                work, outcome=outcome_col, treatment="continuous",
+            )["result"]
+            rows.append({
+                "outcome": label,
+                "coef": float(res.params["cath_share_x_post"]),
+                "se": float(res.std_errors["cath_share_x_post"]),
+                "p": float(res.pvalues["cath_share_x_post"]),
+                "n": int(res.nobs),
+            })
+        except Exception as exc:
+            logger.warning("count regression %s failed: %s", label, exc)
+    return pd.DataFrame(rows)
+
+
 def run_jewish_placebo(
     df: pd.DataFrame,
     outcomes: tuple[str, ...] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
