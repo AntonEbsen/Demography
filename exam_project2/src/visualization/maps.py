@@ -264,6 +264,218 @@ def map_polish_german_provinces(
     return fig, ax
 
 
+def map_subregion_treatment_effects(
+    gdf: "gpd.GeoDataFrame",
+    panel: pd.DataFrame,
+    subregion_results: pd.DataFrame,
+    outcome_label: str = "Marriage rate",
+    weighted_by_cath_share: bool = True,
+    annotate: bool = True,
+    title: Optional[str] = None,
+    savepath: Optional[str] = None,
+):
+    """
+    Choropleth coloured by the *three* sub-region treatment effects from
+    the wild-cluster-bootstrap regression (``run_subregion_did``):
+
+      - **Polish provinces** (POS, BRO)
+      - **German Catholic provinces** (KOL, KOB, TRI, AAC, OPP, MUN)
+      - **Protestant (rest)** -- everything else
+
+    Each county is coloured by the $\\hat\\beta$ of its sub-region. If
+    ``weighted_by_cath_share=True`` (default), the value plotted is
+    $\\hat\\beta_{\\mathrm{subregion}(i)} \\times \\mathrm{cath\\_share}_i$,
+    so the visual intensity respects both regional response and local
+    treatment intensity.
+
+    Pairs with Table~\\ref{tab:wild_bootstrap} -- the legend can be read
+    in conjunction with the wild-bootstrap $p$-values.
+    """
+    polish_rbs = ("POS", "BRO")
+    german_rbs = ("KOL", "KOB", "TRI", "AAC", "OPP", "MUN")
+
+    cath = panel.groupby("Code")[["cath_share", "Rb"]].first().reset_index()
+    merged = gdf.merge(cath, on="Code", how="left")
+
+    def _classify(rb):
+        if pd.isna(rb):
+            return None
+        if rb in polish_rbs:
+            return "Polish"
+        if rb in german_rbs:
+            return "German Catholic"
+        return "Protestant (rest)"
+
+    merged["subregion"] = merged["Rb"].map(_classify)
+
+    coef_lookup = subregion_results.set_index("subregion")["coef"].to_dict()
+    merged["coef"] = merged["subregion"].map(coef_lookup)
+
+    if weighted_by_cath_share:
+        merged["display_value"] = merged["coef"] * merged["cath_share"]
+        legend_label = (
+            f"Implied $\\Delta$ {outcome_label} per 1,000\n"
+            f"($\\hat{{\\beta}}_{{\\mathrm{{subregion}}}} \\times$ cath\\_share)"
+        )
+    else:
+        merged["display_value"] = merged["coef"]
+        legend_label = (
+            f"Sub-region $\\hat\\beta$ on {outcome_label} (per pp cath\\_share)"
+        )
+
+    fig, ax = plt.subplots(figsize=(12, 10))
+
+    # Symmetric diverging palette around zero
+    vmax = float(merged["display_value"].abs().max())
+    if not np.isfinite(vmax) or vmax == 0:
+        vmax = 1.0
+    norm = TwoSlopeNorm(vmin=-vmax, vcenter=0.0, vmax=vmax)
+
+    merged.plot(
+        column="display_value",
+        ax=ax,
+        cmap="RdBu",  # red = negative effect, blue = positive
+        norm=norm,
+        legend=True,
+        legend_kwds={
+            "label": legend_label,
+            "orientation": "vertical",
+            "shrink": 0.6,
+        },
+        missing_kwds={"color": "lightgrey", "label": "No data"},
+    )
+    _base_map(ax, merged)
+
+    # Annotate the three sub-region beta + wild p-values
+    if annotate:
+        rows = subregion_results.set_index("subregion")
+        labels = []
+        for sr in ("Polish", "German Catholic", "Protestant (rest)"):
+            if sr not in rows.index:
+                continue
+            r = rows.loc[sr]
+            star = ("***" if r["p_wild"] < .01
+                    else "**" if r["p_wild"] < .05
+                    else "*" if r["p_wild"] < .10 else "")
+            labels.append(
+                f"{sr} (G={int(r['n_clusters'])}): "
+                f"$\\hat{{\\beta}}={r['coef']:+.4f}{star}$ "
+                f"(wild $p={r['p_wild']:.3f}$)"
+            )
+        textstr = "\n".join(labels)
+        ax.text(
+            0.02, 0.02, textstr,
+            transform=ax.transAxes, fontsize=9, va="bottom", ha="left",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="white",
+                      edgecolor="#888888", alpha=0.92),
+        )
+
+    ax.set_title(
+        title or (
+            f"Sub-region Kulturkampf effect on {outcome_label.lower()}\n"
+            f"(red = negative response; blue = positive response)"
+        ),
+        fontsize=13, fontweight="bold",
+    )
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+
+    n_coloured = merged["display_value"].notna().sum()
+    print(f"Map drawn: {n_coloured} counties coloured.")
+    return fig, ax
+
+
+def map_rb_treatment_effects(
+    gdf: "gpd.GeoDataFrame",
+    panel: pd.DataFrame,
+    rb_effects: pd.DataFrame,
+    outcome_label: str = "Marriage rate",
+    weighted_by_cath_share: bool = True,
+    title: Optional[str] = None,
+    savepath: Optional[str] = None,
+):
+    """
+    Choropleth of estimated Regierungsbezirk-specific treatment effects on
+    ``outcome``. ``rb_effects`` must have columns ``Rb``, ``coef``, and
+    ``precise`` (output of ``regressions.run_rb_specific_did``).
+
+    If ``weighted_by_cath_share=True`` (default), each county's color shows
+    ``beta_Rb(i) * cath_share_i`` -- the model-implied treatment-attributable
+    change for that county. This makes the visualisation respect both the
+    regional response (beta) and the local treatment intensity (cath_share).
+
+    Imprecise Rbs (low cath-share variance, few counties) are shaded grey
+    rather than coloured to avoid overstating spatial certainty.
+
+    Pairs with ``map_polish_german_provinces`` so the reader can match
+    coloured intensity to administrative geography.
+    """
+    cath = panel.groupby("Code")[["cath_share", "Rb"]].first().reset_index()
+    merged = gdf.merge(cath, on="Code", how="left")
+    merged = merged.merge(
+        rb_effects[["Rb", "coef", "precise"]], on="Rb", how="left",
+    )
+
+    if weighted_by_cath_share:
+        merged["display_value"] = merged["coef"] * merged["cath_share"]
+        legend_label = (
+            f"Implied $\\Delta$ {outcome_label} per 1,000\n"
+            f"($\\hat{{\\beta}}_{{Rb}} \\times$ Catholic share)"
+        )
+    else:
+        merged["display_value"] = merged["coef"]
+        legend_label = f"$\\hat{{\\beta}}_{{Rb}}$ on {outcome_label}"
+
+    # Mask imprecise Rbs as missing for the colouring; they will be drawn
+    # in grey via missing_kwds, but their boundaries still show.
+    merged.loc[merged["precise"] == False, "display_value"] = float("nan")
+
+    fig, ax = plt.subplots(figsize=(12, 10))
+
+    # Symmetric diverging palette around zero
+    vmin = float(merged["display_value"].quantile(0.02))
+    vmax = float(merged["display_value"].quantile(0.98))
+    bound = max(abs(vmin), abs(vmax)) if (not pd.isna(vmin) and not pd.isna(vmax)) else 1.0
+    norm = TwoSlopeNorm(vmin=-bound, vcenter=0.0, vmax=bound)
+
+    merged.plot(
+        column="display_value",
+        ax=ax,
+        cmap="RdBu",  # red = negative β (suppression), blue = null/positive
+        norm=norm,
+        legend=True,
+        legend_kwds={
+            "label": legend_label,
+            "orientation": "vertical",
+            "shrink": 0.6,
+        },
+        missing_kwds={"color": "lightgrey", "label": "Imprecise / no data"},
+    )
+    _base_map(ax, merged)
+
+    ax.set_title(
+        title or (
+            f"Regierungsbezirk-specific Kulturkampf effect on "
+            f"{outcome_label.lower()}\n"
+            f"(red = negative effect; blue = null/positive; "
+            f"grey = imprecise)"
+        ),
+        fontsize=13, fontweight="bold",
+    )
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+
+    n_coloured = merged["display_value"].notna().sum()
+    n_grey = (merged["precise"] == False).sum()
+    print(f"Map drawn: {n_coloured} coloured counties, "
+          f"{n_grey} imprecise (grey).")
+    return fig, ax
+
+
 def map_kulturkampf_residuals(
     gdf: "gpd.GeoDataFrame",
     panel: pd.DataFrame,

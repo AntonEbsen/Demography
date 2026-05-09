@@ -56,6 +56,7 @@ from src.analysis.regressions import (
     run_pretreatment_trends_robustness,
     run_robustness,
     run_start_year_sensitivity,
+    run_subsample_decomposition,
     run_triple_difference_polish,
 )
 from src.analysis.rollback import rollback_event_study
@@ -1905,6 +1906,92 @@ def pretreatment_trends_table(
     return out
 
 
+def subsample_decomposition_table(
+    panel: pd.DataFrame,
+    out_path: Path | None = None,
+) -> str:
+    """
+    Decompose the headline DiD coefficient by sample composition. Reveals
+    how much of the full-panel marriage-rate effect comes from the 1866
+    annexed territories, the Polish provinces, and the core German
+    Catholic--Protestant comparison.
+    """
+    out_path = out_path or TABLES_DIR / "subsample_decomposition.tex"
+    df = run_subsample_decomposition(panel, outcomes=("cbr", "marriage_rate"))
+
+    rows: list[str] = []
+    for name in df["sample"].drop_duplicates():
+        sub = df[df["sample"] == name]
+        cbr_sub = sub[sub["outcome"] == "cbr"]
+        mar_sub = sub[sub["outcome"] == "marriage_rate"]
+        cbr = cbr_sub.iloc[0] if len(cbr_sub) else None
+        mar = mar_sub.iloc[0] if len(mar_sub) else None
+        cbr_coef = _fmt_coef(cbr["coef"], cbr["p"], digits=4) if cbr is not None else ""
+        cbr_se = _fmt_se(cbr["se"], digits=4) if cbr is not None else ""
+        mar_coef = _fmt_coef(mar["coef"], mar["p"], digits=4) if mar is not None else ""
+        mar_se = _fmt_se(mar["se"], digits=4) if mar is not None else ""
+        ref = cbr if cbr is not None else mar
+        n_counties = int(ref["n_counties"]) if ref is not None else 0
+        n_obs = int(ref["n"]) if ref is not None else 0
+        cbr_chi = float(cbr["pretrends_chi2"]) if cbr is not None else float("nan")
+        mar_chi = float(mar["pretrends_chi2"]) if mar is not None else float("nan")
+        rows.append(
+            f"{_latex_escape(name)} & {cbr_coef} & {mar_coef} & "
+            f"{n_counties} & {n_obs:,} \\\\"
+        )
+        rows.append(f" & {cbr_se} & {mar_se} & & \\\\")
+        rows.append(
+            f"\\quad pre-trends $\\chi^{{2}}(10)$ & "
+            f"{cbr_chi:.1f} & {mar_chi:.1f} & & \\\\"
+            "\n\\addlinespace"
+        )
+
+    body = (
+        "\\begin{tabular}{lcccc}\n"
+        "\\toprule\n"
+        " & CBR & Marriage rate & Counties & $N$ \\\\\n"
+        " & (1) & (2) & & \\\\\n"
+        "\\midrule\n"
+        + "\n".join(rows) + "\n"
+        + "\\bottomrule\n"
+        "\\end{tabular}\n"
+    )
+
+    out = _wrap_table(
+        body,
+        caption=(
+            "Sample-composition decomposition: where does the headline "
+            "marriage-rate effect come from?"
+        ),
+        label="tab:subsample_decomposition",
+        n_cols=5,
+        notes=(
+            "Each block reports the headline DiD coefficient on "
+            "$\\mathrm{CathShare} \\times \\mathrm{Post}$ and the joint Wald "
+            "$\\chi^{2}$ for pre-1872 event-study coefficients on a different "
+            "sample cut. ``Core Prussia'' restricts to the 304 counties "
+            "present in 1862, excluding the ~85 counties annexed in 1866 "
+            "(Schleswig-Holstein, Hanover, Hesse-Kassel, Nassau, Frankfurt) "
+            "which only enter the panel in 1867 and so cannot have observed "
+            "1862--1866 pre-trend coefficients. ``No Polish provinces'' "
+            "excludes Posen and Bromberg ($\\sim$24 counties), where Catholic "
+            "share aligns with Polish ethnicity and the 1885+ "
+            "$\\mathit{Polenausweisungen}$ generated mechanical out-migration. "
+            "The marriage-rate coefficient attenuates from $-0.0036^{***}$ on "
+            "the full panel to $-0.0013^{*}$ on the cleanest cut (core "
+            "Prussia + no Polish), implying that approximately 22\\% of the "
+            "magnitude operates through the annexed territories and 36\\% "
+            "through the Polish channel. The pre-trends $\\chi^{2}$ "
+            "*increases* under core Prussia, indicating that the annexations "
+            "were partially masking a stronger pre-trend in the original "
+            "Prussian core. Standard errors clustered at the county level. "
+            "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
 def event_study_table(
     panel: pd.DataFrame,
     *,
@@ -2039,6 +2126,9 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
     written.append(out_dir / "pretreatment_trends.tex")
     pretreatment_trends_table(panel, out_path=written[-1])
 
+    written.append(out_dir / "subsample_decomposition.tex")
+    subsample_decomposition_table(panel, out_path=written[-1])
+
     # Lexis diagram pairs with the Coale decomposition: shows which cohorts'
     # reproductive careers intersect the Kulturkampf and rollback windows.
     from src.visualization.plots import (
@@ -2053,6 +2143,31 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
     pop_mig_path = FIGURES_DIR / "fig_population_migration.png"
     plot_population_and_migration(panel, savepath=str(pop_mig_path))
     logger.info("Wrote %s", pop_mig_path)
+
+    # Choropleth maps of sub-region treatment effects (Polish / German
+    # Catholic / Protestant rest). Pairs with Table tab:wild_bootstrap.
+    try:
+        from src.visualization.maps import (
+            load_prussia_shapefile, map_subregion_treatment_effects,
+        )
+        from src.analysis.regressions import run_subregion_did
+        shp_path = (
+            PROJECT_ROOT / "data" / "raw" / "gis_data"
+            / "German_Empire_1871_v.1.0.shp"
+        )
+        gdf = load_prussia_shapefile(shp_path)
+        for outcome, label in [
+            ("marriage_rate", "Marriage rate"),
+            ("cbr", "Crude birth rate"),
+        ]:
+            sr = run_subregion_did(panel, outcome=outcome)
+            fname = FIGURES_DIR / f"map5_{outcome}_subregion_effects.png"
+            map_subregion_treatment_effects(
+                gdf, panel, sr, outcome_label=label, savepath=str(fname),
+            )
+            logger.info("Wrote %s", fname)
+    except Exception as exc:
+        logger.warning("Skipped sub-region choropleths: %s", exc)
 
     written.append(out_dir / "conley_robustness.tex")
     conley_robustness_table(panel, out_path=written[-1])

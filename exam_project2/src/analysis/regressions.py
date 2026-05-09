@@ -508,6 +508,206 @@ def run_heterogeneity_did(
     }
 
 
+SUBREGION_DEFINITIONS = {
+    "Polish": ("POS", "BRO"),
+    "German Catholic": ("KOL", "KOB", "TRI", "AAC", "OPP", "MUN"),
+    # Anything else not matched above is "Protestant (rest)"
+}
+
+
+def run_subregion_did(
+    df: pd.DataFrame,
+    outcome: str = "marriage_rate",
+    n_boot: int = 999,
+    seed: int = 42,
+) -> pd.DataFrame:
+    """
+    DiD coefficient on $\\mathrm{CathShare} \\times \\mathrm{Post}$ run
+    separately on each of the three sub-region sub-samples used by the wild
+    cluster bootstrap (Polish, German Catholic, Protestant rest). Returns a
+    DataFrame with one row per region listing $\\hat\\beta$, asymptotic SE,
+    asymptotic and wild bootstrap $p$-values, and the cluster count $G$.
+
+    This is the regression form used in Table~\\ref{tab:wild_bootstrap} —
+    use the output to colour the choropleth so every county in a sub-region
+    receives that sub-region's $\\hat\\beta$.
+    """
+    from src.analysis.wild_bootstrap import wild_cluster_bootstrap
+
+    polish_rbs = SUBREGION_DEFINITIONS["Polish"]
+    german_rbs = SUBREGION_DEFINITIONS["German Catholic"]
+
+    samples = {
+        "Polish": df[df["Rb"].isin(polish_rbs)].copy(),
+        "German Catholic": df[df["Rb"].isin(german_rbs)].copy(),
+        "Protestant (rest)": df[~df["Rb"].isin(polish_rbs + german_rbs)].copy(),
+    }
+
+    rows = []
+    for label, sub in samples.items():
+        if sub.empty or sub["Code"].nunique() < 2:
+            continue
+        try:
+            res = run_baseline_did(
+                sub, outcome=outcome, treatment="continuous"
+            )["result"]
+            wild = wild_cluster_bootstrap(
+                df, outcome=outcome,
+                sample_filter=lambda d, _label=label: (
+                    d["Rb"].isin(polish_rbs) if _label == "Polish"
+                    else d["Rb"].isin(german_rbs) if _label == "German Catholic"
+                    else ~d["Rb"].isin(polish_rbs + german_rbs)
+                ),
+                n_boot=n_boot, seed=seed,
+            )
+            rows.append({
+                "subregion": label,
+                "coef": float(res.params["cath_share_x_post"]),
+                "se": float(res.std_errors["cath_share_x_post"]),
+                "p_asymptotic": float(res.pvalues["cath_share_x_post"]),
+                "p_wild": wild["p_value"],
+                "n_clusters": int(sub["Code"].nunique()),
+                "n_obs": int(res.nobs),
+            })
+        except Exception as exc:
+            logger.warning("subregion %s/%s failed: %s", label, outcome, exc)
+    return pd.DataFrame(rows)
+
+
+def run_rb_specific_did(
+    df: pd.DataFrame,
+    outcome: str = "marriage_rate",
+    min_counties: int = 5,
+    min_cath_share_sd: float = 5.0,
+) -> pd.DataFrame:
+    """
+    Estimate a Regierungsbezirk-specific DiD coefficient on
+    $\\mathrm{CathShare} \\times \\mathrm{Post}$ for each Rb. Run as a single
+    pooled regression with one Rb-specific treatment interaction per Rb,
+    plus county and year fixed effects:
+
+        Y_{it} = sum_r beta_r (CathShare_i x Post_t x 1[Rb_i = r])
+                 + alpha_i + delta_t + gamma X_{it} + eps_{it}.
+
+    Returns a DataFrame with one row per Rb listing beta, SE, p, sample
+    size, and a flag indicating whether the Rb meets minimum-precision
+    criteria (>= ``min_counties`` counties and >= ``min_cath_share_sd``
+    standard deviation of cath_share within the Rb).
+
+    Rbs that fail either criterion are still estimated but flagged
+    "imprecise" so the choropleth can shade them grey rather than
+    overstating the precision of a near-singular slope.
+    """
+    df = df.copy().sort_values(["Code", "Year"])
+    rbs = sorted(df["Rb"].dropna().unique().tolist())
+
+    # Precision flags
+    rb_stats = (
+        df.drop_duplicates("Code")
+          .groupby("Rb")["cath_share"]
+          .agg(["count", "std"])
+          .rename(columns={"count": "n_counties", "std": "cath_share_sd"})
+    )
+
+    # Build Rb-specific treatment interactions
+    panel = _prepare_panel(df)
+    treat_cols = []
+    for rb in rbs:
+        col = f"treat_x_{rb}"
+        panel[col] = (
+            panel["cath_share_x_post"]
+            * (panel["Rb"] == rb).astype(float)
+        )
+        treat_cols.append(col)
+
+    exog_vars = treat_cols + ["ln_pop"]
+    y = panel[outcome]
+    X = panel[exog_vars]
+    valid = y.notna() & X.notna().all(axis=1)
+    y = y[valid]
+    X = X[valid]
+
+    mod = PanelOLS(y, X, entity_effects=True, time_effects=True)
+    res = mod.fit(cov_type="clustered", cluster_entity=True)
+
+    rows = []
+    for rb in rbs:
+        col = f"treat_x_{rb}"
+        if col not in res.params.index:
+            continue
+        stats = rb_stats.loc[rb] if rb in rb_stats.index else None
+        n_counties = int(stats["n_counties"]) if stats is not None else 0
+        sd = float(stats["cath_share_sd"]) if stats is not None and not pd.isna(stats["cath_share_sd"]) else 0.0
+        precise = (n_counties >= min_counties) and (sd >= min_cath_share_sd)
+        rows.append({
+            "Rb": rb,
+            "coef": float(res.params[col]),
+            "se": float(res.std_errors[col]),
+            "p": float(res.pvalues[col]),
+            "n_counties": n_counties,
+            "cath_share_sd": sd,
+            "precise": precise,
+        })
+    return pd.DataFrame(rows).sort_values("coef")
+
+
+def run_subsample_decomposition(
+    df: pd.DataFrame,
+    outcomes: tuple[str, ...] = ("cbr", "marriage_rate"),
+) -> pd.DataFrame:
+    """
+    Decompose the headline DiD coefficient by sample. The full-panel
+    coefficient mixes three population components:
+
+    1. *1866 annexations* (~85 counties from Schleswig-Holstein, Hanover,
+       Hesse-Kassel, Nassau, Frankfurt; mostly Protestant) which only enter
+       the panel in 1867 and so cannot have a true 1862-1866 pre-trend
+       observation.
+    2. *Polish provinces* (Posen and Bromberg; ~24 counties) where Catholic
+       share aligns with Polish ethnicity and the policy bundle was richer
+       (Germanisation, Polenausweisungen).
+    3. *Core German Catholic and Protestant counties* — the cleanest test of
+       the religious-institutional disruption hypothesis.
+
+    Reports the headline DiD coefficient and the pre-trends Wald chi-square
+    on each cut, so the contribution of each component is transparent.
+    """
+    first_year = df.groupby("Code")["Year"].min()
+    core_codes = first_year[first_year == int(df["Year"].min())].index
+
+    samples = [
+        ("Full panel", df),
+        ("Core Prussia (excl. 1866 annexations)",
+            df[df["Code"].isin(core_codes)]),
+        ("No Polish provinces (POS, BRO)",
+            df[~df["Rb"].isin(["POS", "BRO"])]),
+        ("Core Prussia + No Polish",
+            df[df["Code"].isin(core_codes) & ~df["Rb"].isin(["POS", "BRO"])]),
+    ]
+
+    rows = []
+    for name, sub in samples:
+        for outcome in outcomes:
+            try:
+                res = run_baseline_did(sub, outcome=outcome,
+                                       treatment="continuous")["result"]
+                wald = pretrends_wald_test(sub, outcome=outcome)
+                rows.append({
+                    "sample": name,
+                    "outcome": outcome,
+                    "coef": float(res.params["cath_share_x_post"]),
+                    "se": float(res.std_errors["cath_share_x_post"]),
+                    "p": float(res.pvalues["cath_share_x_post"]),
+                    "n": int(res.nobs),
+                    "n_counties": int(sub["Code"].nunique()),
+                    "pretrends_chi2": wald["wald_chi2"],
+                    "pretrends_p": wald["p_value"],
+                })
+            except Exception as exc:
+                logger.warning("subsample %s/%s failed: %s", name, outcome, exc)
+    return pd.DataFrame(rows)
+
+
 def run_pretreatment_trends_robustness(
     df: pd.DataFrame,
     outcomes: tuple[str, ...] = ("cbr", "marriage_rate"),
