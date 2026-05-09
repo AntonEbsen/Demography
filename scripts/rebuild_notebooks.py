@@ -647,7 +647,46 @@ for label, sf in samples.items():
 German Catholic counties had a *positive* CBR response to the Kulturkampf. Polish counties had a strongly *negative* response. The full-panel coefficient near zero is the average of two opposing-sign sub-effects.
 
 This is mechanistic reframing material: the Kulturkampf legislation may have actually pushed German Catholic populations toward higher fertility (perhaps as a "demographic resistance" to state encroachment, or via reduced marriage delay / institutional control), while it depressed Polish-Catholic fertility through the parallel Germanisation campaign (priest expulsions, language laws, school closures — which were applied much more aggressively in Polish areas)."""),
-    md("""## 10. Emigration confound: are the Polish-province results mechanical?
+    md("""## 10. Heterogeneity, mapped: a choropleth of sub-region effects
+
+The wild-cluster-bootstrap table above is dense. The same content as a single map makes the heterogeneity story impossible to miss. We colour each county by the $\\hat\\beta$ of its sub-region (Polish, German Catholic, or Protestant rest) — weighted by the county's own cath\\_share so that visual intensity respects both the regional response and local treatment intensity.
+
+Pairs with Table~\\ref{tab:wild_bootstrap}: the legend shows $\\hat\\beta_{\\mathrm{subregion}} \\times \\mathrm{cath\\_share}$, the model-implied counterfactual change in the outcome under the Kulturkampf for each county."""),
+    code("""from src.analysis.regressions import run_subregion_did
+from src.visualization.maps import (
+    load_prussia_shapefile, map_subregion_treatment_effects,
+)
+
+shp_path = (
+    project_root / "data" / "raw" / "gis_data"
+    / "German_Empire_1871_v.1.0.shp"
+)
+gdf = load_prussia_shapefile(shp_path)
+
+for outcome, label in [
+    ("marriage_rate", "Marriage rate"),
+    ("cbr", "Crude birth rate"),
+]:
+    sr = run_subregion_did(panel, outcome=outcome)
+    print(f"\\n=== {label} ===")
+    print(sr.to_string(index=False, float_format=lambda x: f"{x:+.4f}"))
+    fig, ax = map_subregion_treatment_effects(
+        gdf, panel, sr, outcome_label=label,
+        savepath=str(OUTPUTS / f"map5_{outcome}_subregion_effects.png"),
+    )
+    plt.show()"""),
+    md("""**Interpretation — the visual reframing.** The marriage-rate map shows three things at a glance:
+
+1. **The dark-red core in the east** is Posen and Bromberg — the Polish provinces, where $\\hat\\beta = -0.025$ (wild $p = 0.002$). Catholic share times this large negative coefficient produces the most intense red counties on the map.
+
+2. **The pale blue band in the west** is the Rhineland Catholic core — Cologne, Koblenz, Trier, Aachen, Münster — where $\\hat\\beta = +0.004$ (wild $p = 0.242$, statistically zero). High Catholic share times a near-zero coefficient produces a slightly positive tinge.
+
+3. **The light pink across the rest of Prussia** is the Protestant majority, where $\\hat\\beta = -0.005$ (wild $p < 0.001$) -- statistically significant but mechanically small (low cath\\_share times a small negative coefficient).
+
+This map is the single-figure version of the paper's central finding: *the "Catholic effect" is essentially a Polish-provinces effect*. German Catholic counties — the religious-institution-disruption test case — show no measurable response. The Kulturkampf as a religious shock is largely null; the Kulturkampf-plus-Germanisation as a Polish ethnic shock is what produced the headline numbers.
+
+The CBR map (panel 2) shows the same pattern with starker contrast: dark red in Polish provinces, *positive* blue in German Catholic provinces (the demographic-resistance story), and near-zero across the rest."""),
+    md("""## 11. Emigration confound: are the Polish-province results mechanical?
 
 A natural concern with the Polish-province coefficients is that the post-1873 demographic response was driven by *out-migration* rather than by behavioural changes in fertility or marriage. The Kulturkampf coincided with major Polish emigration to the Ruhr industrial region and to the Americas, and Bismarck's $\\mathit{Polenausweisungen}$ in 1885--86 explicitly expelled ~30{,}000 non-Prussian Poles, with the 1886 Settlement Commission accelerating Germanisation through land purchases. If Polish provinces lost young adults at higher rates, both the marriage rate and the crude birth rate would fall mechanically through the population denominator, even if behaviour was unchanged.
 
@@ -703,7 +742,7 @@ print(counts.to_string(index=False, float_format=lambda x: f"{x:+.5f}"))"""),
 3. **Population-free outcomes corroborate the behavioural interpretation.** Total marriages (a count, no denominator) decline by 0.50/year per percentage point of cath\\_share (p = 0.011); legitimate births *per marriage* actually *rise* (+0.003, p $<$ 0.001), consistent with selection — fewer marriages happen, and those that do are among couples who would have had higher fertility anyway. This is exactly the intensive/extensive-margin pattern that an institutional disruption to marriage formation would produce.
 
 **Econometric warning.** Adding migration as a control in the *headline* regressions is a "bad-control" problem (Angrist--Pischke 2009 ch.~3): population is itself an outcome of the Kulturkampf. The migration-controlled coefficients here are reported only as a *robustness exercise* to show the marriage-rate result does not depend on the population denominator. We do not use them as the headline estimate."""),
-    md("""## 11. Pretreatment-characteristic time trends (Bai 2009, Hsiao 2014)
+    md("""## 12. Pretreatment-characteristic time trends (Bai 2009, Hsiao 2014)
 
 The pre-trends Wald test in notebook 02 rejected the null of zero pre-1872 event-study coefficients for *every* outcome at p $<$ 0.001. The most likely interpretation: Catholic counties differ from Protestant counties in baseline characteristics (urbanisation, literacy, citizenship status) that themselves trend differently over the panel. If so, the headline DiD estimate of the Kulturkampf effect is partly capturing those differential dynamics rather than the policy itself.
 
@@ -749,14 +788,43 @@ for outcome in ("cbr", "marriage_rate"):
 **The honest interpretation.** The marriage-rate finding survives the textbook robustness check that addresses pre-trend concerns (Bai 2009; Hsiao 2014). The result is *not* explained by differential trends in literacy, urbanisation, or citizenship — but is partially explained by trends correlated with eastern-province ethnic and demographic dynamics (proxied by Jewish share). This is consistent with the picture from the falsifications and emigration sections: the marriage-rate effect is a real institutional response, but the Polish-province dimension is doing real work in the headline coefficient.
 
 **Important caveat.** The pre-trends Wald test still rejects under all five specifications (chi-square statistics fall from 41.8 to ~38--42 across specs, p $<$ 0.001). Linear pretreatment trends absorb only a small fraction of the pre-trend signal. The full year-by-year-fixed-effect form would absorb more, but at the cost of many degrees of freedom. The Honest DiD bound from notebook 02 remains the appropriate framing for inference on the post-period coefficient given residual pre-trend concerns."""),
-    md("""## 12. Channel: infant mortality (1875+ only due to definition break)
+    md("""## 13. Sample-composition decomposition: where does the magnitude come from?
+
+The pre-trends Wald test still rejects under our linear pretreatment-trend specifications, so we ask the question from another angle: rather than absorb pre-trend variation through controls, we *restrict the sample* to subsets where the pre-trend concern is weakest, and report how the headline DiD coefficient moves.
+
+Two restrictions matter:
+
+1. **Core Prussia.** Roughly 85 of 392 counties first appear in the panel in 1867 — these are the territories Prussia annexed after the 1866 Austro-Prussian War (Schleswig-Holstein, Hanover, Hesse-Kassel, Nassau, Frankfurt). They cannot have observed 1862--1866 pre-trend coefficients, and their inclusion mechanically expands the comparison group mid-pre-period.
+
+2. **Polish provinces.** Posen and Bromberg ($\\sim$24 counties) where Catholic share aligns with Polish ethnicity; the policy bundle here is richer (Germanisation, $\\mathit{Polenausweisungen}$).
+
+The cleanest test of the religious-institutional disruption hypothesis is "core Prussia + non-Polish": 280 German counties present continuously since 1862, where the only Catholic--Protestant variation reflects pre-1864 confessional geography rather than ethnic conflict or sample composition."""),
+    code("""from src.analysis.regressions import run_subsample_decomposition
+
+print("=" * 75)
+print("HEADLINE DiD COEFFICIENT BY SAMPLE")
+print("=" * 75)
+sd = run_subsample_decomposition(panel, outcomes=("cbr", "marriage_rate"))
+print(sd.to_string(index=False, float_format=lambda x: f"{x:+.5f}"))"""),
+    md("""**Interpretation — the headline magnitude decomposes.** The marriage-rate coefficient on the cleanest cut (core Prussia + non-Polish) is $-0.0013$ ($p = 0.087$), down from $-0.0036$ on the full panel. So the headline magnitude divides roughly as:
+
+- **~22% from the 1866-annexed territories** (Hanover, Hesse, Schleswig, etc.): mostly Protestant, only enter the panel in 1867. Their inclusion shouldn't drive a Catholic-vs-Protestant Kulturkampf finding, but it does -- a transparency point worth flagging.
+- **~36% from Polish provinces.** Already known to be partly mechanical (post-1885 emigration) and partly ethnic-conflict-driven (the Germanisation bundle running parallel to the Kulturkampf).
+- **~36% from "core German Catholic"**: the genuine policy-of-interest channel. Magnitude $-0.0013$ per pp cath\\_share, marginal at $p = 0.09$ under conventional inference.
+
+Three honest implications for the paper:
+
+1. **The headline magnitude is not the magnitude of the religious-institution disruption alone.** It mixes that with sample-composition effects (1866 annexations) and ethnic-conflict effects (Polish provinces).
+2. **The "core" effect is real but small.** $-0.0013$ marginal at the 10\\% level is consistent with a modest behavioural response to Catholic parish disruption — about a quarter to a third of the headline number.
+3. **The pre-trend rejection persists across all sample cuts.** The chi-square goes from 41.8 (full panel) to 45.9 (core Prussia + no Polish) -- *up*, not down. So the pre-trend isn't a sample-composition artefact either; it's something about the original Prussian core."""),
+    md("""## 14. Channel: infant mortality (1875+ only due to definition break)
 
 Galloway's infant mortality measure changes definition in 1875, so we restrict this analysis to 1875+ and use the rollback period (1880+) as the treatment cut-off."""),
     code("""imr = infant_mortality_analysis(panel)
 imr["fig"].savefig(OUTPUTS / "fig11_infant_mortality.png", dpi=300, bbox_inches="tight")
 plt.show()"""),
     md("""**Interpretation.** The infant-mortality DiD on the rollback period gives a small, marginally significant positive coefficient — high-Catholic counties saw slightly higher infant mortality during the rollback. Plausibly consistent with Catholic charitable health services being disrupted, but the magnitude is modest and the sample is restricted."""),
-    md("""## 13. Magnitude decomposition (using IV CBR coefficient)
+    md("""## 15. Magnitude decomposition (using IV CBR coefficient)
 
 We translate the IV coefficient (estimated in notebook 04) into an interpretable magnitude: how much of the observed differential change in CBR between high- and low-Catholic counties does the Kulturkampf explain?"""),
     code("""mag = magnitude_decomposition(panel)
@@ -770,7 +838,7 @@ print(mag[display_cols].to_string(index=False, float_format=lambda x: f'{x:+.3f}
 - **counterfactual_gap.** What the differential gap *would have been* absent the Kulturkampf, $= \\text{observed} - \\text{IV-implied}$.
 
 For CBR, the IV says the Kulturkampf depressed the high-low CBR gap by $-3.46$ per 1,000; observed gap widened by only $+0.62$; so absent the Kulturkampf, high-Catholic counties would have had a $+4.09$ wider CBR advantage. The Kulturkampf prevented a fertility *divergence* rather than caused a *convergence*."""),
-    md("""## 14. Cohort fertility translation
+    md("""## 16. Cohort fertility translation
 
 Translate the IV CBR coefficient into period TFR and cohort CCF terms using a simple constant-share approximation. Useful for the demography audience and for the abstract."""),
     code("""from src.analysis.regressions import run_iv_did
@@ -787,7 +855,7 @@ print(f"  Cumulative birth deficit (per 1,000):   {ct['cumulative_per_1000']:+.1
 print(f"  Implied TFR effect (period):            {ct['tfr_diff']:+.3f}")
 print(f"  Implied CCF effect (cohort):            {ct['ccf_diff']:+.3f}")"""),
     md("""**Interpretation.** A 0.47-point reduction in TFR is large — roughly 20–30% of modern developed-country TFR levels, or equivalently ~62 fewer births per 1,000 population over the 1873–90 period for a county at the high-vs-low Catholic-share contrast. *Conditional on the IV being credible* (notebook 04 evaluates that), this is a demographically meaningful magnitude."""),
-    md("""## 15. What's next
+    md("""## 17. What's next
 
 - **Notebook 04** brings the spatial dimension and the identification strategy to bear: distance-to-Wittenberg as a Becker–Woessmann instrument, distance-to-bishop's-seat as an alternative instrument, multi-instrument 2SLS with the Wooldridge over-identification test, Conley HAC standard errors for spatial autocorrelation, and the IV-implied counterfactual fertility paths."""),
 ]

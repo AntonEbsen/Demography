@@ -33,9 +33,9 @@ def polish_german_rollback(
 
     sub_results = {}
     for label, mask in [
-        ("Polish provinces", df["Rb"].isin(polish_rbs)),
-        ("German Catholic provinces", df["Rb"].isin(german_cath_rbs)),
-        ("Protestant provinces (rest)", ~df["Rb"].isin(polish_rbs + german_cath_rbs)),
+        ("Polish high-Catholic counties", df["Rb"].isin(polish_rbs)),
+        ("German high-Catholic counties", df["Rb"].isin(german_cath_rbs)),
+        ("Protestant low-Catholic counties (rest)", ~df["Rb"].isin(polish_rbs + german_cath_rbs)),
     ]:
         sub = df[mask].copy()
         if sub["Code"].nunique() < 10:
