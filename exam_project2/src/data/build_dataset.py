@@ -19,6 +19,7 @@ from src.data.load_data import (
     load_rel1871,
     load_vit_panel,
     interpolate_population,
+    compute_midyear_population,
     load_pop1871_age_structure,
     DATA_RAW,
     DATA_PROCESSED,
@@ -54,17 +55,33 @@ def build_analysis_panel(
     
     Returns
     -------
-    pd.DataFrame  with columns:
+    pd.DataFrame with columns. Headline rate variables (`cbr`,
+    `legitimate_br`, `illegitimate_br`, `marriage_rate`, `inmig_rate`,
+    `outmig_rate`, `net_mig_rate`) use mid-year population
+    (`Poptot_midyear`) as the denominator -- the standard demographic
+    convention. Carry-forward variants under a `_carryforward` suffix
+    use the raw Galloway `Poptot` (= previous December census carried
+    forward in inter-census years) and are reported as a robustness row
+    in the headline DiD table only.
+
         Identifiers:  Code, Rb, Kreis, Year
         Treatment:    cath_share, high_cath, post_kulturkampf, treat_x_post
         Outcomes:     cbr, legitimate_br, illegitimate_br, marriage_rate,
                       cath_marriage_share, infant_mortality_rate,
-                      gfr_static_1871
+                      gfr_static_1871, illegitimacy_ratio
         Migration:    Inmigtot, Outmigtot, Outmigunoff,
                       inmig_rate, outmig_rate, net_mig_rate
+        Mid-year pop: Poptot_midyear (used as the denominator above)
+        Carry-fwd:    cbr_carryforward, legitimate_br_carryforward,
+                      illegitimate_br_carryforward,
+                      marriage_rate_carryforward,
+                      inmig_rate_carryforward, outmig_rate_carryforward,
+                      net_mig_rate_carryforward
         1871 census:  pop_*_1871, age_*_1871, women_15_49_1871,
                       women_share_15_49_1871
-        Controls:     Poptot, ln_pop, plus iPEHD covariates
+        Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
+                      raw Galloway `Poptot` is also retained as a column
+                      for users who want to recompute carry-forward rates
     """
     if data_dir is None:
         data_dir = DATA_RAW
@@ -108,61 +125,102 @@ def build_analysis_panel(
                 n_before, n_after, n_before - n_after)
     
     # ------------------------------------------------------------------
-    # 4. Construct outcome variables
+    # 4. Mid-year population (proper demographic CBR convention).
+    # Galloway's raw `Poptot` is the *previous* December census carried
+    # forward in inter-census years; mid-year (July 1) population is the
+    # standard CBR denominator (an approximation to person-years lived).
+    # We construct `Poptot_midyear` first and use it as the *primary*
+    # denominator for cbr / legitimate_br / illegitimate_br /
+    # marriage_rate / migration rates. The original carry-forward
+    # versions are retained under a `_carryforward` suffix for the
+    # robustness row in the headline DiD table. See
+    # compute_midyear_population() docstring.
     # ------------------------------------------------------------------
-    
-    # Crude birth rate (per 1,000)
-    panel["cbr"] = panel["Birtot"] / panel["Poptot"] * 1000
-    
-    # Legitimate birth rate (per 1,000)
-    panel["legitimate_br"] = panel["Birlegtot"] / panel["Poptot"] * 1000
-    
-    # Illegitimate birth rate (per 1,000)
-    panel["illegitimate_br"] = panel["Birbastot"] / panel["Poptot"] * 1000
-    
-    # Illegitimacy ratio (illegitimate / total births, %)
+    panel = compute_midyear_population(panel, data_dir=data_dir)
+    pop_my = panel["Poptot_midyear"]
+
+    # Headline rates: mid-year denominator (standard demographic convention).
+    panel["cbr"] = np.where(
+        pop_my.notna() & (pop_my > 0),
+        panel["Birtot"] / pop_my * 1000.0, np.nan,
+    )
+    panel["legitimate_br"] = np.where(
+        pop_my.notna() & (pop_my > 0),
+        panel["Birlegtot"] / pop_my * 1000.0, np.nan,
+    )
+    panel["illegitimate_br"] = np.where(
+        pop_my.notna() & (pop_my > 0),
+        panel["Birbastot"] / pop_my * 1000.0, np.nan,
+    )
+    panel["marriage_rate"] = np.where(
+        pop_my.notna() & (pop_my > 0),
+        panel["Martot"] / pop_my * 1000.0, np.nan,
+    )
+
+    # Illegitimacy ratio: birth-only denominator -- unaffected by Poptot.
     panel["illegitimacy_ratio"] = panel["Birbastot"] / panel["Birtot"] * 100
-    
-    # Marriage rate (per 1,000)
-    panel["marriage_rate"] = panel["Martot"] / panel["Poptot"] * 1000
-    
-    # Catholic marriage share (% of marriages that are Catholic)
-    # Only available from 1875 onwards
+
+    # Catholic marriage share (% of marriages that are Catholic).
+    # Only available from 1875 onwards.
     panel["cath_marriage_share"] = np.where(
         panel["Marcath"].notna() & (panel["Martot"] > 0),
         panel["Marcath"] / panel["Martot"] * 100,
         np.nan,
     )
-    
-    # Infant mortality rate (infant deaths / live births, per 1,000)
+
+    # Infant mortality rate (infant deaths / live births, per 1,000).
+    # Birlegtot denominator -- unaffected by Poptot convention.
     panel["infant_mortality_rate"] = np.where(
         panel["Dth_infant_leg"].notna() & (panel["Birlegtot"] > 0),
         panel["Dth_infant_leg"] / panel["Birlegtot"] * 1000,
         np.nan,
     )
-    
-    # Log population
-    panel["ln_pop"] = np.log(panel["Poptot"])
 
-    # Migration rates (per 1,000), where Galloway records migration that year.
-    # Coverage: 1862-1867 (totals only) and 1872-1886 (sex-summed). Years
-    # 1868-1871 and 1887+ have no migration columns -> NaN propagates.
+    # Log mid-year population: standard control for county-size effects,
+    # using the same mid-year-interpolated denominator as the headline
+    # rate variables (avoids mixing carry-forward and mid-year
+    # conventions inside the same regression).
+    panel["ln_pop"] = np.log(panel["Poptot_midyear"])
+
+    # Headline migration rates: mid-year denominator (per 1,000 pop).
+    # Coverage: 1862-1867 (totals only) and 1872-1886 (sex-summed); years
+    # 1868-1871 and 1887+ have no Galloway migration columns -> NaN.
     panel["inmig_rate"] = np.where(
-        panel["Inmigtot"].notna() & (panel["Poptot"] > 0),
-        panel["Inmigtot"] / panel["Poptot"] * 1000.0,
-        np.nan,
+        panel["Inmigtot"].notna() & pop_my.notna() & (pop_my > 0),
+        panel["Inmigtot"] / pop_my * 1000.0, np.nan,
     )
     panel["outmig_rate"] = np.where(
-        panel["Outmigtot"].notna() & (panel["Poptot"] > 0),
-        panel["Outmigtot"] / panel["Poptot"] * 1000.0,
-        np.nan,
+        panel["Outmigtot"].notna() & pop_my.notna() & (pop_my > 0),
+        panel["Outmigtot"] / pop_my * 1000.0, np.nan,
     )
     panel["net_mig_rate"] = np.where(
-        panel["Inmigtot"].notna()
-        & panel["Outmigtot"].notna()
+        panel["Inmigtot"].notna() & panel["Outmigtot"].notna()
+        & pop_my.notna() & (pop_my > 0),
+        (panel["Inmigtot"] - panel["Outmigtot"]) / pop_my * 1000.0, np.nan,
+    )
+
+    # ------------------------------------------------------------------
+    # 4b. Carry-forward (Galloway raw) variants for the robustness row in
+    # the headline DiD table. These use the unmodified Galloway `Poptot`
+    # (= previous December census carried forward) as denominator and are
+    # what one gets by using the Galloway database "out of the box".
+    # ------------------------------------------------------------------
+    panel["cbr_carryforward"] = panel["Birtot"] / panel["Poptot"] * 1000
+    panel["legitimate_br_carryforward"] = panel["Birlegtot"] / panel["Poptot"] * 1000
+    panel["illegitimate_br_carryforward"] = panel["Birbastot"] / panel["Poptot"] * 1000
+    panel["marriage_rate_carryforward"] = panel["Martot"] / panel["Poptot"] * 1000
+    panel["inmig_rate_carryforward"] = np.where(
+        panel["Inmigtot"].notna() & (panel["Poptot"] > 0),
+        panel["Inmigtot"] / panel["Poptot"] * 1000.0, np.nan,
+    )
+    panel["outmig_rate_carryforward"] = np.where(
+        panel["Outmigtot"].notna() & (panel["Poptot"] > 0),
+        panel["Outmigtot"] / panel["Poptot"] * 1000.0, np.nan,
+    )
+    panel["net_mig_rate_carryforward"] = np.where(
+        panel["Inmigtot"].notna() & panel["Outmigtot"].notna()
         & (panel["Poptot"] > 0),
-        (panel["Inmigtot"] - panel["Outmigtot"]) / panel["Poptot"] * 1000.0,
-        np.nan,
+        (panel["Inmigtot"] - panel["Outmigtot"]) / panel["Poptot"] * 1000.0, np.nan,
     )
 
     # ------------------------------------------------------------------
@@ -198,7 +256,19 @@ def build_analysis_panel(
     # errors) and nullify the derived rate columns so downstream regressions
     # — and the Pandera audit — drop them via NaN handling rather than
     # treating them as real values.
-    panel["cbr_flag"] = (panel["cbr"] > 70) | (panel["cbr"] < 15)
+    # Flag extreme CBR under *either* the headline mid-year convention
+    # or the Galloway carry-forward convention. The mid-year convention
+    # can produce demographically impossible values when the 1871-anchored
+    # interpolated denominator does not match the post-1872 boundary-reform
+    # Birtot (e.g. Tarnowitz 1872, where 1873 county splits mean the 1872
+    # numerator covers a different geography than the 1871/1875 census
+    # anchors). One unified flag keeps both rate series consistent with
+    # the same set of "good" rows.
+    panel["cbr_flag"] = (
+        (panel["cbr"] > 70) | (panel["cbr"] < 15)
+        | (panel["cbr_carryforward"].fillna(panel["cbr"]) > 70)
+        | (panel["cbr_carryforward"].fillna(panel["cbr"]) < 15)
+    )
     n_flagged = panel["cbr_flag"].sum()
     if n_flagged > 0:
         logger.warning("%d observations with extreme CBR (>70 or <15 per 1000); "
@@ -206,6 +276,16 @@ def build_analysis_panel(
         rate_cols = ["cbr", "legitimate_br", "illegitimate_br",
                      "illegitimacy_ratio", "marriage_rate"]
         panel.loc[panel["cbr_flag"], rate_cols] = np.nan
+        # Mirror the null-out for the Galloway carry-forward variants
+        # (used in the robustness row): if Birtot is implausible the
+        # carry-forward ratio is equally contaminated.
+        carryforward_rate_cols = [
+            "cbr_carryforward", "legitimate_br_carryforward",
+            "illegitimate_br_carryforward", "marriage_rate_carryforward",
+        ]
+        for col in carryforward_rate_cols:
+            if col in panel.columns:
+                panel.loc[panel["cbr_flag"], col] = np.nan
 
     # ------------------------------------------------------------------
     # 6b. Merge iPEHD controls (cross-sectional, time-invariant).

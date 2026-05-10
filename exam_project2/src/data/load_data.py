@@ -145,6 +145,79 @@ def load_pop_census(data_dir: Optional[Path] = None, years: Optional[List[int]] 
     return pd.concat(frames, ignore_index=True)
 
 
+def compute_midyear_population(
+    panel: pd.DataFrame,
+    data_dir: Optional[Path] = None,
+    census_month: int = 12,
+) -> pd.DataFrame:
+    """
+    Add a `Poptot_midyear` column to the panel by linearly interpolating
+    between consecutive Prussian December census anchors and evaluating
+    at mid-year (July 1) of each panel year.
+
+    Why: Galloway's `Poptot` in inter-census years is the *previous*
+    December census value, carried forward unchanged. That is end-of-year
+    (Dec 1) rather than mid-year (July 1) population, which biases CBR
+    upward by ~1-3% in growing populations and produces a sawtooth
+    artefact at each census year. The standard demographic convention is
+    mid-year population (an approximation to person-years lived), so
+    proper CBR / GFR comparisons should use a smoothed mid-year denominator.
+
+    Treats each POP{c}.xls file as a snapshot taken on Day 1 of
+    `census_month` of year c (default December 1, matching Prussian
+    practice). Interpolates linearly in fractional time, evaluates at
+    `Year + 0.5` (July 1) for each panel observation. Counties outside
+    the convex hull of available censuses (e.g. mid-1862 lies between
+    Dec 1861 and Dec 1864 anchors) get the boundary-clamped extrapolation
+    that ``np.interp`` provides.
+
+    Returns a copy of `panel` with `Poptot_midyear` appended.
+    """
+    pop_census = load_pop_census(data_dir)
+    if len(pop_census) == 0:
+        logger.warning("No POP census files found, cannot compute mid-year Poptot.")
+        out = panel.copy()
+        out["Poptot_midyear"] = np.nan
+        return out
+
+    # Census date: Day 1 of `census_month` (default Dec) of the labelled year.
+    pop_census = pop_census.copy()
+    pop_census["t_census"] = pop_census["Year"] + (census_month - 1) / 12.0
+    pop_census = (
+        pop_census.dropna(subset=["Pop_census"])
+        .sort_values(["Code", "t_census"])
+        .reset_index(drop=True)
+    )
+
+    panel = panel.copy()
+    panel["Poptot_midyear"] = np.nan
+
+    # Per-county linear interpolation at mid-year (July 1 = year + 6/12).
+    for code, grp in pop_census.groupby("Code"):
+        anchors_t = grp["t_census"].to_numpy(dtype=float)
+        anchors_p = grp["Pop_census"].to_numpy(dtype=float)
+        if len(anchors_t) < 2:
+            continue  # need at least two census anchors to interpolate
+        mask = panel["Code"] == code
+        if not mask.any():
+            continue
+        t_mid = panel.loc[mask, "Year"].to_numpy(dtype=float) + 0.5
+        # np.interp clips to endpoint values for out-of-range points,
+        # which is the right fallback for years before the first or after
+        # the last census we have.
+        panel.loc[mask, "Poptot_midyear"] = np.interp(t_mid, anchors_t, anchors_p)
+
+    n_missing = panel["Poptot_midyear"].isna().sum()
+    if n_missing > 0:
+        logger.warning(
+            "%d obs still missing Poptot_midyear after interpolation "
+            "(counties with <2 census anchors)", n_missing,
+        )
+    else:
+        logger.info("Mid-year Poptot computed for all %d obs.", len(panel))
+    return panel
+
+
 def interpolate_population(
     panel: pd.DataFrame,
     data_dir: Optional[Path] = None,

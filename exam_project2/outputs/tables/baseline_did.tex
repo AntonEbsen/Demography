@@ -11,24 +11,29 @@
  & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate \\
  & (1) & (2) & (3) & (4) & (5) & (6) & (7) & (8) \\
 \midrule
-CathShare $\times$ Post & -0.000 & 0.002 & -0.003 & -0.004$^{***}$ & 0.000 & 0.001 & 0.000 & -0.000 \\
+CathShare $\times$ Post & -0.004 & -0.002 & -0.003 & -0.004$^{***}$ & 0.001 & 0.002 & 0.000 & -0.000 \\
  & (0.003) & (0.003) & (0.002) & (0.001) & (0.005) & (0.005) & (0.003) & (0.001) \\
 \addlinespace
-$\ln(\text{Population})$ & 1.677$^{***}$ & 1.497$^{***}$ & 0.164 & 0.255$^{***}$ & 2.169$^{***}$ & 2.045$^{***}$ & -0.125 & 0.053 \\
- & (0.531) & (0.518) & (0.213) & (0.097) & (0.667) & (0.623) & (0.257) & (0.122) \\
+$\ln(\text{Population})$ & 1.973$^{**}$ & 1.723$^{**}$ & 0.272 & 0.247$^{*}$ & 2.516$^{***}$ & 2.441$^{***}$ & -0.278 & 0.014 \\
+ & (0.818) & (0.791) & (0.256) & (0.149) & (0.814) & (0.763) & (0.295) & (0.159) \\
 \midrule
 County FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
 Year FE & Yes & Yes & Yes & Yes & -- & -- & -- & -- \\
 Year $\times$ Rb FE & -- & -- & -- & -- & Yes & Yes & Yes & Yes \\
-Observations & 10,778 & 10,778 & 10,778 & 10,778 & 10,778 & 10,778 & 10,778 & 10,778 \\
-Within $R^{2}$ & 0.001 & 0.005 & 0.010 & 0.019 & 0.001 & 0.002 & -0.002 & 0.003 \\
+Observations & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 \\
+Within $R^{2}$ & 0.002 & 0.002 & 0.010 & 0.026 & 0.002 & 0.002 & -0.002 & 0.002 \\
+\midrule
+\multicolumn{9}{l}{\textit{Galloway carry-forward robustness} (rate $=$ count $/$ raw Galloway \texttt{Poptot}; previous Dec.\ census carried forward in inter-census years)} \\
+\quad CathShare $\times$ Post (Galloway carry-forward) & -0.001 & 0.001 & -0.003 & -0.004$^{***}$ & 0.001 & 0.002 & 0.000 & -0.000 \\
+ & (0.003) & (0.003) & (0.002) & (0.001) & (0.005) & (0.005) & (0.003) & (0.001) \\
+\midrule
 Pre-trends $\chi^{2}$ $p$ & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\
 \addlinespace
-\multicolumn{9}{l}{\textit{Pre-trends Wald $\chi^{2}$ on \texttt{gfr\_static\_1871} (GFR comparison)}: $\chi^{2} = 70.77$, df $= 10$, $p = 0.000$} \\
+\multicolumn{9}{l}{\textit{Pre-trends Wald $\chi^{2}$ on \texttt{gfr\_static\_1871} (GFR comparison)}: $\chi^{2} = 80.14$, df $= 10$, $p = 0.000$} \\
 \bottomrule
 \end{tabular}
 \begin{minipage}{\linewidth}
 \vspace{0.5em}
-\footnotesize \textit{Notes:} Two-way fixed-effects estimates of equation $Y_{it} = \beta\,(\mathrm{CathShare}_i \times \mathrm{Post}_t) + \alpha_i + \delta_t + \gamma X_{it} + \varepsilon_{it}$, with $\delta_t$ replaced by year~$\times$~Regierungsbezirk fixed effects in Panel~B. Post is an indicator for $t \geq 1873$. Standard errors clustered at the county level in parentheses. Birth and marriage rates per 1{,}000 population; illegitimacy ratio in percent. The ``Pre-trends $\chi^{2}$ $p$'' row reports the joint Wald test that all event-study coefficients in the pre-1872 period equal zero (estimated separately on the TWFE event-study; identical $p$-value applies under both FE designs). The single-line ``GFR comparison'' reports the same test on the General Fertility Rate (births per 1{,}000 women aged 15--49 using the 1871 census denominator), which addresses the standard demographic critique that CBR is mechanically affected by age structure. The companion event-study figure \texttt{fig5\_event\_study\_cbr\_gfr.png} plots both event studies side by side. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
+\footnotesize \textit{Notes:} Two-way fixed-effects estimates of equation $Y_{it} = \beta\,(\mathrm{CathShare}_i \times \mathrm{Post}_t) + \alpha_i + \delta_t + \gamma X_{it} + \varepsilon_{it}$, with $\delta_t$ replaced by year~$\times$~Regierungsbezirk fixed effects in Panel~B. Post is an indicator for $t \geq 1873$. Standard errors clustered at the county level in parentheses. Birth and marriage rates per 1{,}000 \emph{mid-year} population; illegitimacy ratio in percent. Mid-year population is constructed by linearly interpolating between consecutive December census anchors and evaluating at July 1 of each calendar year (standard demographic convention). The ``Galloway carry-forward robustness'' row reports the same coefficients using the raw Galloway \texttt{Poptot}, which carries the previous December census forward unchanged in inter-census years and biases CBR upward by 1--3\% in growing populations. The ``Pre-trends $\chi^{2}$ $p$'' row reports the joint Wald test that all event-study coefficients in the pre-1872 period equal zero (estimated separately on the TWFE event-study; identical $p$-value applies under both FE designs). The single-line ``GFR comparison'' reports the same test on the General Fertility Rate (births per 1{,}000 women aged 15--49 using the 1871 census denominator), which addresses the standard demographic critique that CBR is mechanically affected by age structure. The companion event-study figure \texttt{fig5\_event\_study\_cbr\_gfr.png} plots both event studies side by side. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
 \end{minipage}
 \end{table}

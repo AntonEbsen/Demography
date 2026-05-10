@@ -74,6 +74,9 @@ PANEL_PATH = PROJECT_ROOT / "data" / "processed" / "analysis_panel.parquet"
 
 # Display labels for outcomes and regressors. Edit here to retitle in tables.
 OUTCOME_LABELS: dict[str, str] = {
+    # Headline rates use the mid-year-interpolated denominator (standard
+    # demographic convention). The label intentionally drops any
+    # qualifier -- this is what "the crude birth rate" means.
     "cbr": "Crude birth rate",
     "legitimate_br": "Legit.\\ birth rate",
     "illegitimate_br": "Illegit.\\ birth rate",
@@ -84,6 +87,14 @@ OUTCOME_LABELS: dict[str, str] = {
     # General Fertility Rate using women aged 15-49 in the 1871 census as a
     # static denominator. See DATA_APPENDIX section 6.2 / 8.11.
     "gfr_static_1871": "GFR (1871 base)",
+    # Galloway carry-forward variants: same numerator, but denominator is
+    # the previous December census carried forward unchanged in
+    # inter-census years (i.e. raw Galloway `Poptot`). Used only in the
+    # mid-year-vs-carry-forward robustness row of the headline DiD table.
+    "cbr_carryforward": "CBR (Galloway carry-forward)",
+    "legitimate_br_carryforward": "Legit.\\ BR (carry-forward)",
+    "illegitimate_br_carryforward": "Illegit.\\ BR (carry-forward)",
+    "marriage_rate_carryforward": "Marriage rate (carry-forward)",
 }
 
 REGRESSOR_LABELS: dict[str, str] = {
@@ -283,13 +294,24 @@ def baseline_did_table(
 ) -> str:
     """Multi-outcome baseline DiD with TWFE and stricter Year x Rb FE columns.
 
-    Includes a pre-trends Wald-$\\chi^2$ $p$-value row for each outcome, plus
-    a one-line ``GFR comparison'' showing the same test on
-    ``gfr_static_1871`` (births per 1{,}000 women aged 15--49 using the 1871
-    census denominator). The GFR line addresses the standard demographic
-    critique that CBR is mechanically affected by age structure -- a reader
-    can see directly that the pre-trends conclusion is not driven by
-    age-composition contamination of the headline outcome.
+    Headline rates (`cbr`, `legitimate_br`, `illegitimate_br`,
+    `marriage_rate`) use the standard demographic CBR convention: the
+    population denominator is linearly interpolated between consecutive
+    December census anchors and evaluated at July 1 of each calendar year.
+    The ``Galloway carry-forward robustness'' row reports the same
+    coefficients using the raw Galloway `Poptot` (previous December
+    census carried forward in inter-census years), so a reader can see
+    how using the database "out of the box" differs from the proper
+    mid-year convention.
+
+    Includes a pre-trends Wald-$\\chi^2$ $p$-value row for each outcome,
+    plus a one-line ``GFR comparison'' showing the same test on
+    ``gfr_static_1871`` (births per 1{,}000 women aged 15--49 using the
+    1871 census denominator). The GFR line addresses the standard
+    demographic critique that CBR is mechanically affected by age
+    structure -- a reader can see directly that the pre-trends
+    conclusion is not driven by age-composition contamination of the
+    headline outcome.
     """
     out_path = out_path or TABLES_DIR / "baseline_did.tex"
 
@@ -298,6 +320,25 @@ def baseline_did_table(
     cols = cols_twfe + cols_strict
     n_out = len(outcomes)
     n = len(cols)
+
+    # Carry-forward (Galloway raw) robustness: rerun TWFE and Year x Rb
+    # on the `_carryforward` rate variants -- denominator is the previous
+    # December census carried forward unchanged in inter-census years
+    # (i.e. raw Galloway `Poptot`). This is what one gets by using the
+    # database "out of the box". Reported here so a reader can see how
+    # the headline (proper-mid-year) coefficients differ from the raw
+    # Galloway-tradition number; the headline rows themselves use the
+    # mid-year convention (standard demographic CBR), not this one.
+    _carryforward_map = {
+        "cbr": "cbr_carryforward",
+        "legitimate_br": "legitimate_br_carryforward",
+        "illegitimate_br": "illegitimate_br_carryforward",
+        "marriage_rate": "marriage_rate_carryforward",
+    }
+    cf_outcomes = [_carryforward_map.get(o, o) for o in outcomes]
+    cols_cf_twfe = [_did_column(panel, o, "twfe") for o in cf_outcomes]
+    cols_cf_strict = [_did_column(panel, o, "year_x_rb") for o in cf_outcomes]
+    cols_cf = cols_cf_twfe + cols_cf_strict
 
     # Pre-trends Wald chi-squared per outcome (TWFE event study), and a
     # GFR comparison reported on a single auxiliary line.
@@ -370,6 +411,22 @@ def baseline_did_table(
         + " & ".join(f"{pt['p_value']:.3f}" for pt in pretrends_per_outcome)
         + r" \\"
     )
+
+    # Carry-forward (Galloway raw) robustness rows: same TWFE / Year x Rb
+    # FE specification but using rate variables built from the raw
+    # Galloway `Poptot` denominator (previous December census carried
+    # forward in inter-census years). Two rows (coef + SE) so the table
+    # stays compact rather than adding a third panel.
+    carryforward_coef_row = (
+        "\\quad CathShare $\\times$ Post (Galloway carry-forward) & "
+        + " & ".join(_fmt_coef(c["coef"], c["p"]) for c in cols_cf)
+        + r" \\"
+    )
+    carryforward_se_row = (
+        " & "
+        + " & ".join(_fmt_se(c["se"]) for c in cols_cf)
+        + r" \\"
+    )
     # One-line GFR pre-trends Wald comparison (spans full table width).
     pretrends_gfr_row = (
         f"\\multicolumn{{{n + 1}}}{{l}}{{"
@@ -402,6 +459,13 @@ def baseline_did_table(
         + "Within $R^{2}$ & "
         + " & ".join(f"{c['r2']:.3f}" for c in cols)
         + " \\\\\n"
+        + "\\midrule\n"
+        + f"\\multicolumn{{{n + 1}}}{{l}}{{\\textit{{Galloway carry-forward robustness}} "
+        f"(rate $=$ count $/$ raw Galloway \\texttt{{Poptot}}; previous Dec.\\ census "
+        f"carried forward in inter-census years)}} \\\\\n"
+        + carryforward_coef_row + "\n"
+        + carryforward_se_row + "\n"
+        + "\\midrule\n"
         + pretrends_p_row + "\n"
         + "\\addlinespace\n"
         + pretrends_gfr_row + "\n"
@@ -421,7 +485,14 @@ def baseline_did_table(
             "$\\delta_t$ replaced by year~$\\times$~Regierungsbezirk fixed effects "
             "in Panel~B. Post is an indicator for $t \\geq 1873$. Standard errors "
             "clustered at the county level in parentheses. Birth and marriage rates "
-            "per 1{,}000 population; illegitimacy ratio in percent. The "
+            "per 1{,}000 \\emph{mid-year} population; illegitimacy ratio in percent. "
+            "Mid-year population is constructed by linearly interpolating between "
+            "consecutive December census anchors and evaluating at July 1 of each "
+            "calendar year (standard demographic convention). The ``Galloway "
+            "carry-forward robustness'' row reports the same coefficients using "
+            "the raw Galloway \\texttt{Poptot}, which carries the previous "
+            "December census forward unchanged in inter-census years and biases "
+            "CBR upward by 1--3\\% in growing populations. The "
             "``Pre-trends $\\chi^{2}$ $p$'' row reports the joint Wald test that "
             "all event-study coefficients in the pre-1872 period equal zero "
             "(estimated separately on the TWFE event-study; identical $p$-value "

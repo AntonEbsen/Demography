@@ -29,6 +29,17 @@ PANEL_SCHEMA = DataFrameSchema(
         # General fertility rate (births per 1,000 women aged 15-49 in 1871).
         # Bounded loosely; demographically extreme values still flag bad rows.
         "gfr_static_1871": Column(float, Check.in_range(0, 500), nullable=True),
+        # Mid-year population: linear interpolation between consecutive
+        # December census anchors evaluated at July 1. Headline `cbr`,
+        # `legitimate_br`, `illegitimate_br`, `marriage_rate`, and
+        # migration rates use this as their denominator (standard
+        # demographic convention). See compute_midyear_population() for
+        # the construction.
+        "Poptot_midyear": Column(float, Check.gt(0), nullable=True),
+        # Galloway carry-forward variant (= previous December census
+        # carried forward in inter-census years), retained as the
+        # robustness row in the headline DiD table.
+        "cbr_carryforward": Column(float, Check.in_range(0, 100), nullable=True),
     },
     strict=False,
     unique=["Code", "Year"],
