@@ -731,11 +731,16 @@ def run_pretreatment_trends_robustness(
       (3) + literacy + urbanisation (f_urban) x trend
       (4) + lit + urban + Prussian citizenship (f_pruss) x trend
       (5) + lit + urban + pruss + Jewish share (f_jew) x trend
+      (6) + lit + urban + pruss + jew + female-15-49 share x trend
 
     Note: f_jew x trend likely absorbs the differential dynamics of eastern
     Polish provinces (where Jewish share is high), so the gap between (4)
     and (5) is informative about how much of the Kulturkampf coefficient
-    operates through the Polish-province channel.
+    operates through the Polish-province channel. Spec (6) adds the share
+    of women aged 15-49 in 1871 (women_share_15_49_1871, from POP1871) as
+    a baseline -- this is the demographic age-structure analogue of the
+    iPEHD socio-economic baselines and tests whether a county's *fertility
+    capacity* (not just its religion) drives differential trends.
     """
     specs = [
         ("(1) Baseline (no pretreatment trends)", None),
@@ -744,6 +749,8 @@ def run_pretreatment_trends_robustness(
         ("(4) + lit + urban + pruss x trend", ("school1517", "f_urban", "f_pruss")),
         ("(5) + lit + urban + pruss + jew x trend",
             ("school1517", "f_urban", "f_pruss", "f_jew")),
+        ("(6) + lit + urban + pruss + jew + women-15-49-share x trend",
+            ("school1517", "f_urban", "f_pruss", "f_jew", "women_share_15_49_1871")),
     ]
 
     rows = []
@@ -774,7 +781,7 @@ def run_emigration_robustness(
     outcomes: tuple[str, ...] = ("cbr", "marriage_rate"),
 ) -> pd.DataFrame:
     """
-    Three robustness specifications addressing the post-1885 Polish-province
+    Robustness specifications addressing the post-1885 Polish-province
     emigration confound:
 
     (1) Baseline TWFE with ln_pop only -- the existing default.
@@ -786,6 +793,12 @@ def run_emigration_robustness(
         survives, the result clearly is not just emigration mechanics.
     (4) Sample restricted to pre-1885, before the Bismarck-era
         Polenausweisungen and Settlement Commission. Cleanest cut.
+    (5) TWFE with ln_pop + *measured* out-migration rate from Galloway VIT
+        (annual, per 1,000 pop). Cleaner than the implied identity in (3)
+        but only available for years with VIT migration columns
+        (1862-1867 and 1872-1886; ~21 of 29 panel years).
+    (6) TWFE with ln_pop + *measured* net migration rate (in - out, per
+        1,000 pop). Same coverage caveat as (5).
     """
     work = df.copy().sort_values(["Code", "Year"])
     work["pop_change"] = work.groupby("Code")["Poptot"].diff()
@@ -803,6 +816,8 @@ def run_emigration_robustness(
             ("(2) + pop growth rate",      ["ln_pop", "pop_growth_rate"], None),
             ("(3) + implied migration",    ["ln_pop", "migration_rate"], None),
             ("(4) Restrict to pre-1885",   ["ln_pop"], lambda d: d["Year"] < 1885),
+            ("(5) + measured outmig rate", ["ln_pop", "outmig_rate"], None),
+            ("(6) + measured net mig rate", ["ln_pop", "net_mig_rate"], None),
         ]:
             sub = work if sample_filter is None else work[sample_filter(work)]
             try:

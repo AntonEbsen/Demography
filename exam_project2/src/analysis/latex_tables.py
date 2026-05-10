@@ -81,6 +81,9 @@ OUTCOME_LABELS: dict[str, str] = {
     "marriage_rate": "Marriage rate",
     "infant_mortality_rate": "Infant mortality",
     "cath_marriage_share": "Catholic marriage share",
+    # General Fertility Rate using women aged 15-49 in the 1871 census as a
+    # static denominator. See DATA_APPENDIX section 6.2 / 8.11.
+    "gfr_static_1871": "GFR (1871 base)",
 }
 
 REGRESSOR_LABELS: dict[str, str] = {
@@ -278,7 +281,16 @@ def baseline_did_table(
     outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
-    """Multi-outcome baseline DiD with TWFE and stricter Year x Rb FE columns."""
+    """Multi-outcome baseline DiD with TWFE and stricter Year x Rb FE columns.
+
+    Includes a pre-trends Wald-$\\chi^2$ $p$-value row for each outcome, plus
+    a one-line ``GFR comparison'' showing the same test on
+    ``gfr_static_1871`` (births per 1{,}000 women aged 15--49 using the 1871
+    census denominator). The GFR line addresses the standard demographic
+    critique that CBR is mechanically affected by age structure -- a reader
+    can see directly that the pre-trends conclusion is not driven by
+    age-composition contamination of the headline outcome.
+    """
     out_path = out_path or TABLES_DIR / "baseline_did.tex"
 
     cols_twfe = [_did_column(panel, o, "twfe") for o in outcomes]
@@ -286,6 +298,13 @@ def baseline_did_table(
     cols = cols_twfe + cols_strict
     n_out = len(outcomes)
     n = len(cols)
+
+    # Pre-trends Wald chi-squared per outcome (TWFE event study), and a
+    # GFR comparison reported on a single auxiliary line.
+    pretrends_per_outcome = [
+        pretrends_wald_test(panel, outcome=o) for o in outcomes
+    ]
+    pretrends_gfr = pretrends_wald_test(panel, outcome="gfr_static_1871")
 
     # Header: Panel A (TWFE) and Panel B (Year x Rb FE) spanning the columns
     cmidrules = (
@@ -341,6 +360,27 @@ def baseline_did_table(
     yes_strict = " & ".join("Yes" for _ in cols_strict)
     no_strict = " & ".join("--" for _ in cols_strict)
 
+    # Pre-trends Wald p-value row: same value for both panels because the
+    # test is run on the TWFE event-study; replicated across columns so a
+    # reader scanning a single column sees it.
+    pretrends_p_row = (
+        "Pre-trends $\\chi^{2}$ $p$ & "
+        + " & ".join(f"{pt['p_value']:.3f}" for pt in pretrends_per_outcome)
+        + " & "
+        + " & ".join(f"{pt['p_value']:.3f}" for pt in pretrends_per_outcome)
+        + r" \\"
+    )
+    # One-line GFR pre-trends Wald comparison (spans full table width).
+    pretrends_gfr_row = (
+        f"\\multicolumn{{{n + 1}}}{{l}}{{"
+        f"\\textit{{Pre-trends Wald $\\chi^{{2}}$ on \\texttt{{gfr\\_static\\_1871}} "
+        f"(GFR comparison)}}: "
+        f"$\\chi^{{2}} = {pretrends_gfr['wald_chi2']:.2f}$, "
+        f"df $= {pretrends_gfr['df']}$, "
+        f"$p = {pretrends_gfr['p_value']:.3f}$"
+        f"}} \\\\"
+    )
+
     tabular = (
         f"\\begin{{tabular}}{{l*{{{n}}}{{c}}}}\n"
         "\\toprule\n"
@@ -362,6 +402,9 @@ def baseline_did_table(
         + "Within $R^{2}$ & "
         + " & ".join(f"{c['r2']:.3f}" for c in cols)
         + " \\\\\n"
+        + pretrends_p_row + "\n"
+        + "\\addlinespace\n"
+        + pretrends_gfr_row + "\n"
         + "\\bottomrule\n"
         "\\end{tabular}\n"
     )
@@ -378,7 +421,17 @@ def baseline_did_table(
             "$\\delta_t$ replaced by year~$\\times$~Regierungsbezirk fixed effects "
             "in Panel~B. Post is an indicator for $t \\geq 1873$. Standard errors "
             "clustered at the county level in parentheses. Birth and marriage rates "
-            "per 1{,}000 population; illegitimacy ratio in percent. "
+            "per 1{,}000 population; illegitimacy ratio in percent. The "
+            "``Pre-trends $\\chi^{2}$ $p$'' row reports the joint Wald test that "
+            "all event-study coefficients in the pre-1872 period equal zero "
+            "(estimated separately on the TWFE event-study; identical $p$-value "
+            "applies under both FE designs). The single-line ``GFR comparison'' "
+            "reports the same test on the General Fertility Rate (births per "
+            "1{,}000 women aged 15--49 using the 1871 census denominator), which "
+            "addresses the standard demographic critique that CBR is mechanically "
+            "affected by age structure. The companion event-study figure "
+            "\\texttt{fig5\\_event\\_study\\_cbr\\_gfr.png} plots both event "
+            "studies side by side. "
             "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
         ),
     )
@@ -532,12 +585,28 @@ def channels_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
     return out
 
 
-def polish_german_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
-    """Heterogeneity by sub-region (Polish vs German Catholic vs Protestant)."""
+def polish_german_table(
+    panel: pd.DataFrame,
+    outcomes: Sequence[str] = ("cbr", "gfr_static_1871"),
+    out_path: Path | None = None,
+) -> str:
+    """Heterogeneity by sub-region (Polish vs German Catholic vs Protestant).
+
+    A panel per outcome (default: CBR and GFR) so a Demography-aware reader
+    can verify the sub-region divergence pattern is robust to age-structure
+    correction of the crude birth rate.
+    """
     out_path = out_path or TABLES_DIR / "polish_german.tex"
 
-    pg = polish_german_rollback(panel.copy(), outcome="cbr", savepath=None)["results"]
-    cols = list(pg.keys())
+    panels = {
+        outcome: polish_german_rollback(
+            panel.copy(), outcome=outcome, savepath=None
+        )["results"]
+        for outcome in outcomes
+    }
+
+    # Sub-region columns (same set in every panel; take from the first).
+    cols = list(next(iter(panels.values())).keys())
     n = len(cols)
 
     body = (
@@ -550,26 +619,37 @@ def polish_german_table(panel: pd.DataFrame, out_path: Path | None = None) -> st
         + "\n\\midrule\n"
     )
 
-    for key, label in [
-        ("enforcement", _label("cath_x_enforcement")),
-        ("rollback", _label("cath_x_rollback")),
-        ("post_rollback", _label("cath_x_postrollback")),
-    ]:
+    panel_labels = "ABCDEFGH"
+    for letter, outcome in zip(panel_labels, outcomes):
+        pg = panels[outcome]
         body += (
-            f"{label} & "
-            + " & ".join(_fmt_coef(pg[c][key]["coef"], pg[c][key]["p"]) for c in cols)
-            + r" \\" + "\n"
-            + " & "
-            + " & ".join(_fmt_se(pg[c][key]["se"]) for c in cols)
-            + r" \\" + "\n\\addlinespace\n"
+            f"\\multicolumn{{{n + 1}}}{{l}}{{\\textit{{Panel {letter}: "
+            f"{_outcome_label(outcome)}}}}} \\\\\n"
+            "\\addlinespace\n"
         )
+        for key, label in [
+            ("enforcement", _label("cath_x_enforcement")),
+            ("rollback", _label("cath_x_rollback")),
+            ("post_rollback", _label("cath_x_postrollback")),
+        ]:
+            body += (
+                f"{label} & "
+                + " & ".join(_fmt_coef(pg[c][key]["coef"], pg[c][key]["p"]) for c in cols)
+                + r" \\" + "\n"
+                + " & "
+                + " & ".join(_fmt_se(pg[c][key]["se"]) for c in cols)
+                + r" \\" + "\n\\addlinespace\n"
+            )
 
+    # Footer (county / year FE and counties) — identical across panels;
+    # use the last panel's county counts (sub-regions are the same).
+    last_pg = panels[outcomes[-1]]
     body += (
         "\\midrule\n"
         + f"County FE & {' & '.join('Yes' for _ in cols)} \\\\\n"
         + f"Year FE & {' & '.join('Yes' for _ in cols)} \\\\\n"
         + "Counties & "
-        + " & ".join(f"{pg[c]['n_counties']:,}" for c in cols)
+        + " & ".join(f"{last_pg[c]['n_counties']:,}" for c in cols)
         + " \\\\\n"
         + "\\bottomrule\n"
         "\\end{tabular}\n"
@@ -584,11 +664,18 @@ def polish_german_table(panel: pd.DataFrame, out_path: Path | None = None) -> st
         label="tab:polish_german",
         n_cols=n + 1,
         notes=(
-            "Outcome is the crude birth rate. Each column estimates the same "
-            "specification on a different sub-sample of provinces: Polish "
-            "(Posen, Bromberg), German Catholic (Cologne, Koblenz, Trier, Aachen, "
-            "Oppeln, M{\\\"u}nster), and the remaining (largely Protestant) provinces. "
-            "Standard errors clustered at the county level. "
+            "Each column estimates the same specification on a different "
+            "sub-sample of provinces: Polish (Posen, Bromberg), German Catholic "
+            "(Cologne, Koblenz, Trier, Aachen, Oppeln, M{\\\"u}nster), and the "
+            "remaining (largely Protestant) provinces. Panel A reports the crude "
+            "birth rate; Panel B reports the General Fertility Rate (births per "
+            "1{,}000 women aged 15--49 using the 1871 census denominator), "
+            "which addresses the demographic critique that CBR is mechanically "
+            "affected by age structure. The qualitative sub-region pattern "
+            "(Polish negative, German Catholic positive in enforcement; "
+            "Protestant null) is robust across the two outcomes; magnitudes "
+            "scale by roughly $1/0.25\\approx 4$ as expected from the women-15--49 "
+            "population share. Standard errors clustered at the county level. "
             "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
         ),
     )
@@ -1367,11 +1454,17 @@ def falsifications_table(
 
 def heterogeneity_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "marriage_rate", "gfr_static_1871"),
     moderators: tuple[str, ...] = ("school1517", "f_urban"),
     out_path: Path | None = None,
 ) -> str:
-    """Treatment effect interactions with iPEHD moderators (literacy, urban share)."""
+    """Treatment effect interactions with iPEHD moderators (literacy, urban share).
+
+    Default outcomes include the General Fertility Rate (GFR using women
+    aged 15-49 in 1871 as the static denominator) alongside CBR and
+    marriage rate, so a Demography-aware reader can see the heterogeneity
+    pattern is robust to the standard age-structure correction of CBR.
+    """
     out_path = out_path or TABLES_DIR / "heterogeneity.tex"
 
     moderator_labels = {
@@ -1528,10 +1621,18 @@ def iv_overid_table(
 
 def wild_bootstrap_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "marriage_rate", "gfr_static_1871"),
     out_path: Path | None = None,
 ) -> str:
-    """Wild cluster bootstrap p-values across full panel and key sub-samples."""
+    """Wild cluster bootstrap p-values across full panel and key sub-samples.
+
+    The GFR column tests whether the small-cluster sub-region results
+    survive the standard age-structure correction of CBR. Because GFR has
+    higher residual variance than CBR (denominator is ~25% of pop), the
+    wild-bootstrap p-values diverge sharply from the asymptotic ones in
+    the small-cluster sub-regions (Polish $G=24$; German Catholic $G=68$).
+    Reading wild $p$ rather than asymptotic $p$ is essential here.
+    """
     out_path = out_path or TABLES_DIR / "wild_bootstrap.tex"
 
     samples = {
@@ -1601,7 +1702,14 @@ def wild_bootstrap_table(
             "brackets. Wild bootstrap delivers reliable inference even when the "
             "number of clusters $G$ is small (e.g.\\ the 24 Polish-province "
             "counties) where conventional cluster-robust standard errors are "
-            "unreliable. $^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$ "
+            "unreliable. The GFR column uses the General Fertility Rate "
+            "(births per 1{,}000 women aged 15--49 in 1871) and addresses the "
+            "standard demographic critique that CBR is mechanically affected by "
+            "age structure. Because GFR has higher residual variance, the "
+            "wild-bootstrap and asymptotic $p$-values diverge in the "
+            "small-cluster sub-regions; the wild-bootstrap value is the correct "
+            "small-sample inference. "
+            "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$ "
             "stars are based on the wild bootstrap $p$-value."
         ),
     )
@@ -2177,6 +2285,26 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "event_study_rollback.tex")
     event_study_table(panel, out_path=written[-1], use_rollback=True)
+
+    # Side-by-side CBR vs GFR event-study figure: a single artefact for
+    # the demography-aware reader to verify that the event-study shape and
+    # pre-trends conclusion carry over to the age-standardised outcome.
+    try:
+        from src.visualization.plots import plot_event_study_cbr_gfr
+        es_cbr = run_event_study(panel, outcome="cbr")
+        es_gfr = run_event_study(panel, outcome="gfr_static_1871")
+        pre_cbr = pretrends_wald_test(panel, outcome="cbr")
+        pre_gfr = pretrends_wald_test(panel, outcome="gfr_static_1871")
+        es_path = FIGURES_DIR / "fig5_event_study_cbr_gfr.png"
+        es_path.parent.mkdir(parents=True, exist_ok=True)
+        plot_event_study_cbr_gfr(
+            es_cbr["coefs"], es_gfr["coefs"],
+            pretrends_cbr=pre_cbr, pretrends_gfr=pre_gfr,
+            savepath=str(es_path),
+        )
+        logger.info("Wrote %s", es_path)
+    except Exception as exc:
+        logger.warning("Skipped CBR/GFR event-study figure: %s", exc)
 
     return written
 

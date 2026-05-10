@@ -2,6 +2,8 @@
 
 This project analyzes whether Bismarck's anti-Catholic Kulturkampf legislation (1872–1878) affected the Catholic–Protestant fertility differential in Prussian counties. It leverages the Galloway Prussia Database (1861–1914) and the iPEHD (1871) dataset.
 
+📑 **[Data Appendix](DATA_APPENDIX.md)** — variable definitions, formulas, sources, sample-construction rules, and estimation specifications.
+
 ## Project Structure
 
 - `data/`: Contains raw data and processed datasets.
