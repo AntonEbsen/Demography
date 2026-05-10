@@ -139,26 +139,49 @@ def compute_coale_indices(
     women_share_of_pop: float = WOMEN_15_49_SHARE,
     age_dist: dict | None = None,
     married_share: dict | None = None,
+    pop_col: str = "Poptot_midyear",
+    use_county_specific_share: bool = True,
 ) -> pd.DataFrame:
     """
-    Compute Coale's $I_f$, $I_g$, $I_h$ for each county-year.
+    Compute Coale's $I_f$, $I_g$, $I_h$ for each county-year, plus the
+    Galloway-style General Marital Fertility Rate (GMFR).
 
-    Returns a copy of ``panel`` with new columns ``I_f``, ``I_g``, ``I_h``.
+    Following Galloway, Hammel & Lee (1994, *Population Studies*), the
+    primary fertility measure for Prussia is the GMFR (legitimate births
+    per 1{,}000 married women aged 15--49). Coale's $I_g$ is the
+    Hutterite-normalised version of the same quantity (= GMFR / Hutterite
+    age-weighted natural-fertility maximum). Both are computed and
+    returned: ``I_g`` (unitless, normalised) and ``gmfr`` (per 1{,}000
+    married women, the Galloway-tradition headline level).
 
-    Note on I_m: under the constant nuptiality schedule baked into
-    ``married_share`` (necessary because Galloway lacks age structure of
-    married women), the Hutterite-weighted Princeton I_m is a constant
-    across the panel and not directly informative about between-county or
-    pre/post variation. We therefore *do not* report I_m here; instead the
-    paper uses the observed marriage rate (Martot / population) from the
-    main analysis panel as the nuptiality marker. This is more transparent
-    than backing out a residual I_m from the I_f ≈ I_g·I_m + I_h(1-I_m)
-    identity, which would absorb measurement noise rather than identify a
-    behavioural object.
+    Returns a copy of ``panel`` with new columns ``I_f``, ``I_g``, ``I_h``,
+    and ``gmfr``.
 
-    The Hutterite-weighted average of the assumed nuptiality schedule —
-    the *level* of I_m implied by the calibration — is also returned for
-    reference (constant; useful as the denominator in derived ratios).
+    Implementation. Galloway lacks age structure of married women in the
+    raw VIT files, so we approximate the contemporaneous count of women
+    aged 15-49 by either:
+
+      - **County-specific 1871 share** (default, ``use_county_specific_share=True``):
+        $W_t = (\\mathrm{women\\_15\\_49\\_1871} / \\mathrm{pop\\_total\\_1871})
+        \\times \\mathrm{Poptot}_t$. Allows the share of reproductive-age
+        women to vary across counties (e.g.\\ Polish vs Rhineland) but
+        assumes within-county constancy across 1862--1890.
+      - **Constant share** (``use_county_specific_share=False``):
+        $W_t = 0.25 \\times \\mathrm{Poptot}_t$. The Coale-Demeny "West"
+        Level 7 reference value used in the Princeton EFP.
+
+    The married-share schedule (``married_share`` arg, default
+    ``DEFAULT_MARRIED_SHARE``) is constant across counties and time. This
+    is a necessary approximation because Galloway has no annual age x
+    marital-status data; the $I_m$ (nuptiality) component is therefore
+    captured separately by the observed marriage rate
+    (``Martot / Poptot_midyear``) rather than by a constructed Coale
+    $I_m$ index.
+
+    Default population denominator is ``Poptot_midyear`` (the
+    linearly-interpolated mid-year column built by
+    ``compute_midyear_population``); pass ``pop_col="Poptot"`` to fall
+    back on the raw Galloway carry-forward population.
     """
     age_dist = age_dist or CD_WEST_FEMALE_15_49
     married_share = married_share or DEFAULT_MARRIED_SHARE
@@ -168,14 +191,44 @@ def compute_coale_indices(
     Fbar_unmar = _hutterite_unmarried_weighted(age_dist, married_share)
 
     df = panel.copy()
-    W = women_share_of_pop * df["Poptot"]
+    pop = df[pop_col] if pop_col in df.columns else df["Poptot"]
+
+    if (
+        use_county_specific_share
+        and "women_15_49_1871" in df.columns
+        and "pop_total_1871" in df.columns
+    ):
+        # County-specific share of women aged 15-49 from POP1871, applied
+        # to contemporaneous mid-year population.
+        share = (df["women_15_49_1871"] / df["pop_total_1871"]).clip(lower=0.10, upper=0.40)
+        W = share * pop
+    else:
+        W = women_share_of_pop * pop
+
+    # M = total married women 15-49 (used as the GMFR denominator).
+    # NOT an input to I_g / I_h: those use W directly with the
+    # marriage-share-weighted Hutterite averages (Fbar_mar / Fbar_unmar)
+    # which already absorb the per-age married-share schedule. The
+    # Princeton EFP definitions are:
+    #
+    #   I_g = B_leg / sum_i (M_i * F_i^H) = B_leg / (W * Fbar_mar)
+    #   I_h = B_ill / sum_i ((W_i - M_i) * F_i^H) = B_ill / (W * Fbar_unmar)
+    #
+    # so applying an extra marriage-share factor would double-count.
     married_share_overall = sum(age_dist[a] * married_share[a] for a in age_dist)
     M = W * married_share_overall
-    U = W - M
 
     df["I_f"] = df["Birtot"] / (W * Fbar_all)
-    df["I_g"] = df["Birlegtot"] / (M * Fbar_mar)
-    df["I_h"] = df["Birbastot"] / (U * Fbar_unmar)
+    df["I_g"] = df["Birlegtot"] / (W * Fbar_mar)
+    df["I_h"] = np.where(
+        (W > 0) & df["Birbastot"].notna(),
+        df["Birbastot"] / (W * Fbar_unmar),
+        np.nan,
+    )
+
+    # Galloway-tradition GMFR: legitimate births per 1{,}000 married women
+    # 15--49. Direct unnormalised analogue of the Princeton I_g.
+    df["gmfr"] = np.where(M > 0, df["Birlegtot"] / M * 1000.0, np.nan)
 
     return df
 

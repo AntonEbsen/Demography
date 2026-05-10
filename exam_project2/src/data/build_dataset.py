@@ -59,16 +59,22 @@ def build_analysis_panel(
     `legitimate_br`, `illegitimate_br`, `marriage_rate`, `inmig_rate`,
     `outmig_rate`, `net_mig_rate`) use mid-year population
     (`Poptot_midyear`) as the denominator -- the standard demographic
-    convention. Carry-forward variants under a `_carryforward` suffix
-    use the raw Galloway `Poptot` (= previous December census carried
-    forward in inter-census years) and are reported as a robustness row
-    in the headline DiD table only.
+    convention, matching Galloway, Hammel & Lee (1994).
+    Carry-forward variants under a `_carryforward` suffix use the raw
+    Galloway `Poptot` and are reported as a robustness row only.
 
         Identifiers:  Code, Rb, Kreis, Year
         Treatment:    cath_share, high_cath, post_kulturkampf, treat_x_post
         Outcomes:     cbr, legitimate_br, illegitimate_br, marriage_rate,
                       cath_marriage_share, infant_mortality_rate,
-                      gfr_static_1871, illegitimacy_ratio
+                      illegitimacy_ratio
+        Coale/Galloway: I_f (general fertility), I_g (marital fertility,
+                       Hutterite-normalised; analogue of Galloway's GMFR),
+                       I_h (illegitimate fertility), gmfr (legitimate
+                       births per 1,000 married women 15-49, the
+                       unnormalised Galloway-tradition GMFR)
+        Deprecated:   gfr_static_1871 (kept for back-compat; superseded
+                      by I_g for marital-fertility analysis)
         Migration:    Inmigtot, Outmigtot, Outmigunoff,
                       inmig_rate, outmig_rate, net_mig_rate
         Mid-year pop: Poptot_midyear (used as the denominator above)
@@ -357,6 +363,40 @@ def build_analysis_panel(
             logger.warning("POP1871 age structure merge: expected columns missing -> skipping GFR")
     except FileNotFoundError as exc:
         logger.warning("POP1871 age-structure merge skipped (file not found): %s", exc)
+
+    # ------------------------------------------------------------------
+    # 6d. Princeton EFP Coale indices (I_f, I_g, I_h) and the Galloway-
+    # tradition GMFR (legitimate births per 1,000 married women aged
+    # 15-49). I_g is the central marital-fertility outcome in Galloway,
+    # Hammel & Lee (1994); we report it alongside CBR throughout the
+    # paper. See coale_indices.py docstring for the approximation
+    # assumptions (Hutterite ASFR, Coale-Demeny "West" age distribution,
+    # county-specific 1871 women-15-49 share scaled to mid-year pop).
+    # ------------------------------------------------------------------
+    try:
+        from src.analysis.coale_indices import compute_coale_indices
+        panel = compute_coale_indices(
+            panel,
+            pop_col="Poptot_midyear",
+            use_county_specific_share=True,
+        )
+        # Mirror the cbr_flag null-out: the Coale indices share Birtot /
+        # Birlegtot / Birbastot in their numerators, so an extreme CBR
+        # signals contaminated index values for the same row.
+        if "cbr_flag" in panel.columns:
+            for col in ("I_f", "I_g", "I_h", "gmfr"):
+                if col in panel.columns:
+                    panel.loc[panel["cbr_flag"].fillna(False), col] = np.nan
+        # Light flag for demographically implausible I_g (>1.0 means
+        # marital fertility above the Hutterite maximum -- a measurement
+        # artefact). Also flag I_g > 1 from boundary-reform residuals.
+        n_ig_extreme = int((panel["I_g"] > 1.2).sum())
+        if n_ig_extreme > 0:
+            logger.warning("%d obs with I_g > 1.2 (Hutterite max); set to NaN", n_ig_extreme)
+            panel.loc[panel["I_g"] > 1.2, ["I_g", "gmfr"]] = np.nan
+        logger.info("Coale indices computed: I_f, I_g, I_h, gmfr")
+    except Exception as exc:
+        logger.warning("Coale-indices computation skipped: %s", exc)
 
     # Enforce panel-key uniqueness. Source files occasionally contain a
     # duplicate (Code, Year) — most often a mislabeled year in a city/county

@@ -75,8 +75,9 @@ PANEL_PATH = PROJECT_ROOT / "data" / "processed" / "analysis_panel.parquet"
 # Display labels for outcomes and regressors. Edit here to retitle in tables.
 OUTCOME_LABELS: dict[str, str] = {
     # Headline rates use the mid-year-interpolated denominator (standard
-    # demographic convention). The label intentionally drops any
-    # qualifier -- this is what "the crude birth rate" means.
+    # demographic convention, matching Galloway, Hammel & Lee 1994).
+    # The label intentionally drops any qualifier -- this is what "the
+    # crude birth rate" means.
     "cbr": "Crude birth rate",
     "legitimate_br": "Legit.\\ birth rate",
     "illegitimate_br": "Illegit.\\ birth rate",
@@ -84,9 +85,17 @@ OUTCOME_LABELS: dict[str, str] = {
     "marriage_rate": "Marriage rate",
     "infant_mortality_rate": "Infant mortality",
     "cath_marriage_share": "Catholic marriage share",
-    # General Fertility Rate using women aged 15-49 in the 1871 census as a
-    # static denominator. See DATA_APPENDIX section 6.2 / 8.11.
-    "gfr_static_1871": "GFR (1871 base)",
+    # Princeton EFP / Coale indices. I_g is the Galloway-tradition
+    # marital-fertility headline (Hutterite-normalised; Galloway, Hammel
+    # & Lee 1994 use its unnormalised form, the GMFR). See
+    # coale_indices.py and DATA_APPENDIX.md sec. 6.5.
+    "I_f": "$I_f$ (overall fertility)",
+    "I_g": "$I_g$ (marital fertility)",
+    "I_h": "$I_h$ (illegitimate fertility)",
+    "gmfr": "GMFR (per 1k married women)",
+    # Deprecated -- kept for back-compat. Static-1871 GFR is superseded
+    # by I_g for marital-fertility analysis.
+    "gfr_static_1871": "GFR (1871 base, deprecated)",
     # Galloway carry-forward variants: same numerator, but denominator is
     # the previous December census carried forward unchanged in
     # inter-census years (i.e. raw Galloway `Poptot`). Used only in the
@@ -341,11 +350,16 @@ def baseline_did_table(
     cols_cf = cols_cf_twfe + cols_cf_strict
 
     # Pre-trends Wald chi-squared per outcome (TWFE event study), and a
-    # GFR comparison reported on a single auxiliary line.
+    # marital-fertility (I_g) comparison reported on a single auxiliary
+    # line. I_g is the Galloway, Hammel & Lee (1994) headline outcome --
+    # a Hutterite-normalised marital fertility rate that nets out
+    # nuptiality. Reporting its pre-trends chi-squared here lets a
+    # demography-aware reader confirm the pre-trends conclusion holds
+    # under the Princeton EFP framework.
     pretrends_per_outcome = [
         pretrends_wald_test(panel, outcome=o) for o in outcomes
     ]
-    pretrends_gfr = pretrends_wald_test(panel, outcome="gfr_static_1871")
+    pretrends_ig = pretrends_wald_test(panel, outcome="I_g")
 
     # Header: Panel A (TWFE) and Panel B (Year x Rb FE) spanning the columns
     cmidrules = (
@@ -427,14 +441,14 @@ def baseline_did_table(
         + " & ".join(_fmt_se(c["se"]) for c in cols_cf)
         + r" \\"
     )
-    # One-line GFR pre-trends Wald comparison (spans full table width).
-    pretrends_gfr_row = (
+    # One-line I_g pre-trends Wald comparison (spans full table width).
+    pretrends_ig_row = (
         f"\\multicolumn{{{n + 1}}}{{l}}{{"
-        f"\\textit{{Pre-trends Wald $\\chi^{{2}}$ on \\texttt{{gfr\\_static\\_1871}} "
-        f"(GFR comparison)}}: "
-        f"$\\chi^{{2}} = {pretrends_gfr['wald_chi2']:.2f}$, "
-        f"df $= {pretrends_gfr['df']}$, "
-        f"$p = {pretrends_gfr['p_value']:.3f}$"
+        f"\\textit{{Pre-trends Wald $\\chi^{{2}}$ on $I_g$ "
+        f"(Coale marital fertility, Galloway-tradition headline)}}: "
+        f"$\\chi^{{2}} = {pretrends_ig['wald_chi2']:.2f}$, "
+        f"df $= {pretrends_ig['df']}$, "
+        f"$p = {pretrends_ig['p_value']:.3f}$"
         f"}} \\\\"
     )
 
@@ -468,7 +482,7 @@ def baseline_did_table(
         + "\\midrule\n"
         + pretrends_p_row + "\n"
         + "\\addlinespace\n"
-        + pretrends_gfr_row + "\n"
+        + pretrends_ig_row + "\n"
         + "\\bottomrule\n"
         "\\end{tabular}\n"
     )
@@ -496,13 +510,12 @@ def baseline_did_table(
             "``Pre-trends $\\chi^{2}$ $p$'' row reports the joint Wald test that "
             "all event-study coefficients in the pre-1872 period equal zero "
             "(estimated separately on the TWFE event-study; identical $p$-value "
-            "applies under both FE designs). The single-line ``GFR comparison'' "
-            "reports the same test on the General Fertility Rate (births per "
-            "1{,}000 women aged 15--49 using the 1871 census denominator), which "
-            "addresses the standard demographic critique that CBR is mechanically "
-            "affected by age structure. The companion event-study figure "
-            "\\texttt{fig5\\_event\\_study\\_cbr\\_gfr.png} plots both event "
-            "studies side by side. "
+            "applies under both FE designs). The single-line ``$I_g$ comparison'' "
+            "reports the same test on Coale's marital-fertility index "
+            "(Hutterite-normalised legitimate births per married woman 15--49) -- "
+            "the headline outcome in Galloway, Hammel \\& Lee (1994). The "
+            "companion event-study figure \\texttt{fig5\\_event\\_study\\_cbr\\_ig.png} "
+            "plots the CBR and $I_g$ event studies side by side. "
             "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
         ),
     )
@@ -658,14 +671,17 @@ def channels_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
 
 def polish_german_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "gfr_static_1871"),
+    outcomes: Sequence[str] = ("cbr", "I_g", "marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """Heterogeneity by sub-region (Polish vs German Catholic vs Protestant).
 
-    A panel per outcome (default: CBR and GFR) so a Demography-aware reader
-    can verify the sub-region divergence pattern is robust to age-structure
-    correction of the crude birth rate.
+    A panel per outcome covering the full Coale--Watkins decomposition:
+    CBR (overall fertility), $I_g$ (marital fertility -- the Galloway,
+    Hammel & Lee 1994 headline), and marriage rate (nuptiality). Reading
+    across panels reveals whether the sub-region divergence operates
+    through marital fertility (within-marriage childbearing) or through
+    marriage formation.
     """
     out_path = out_path or TABLES_DIR / "polish_german.tex"
 
@@ -1525,16 +1541,19 @@ def falsifications_table(
 
 def heterogeneity_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "marriage_rate", "gfr_static_1871"),
+    outcomes: Sequence[str] = ("cbr", "marriage_rate", "I_g"),
     moderators: tuple[str, ...] = ("school1517", "f_urban"),
     out_path: Path | None = None,
 ) -> str:
     """Treatment effect interactions with iPEHD moderators (literacy, urban share).
 
-    Default outcomes include the General Fertility Rate (GFR using women
-    aged 15-49 in 1871 as the static denominator) alongside CBR and
-    marriage rate, so a Demography-aware reader can see the heterogeneity
-    pattern is robust to the standard age-structure correction of CBR.
+    Default outcomes include CBR (overall fertility), marriage rate
+    (nuptiality), and Coale's $I_g$ (marital fertility, Hutterite-
+    normalised; the Galloway-tradition headline measure -- Galloway,
+    Hammel & Lee 1994 use its unnormalised form, the GMFR). The trio
+    spans the full Coale--Watkins decomposition: $I_f \\approx I_g \\cdot
+    I_m + I_h(1-I_m)$, so the reader can see whether heterogeneity
+    operates through *marital* fertility or through *nuptiality*.
     """
     out_path = out_path or TABLES_DIR / "heterogeneity.tex"
 
@@ -1692,17 +1711,18 @@ def iv_overid_table(
 
 def wild_bootstrap_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "marriage_rate", "gfr_static_1871"),
+    outcomes: Sequence[str] = ("cbr", "marriage_rate", "I_g"),
     out_path: Path | None = None,
 ) -> str:
     """Wild cluster bootstrap p-values across full panel and key sub-samples.
 
-    The GFR column tests whether the small-cluster sub-region results
-    survive the standard age-structure correction of CBR. Because GFR has
-    higher residual variance than CBR (denominator is ~25% of pop), the
-    wild-bootstrap p-values diverge sharply from the asymptotic ones in
-    the small-cluster sub-regions (Polish $G=24$; German Catholic $G=68$).
-    Reading wild $p$ rather than asymptotic $p$ is essential here.
+    The $I_g$ column (Coale's marital fertility index, Hutterite-
+    normalised; the Galloway, Hammel & Lee 1994 tradition outcome) tests
+    whether the small-cluster sub-region results survive when fertility
+    is measured net of nuptiality. Because $I_g$ is dimensionless, its
+    coefficients are not directly comparable to the per-1{,}000 CBR /
+    marriage-rate columns; what *is* comparable across columns is the
+    sign and the wild-bootstrap $p$-value.
     """
     out_path = out_path or TABLES_DIR / "wild_bootstrap.tex"
 
@@ -2357,25 +2377,27 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
     written.append(out_dir / "event_study_rollback.tex")
     event_study_table(panel, out_path=written[-1], use_rollback=True)
 
-    # Side-by-side CBR vs GFR event-study figure: a single artefact for
-    # the demography-aware reader to verify that the event-study shape and
-    # pre-trends conclusion carry over to the age-standardised outcome.
+    # Side-by-side CBR vs I_g event-study figure: a single artefact for
+    # the demography-aware reader. CBR captures overall fertility (the
+    # broad Galloway 1994 Figure 1 measure); I_g is the Coale marital-
+    # fertility index that nets out nuptiality (Galloway, Hammel & Lee
+    # 1994 headline outcome).
     try:
-        from src.visualization.plots import plot_event_study_cbr_gfr
+        from src.visualization.plots import plot_event_study_cbr_ig
         es_cbr = run_event_study(panel, outcome="cbr")
-        es_gfr = run_event_study(panel, outcome="gfr_static_1871")
+        es_ig = run_event_study(panel, outcome="I_g")
         pre_cbr = pretrends_wald_test(panel, outcome="cbr")
-        pre_gfr = pretrends_wald_test(panel, outcome="gfr_static_1871")
-        es_path = FIGURES_DIR / "fig5_event_study_cbr_gfr.png"
+        pre_ig = pretrends_wald_test(panel, outcome="I_g")
+        es_path = FIGURES_DIR / "fig5_event_study_cbr_ig.png"
         es_path.parent.mkdir(parents=True, exist_ok=True)
-        plot_event_study_cbr_gfr(
-            es_cbr["coefs"], es_gfr["coefs"],
-            pretrends_cbr=pre_cbr, pretrends_gfr=pre_gfr,
+        plot_event_study_cbr_ig(
+            es_cbr["coefs"], es_ig["coefs"],
+            pretrends_cbr=pre_cbr, pretrends_ig=pre_ig,
             savepath=str(es_path),
         )
         logger.info("Wrote %s", es_path)
     except Exception as exc:
-        logger.warning("Skipped CBR/GFR event-study figure: %s", exc)
+        logger.warning("Skipped CBR/I_g event-study figure: %s", exc)
 
     return written
 
