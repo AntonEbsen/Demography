@@ -388,6 +388,94 @@ def plot_event_study(
     return fig, ax
 
 
+def plot_event_study_cbr_gfr(
+    coefs_cbr: pd.DataFrame,
+    coefs_gfr: pd.DataFrame,
+    pretrends_cbr: dict | None = None,
+    pretrends_gfr: dict | None = None,
+    ref_year: int = 1872,
+    savepath: str | None = None,
+):
+    """
+    Side-by-side event-study figure: CBR (left) and the static-1871 GFR
+    (right). The GFR panel addresses the standard demographic critique that
+    CBR is mechanically affected by age structure -- a Demography reader
+    can verify directly that the event-study shape, the timing of the
+    departure from zero, and the pre-trends test all carry over to the
+    age-standardised outcome.
+
+    Each panel shades the Kulturkampf enforcement window (1872--1878),
+    plots the 95% CI ribbon, the point estimates, and the omitted
+    reference year. If pre-trends Wald dictionaries (output of
+    ``regressions.pretrends_wald_test``) are passed, the $\\chi^2$
+    statistic, df, and $p$-value are annotated in the upper-left corner of
+    each panel.
+
+    Parameters
+    ----------
+    coefs_cbr, coefs_gfr : pd.DataFrame
+        Output of ``run_event_study(...)['coefs']`` for each outcome.
+        Must have columns ``Year, beta, ci_lo, ci_hi``.
+    pretrends_cbr, pretrends_gfr : dict, optional
+        Output of ``pretrends_wald_test(...)``. If provided, annotated.
+    ref_year : int
+        Reference (omitted) event-study year.
+    savepath : str, optional
+        Where to write the PNG.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharex=True)
+
+    panels = [
+        (axes[0], coefs_cbr, pretrends_cbr,
+         "Crude birth rate",
+         "Coefficient on CathShare $\\times$ Year (per 1,000 pop)"),
+        (axes[1], coefs_gfr, pretrends_gfr,
+         "GFR (1871 base)",
+         "Coefficient on CathShare $\\times$ Year (per 1,000 women 15--49)"),
+    ]
+    for ax, coefs, pre, title, ylabel in panels:
+        ax.axvspan(1872, 1878, alpha=0.12, color=COLORS["kulturkampf"])
+        ax.axhline(0, color="black", linewidth=0.8, linestyle="-")
+        ax.fill_between(
+            coefs["Year"], coefs["ci_lo"], coefs["ci_hi"],
+            alpha=0.25, color=COLORS["catholic"],
+        )
+        ax.plot(
+            coefs["Year"], coefs["beta"],
+            color=COLORS["catholic"], linewidth=2, marker="o", markersize=4,
+        )
+        ax.scatter(
+            [ref_year], [0], color="black", s=80, zorder=5,
+            marker="D", label=f"Reference year ({ref_year})",
+        )
+        if pre is not None:
+            txt = (
+                f"Pre-trends Wald $\\chi^2$ = {pre['wald_chi2']:.2f} "
+                f"(df = {pre['df']})\n"
+                f"$p$-value = {pre['p_value']:.3f}"
+            )
+            ax.text(
+                0.02, 0.98, txt,
+                transform=ax.transAxes, fontsize=9, va="top", ha="left",
+                bbox=dict(boxstyle="round", facecolor="white",
+                          edgecolor="grey", alpha=0.85),
+            )
+        ax.set_xlabel("Year", fontsize=11)
+        ax.set_ylabel(ylabel, fontsize=10)
+        ax.set_title(title, fontsize=12, fontweight="bold")
+        ax.grid(axis="y", alpha=0.3)
+        ax.legend(loc="lower left", frameon=True, fontsize=8)
+
+    fig.suptitle(
+        "Event study: CBR vs General Fertility Rate (1871 denominator)",
+        fontsize=13, fontweight="bold", y=1.00,
+    )
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    return fig, axes
+
+
 def plot_cath_distribution(
     df: pd.DataFrame,
     savepath: str = None,

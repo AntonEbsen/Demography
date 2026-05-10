@@ -18,6 +18,17 @@ PANEL_SCHEMA = DataFrameSchema(
         "cbr": Column(float, Check.in_range(0, 100), nullable=True),
         "cath_share": Column(float, Check.in_range(0, 100), nullable=True),
         "post_kulturkampf": Column(int, Check.isin([0, 1]), nullable=True),
+        # Migration rates: nullable (only ~21 of 29 panel years have migration
+        # data); generous bounds since some Galloway counties record extreme
+        # gross flows in single years.
+        "outmig_rate": Column(float, Check.in_range(-50, 500), nullable=True),
+        "inmig_rate":  Column(float, Check.in_range(-50, 500), nullable=True),
+        "net_mig_rate": Column(float, Check.in_range(-500, 500), nullable=True),
+        # 1871 age structure: women-15-49 share of total population, in %.
+        "women_share_15_49_1871": Column(float, Check.in_range(0, 100), nullable=True),
+        # General fertility rate (births per 1,000 women aged 15-49 in 1871).
+        # Bounded loosely; demographically extreme values still flag bad rows.
+        "gfr_static_1871": Column(float, Check.in_range(0, 500), nullable=True),
     },
     strict=False,
     unique=["Code", "Year"],

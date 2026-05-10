@@ -261,7 +261,36 @@ def _load_single_vit(path: Path) -> pd.DataFrame:
     out["Martot"] = df["Martot"] if "Martot" in df.columns else np.nan
     out["Marevan"] = df["Marevan"] if "Marevan" in df.columns else np.nan
     out["Marcath"] = df["Marcath"] if "Marcath" in df.columns else np.nan
-    
+
+    # --- In-migration ---
+    # Pre-1875 files store Inmigtot directly; 1875-1886 files store by sex.
+    # 1868-1871 and 1887+ have no migration data => NaN.
+    if "Inmigtot" in df.columns:
+        out["Inmigtot"] = df["Inmigtot"]
+    elif "Inmigm" in df.columns and "Inmigf" in df.columns:
+        m = df["Inmigm"]
+        f = df["Inmigf"]
+        both_nan = m.isna() & f.isna()
+        out["Inmigtot"] = m.fillna(0) + f.fillna(0)
+        out.loc[both_nan, "Inmigtot"] = np.nan
+    else:
+        out["Inmigtot"] = np.nan
+
+    # --- Out-migration (official) ---
+    if "Outmigtot" in df.columns:
+        out["Outmigtot"] = df["Outmigtot"]
+    elif "Outmigm" in df.columns and "Outmigf" in df.columns:
+        m = df["Outmigm"]
+        f = df["Outmigf"]
+        both_nan = m.isna() & f.isna()
+        out["Outmigtot"] = m.fillna(0) + f.fillna(0)
+        out.loc[both_nan, "Outmigtot"] = np.nan
+    else:
+        out["Outmigtot"] = np.nan
+
+    # --- Unofficial out-migration (only recorded 1875-1886) ---
+    out["Outmigunoff"] = df["Outmigunoff"] if "Outmigunoff" in df.columns else np.nan
+
     return out
 
 
@@ -310,7 +339,54 @@ def load_vit_panel(
 
 
 # ===================================================================
-# 4.  iPEHD master dataset (reference only)
+# 4.  POP1871 age x sex pyramid (cross-section, time-invariant covariates)
+# ===================================================================
+
+# Galloway POP1871 raw column -> analysis-friendly suffixed name (`_1871`).
+POP1871_COLUMN_RENAME = {
+    "Area":          "pop_area_1871",
+    "Pop":           "pop_total_1871",
+    "Popm":          "pop_m_1871",
+    "Popf":          "pop_f_1871",
+    "Popmilitary":   "pop_military_1871",
+    "Age0-4m":       "age_0_4_m_1871",   "Age0-4f":       "age_0_4_f_1871",
+    "Age5-14m":      "age_5_14_m_1871",  "Age5-14f":      "age_5_14_f_1871",
+    "Age15-19m":     "age_15_19_m_1871", "Age15-19f":     "age_15_19_f_1871",
+    "Age20-29m":     "age_20_29_m_1871", "Age20-29f":     "age_20_29_f_1871",
+    "Age30-39m":     "age_30_39_m_1871", "Age30-39f":     "age_30_39_f_1871",
+    "Age40-49m":     "age_40_49_m_1871", "Age40-49f":     "age_40_49_f_1871",
+    "Age50-59m":     "age_50_59_m_1871", "Age50-59f":     "age_50_59_f_1871",
+    "Age60andoverm": "age_60p_m_1871",   "Age60andoverf": "age_60p_f_1871",
+}
+
+
+def load_pop1871_age_structure(path: Optional[Path] = None) -> pd.DataFrame:
+    """
+    Load POP1871 and extract the age x sex pyramid plus area, as a
+    time-invariant 1871 cross-section. Used downstream to build a proper
+    General Fertility Rate (GFR = births / women aged 15-49) and to expose
+    1871 age structure as a covariate / Bai-Hsiao baseline.
+
+    Returns a DataFrame keyed by Code with columns
+    `pop_area_1871`, `pop_total_1871`, `pop_m_1871`, `pop_f_1871`,
+    `pop_military_1871`, plus eight age-by-sex bands suffixed `_1871`
+    (`age_0_4_m_1871`, ..., `age_60p_f_1871`). Filters to Type=0, Code<900.
+    """
+    if path is None:
+        path = _find_file(DATA_RAW, "POP1871")
+        if path is None:
+            raise FileNotFoundError("POP1871 not found in data/raw/")
+
+    df = _normalize_columns(pd.read_excel(path))
+    df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+    df = df.rename(columns=POP1871_COLUMN_RENAME)
+
+    keep = ["Code"] + [v for v in POP1871_COLUMN_RENAME.values() if v in df.columns]
+    return df[keep].reset_index(drop=True)
+
+
+# ===================================================================
+# 5.  iPEHD master dataset (reference only)
 # ===================================================================
 
 def load_ipehd_master(path: Optional[Path] = None) -> pd.DataFrame:

@@ -15,7 +15,14 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-from src.data.load_data import load_rel1871, load_vit_panel, interpolate_population, DATA_RAW, DATA_PROCESSED
+from src.data.load_data import (
+    load_rel1871,
+    load_vit_panel,
+    interpolate_population,
+    load_pop1871_age_structure,
+    DATA_RAW,
+    DATA_PROCESSED,
+)
 from src.data.merge_ipehd import merge_ipehd_controls
 
 
@@ -51,8 +58,13 @@ def build_analysis_panel(
         Identifiers:  Code, Rb, Kreis, Year
         Treatment:    cath_share, high_cath, post_kulturkampf, treat_x_post
         Outcomes:     cbr, legitimate_br, illegitimate_br, marriage_rate,
-                      cath_marriage_share, infant_mortality_rate
-        Controls:     Poptot, ln_pop
+                      cath_marriage_share, infant_mortality_rate,
+                      gfr_static_1871
+        Migration:    Inmigtot, Outmigtot, Outmigunoff,
+                      inmig_rate, outmig_rate, net_mig_rate
+        1871 census:  pop_*_1871, age_*_1871, women_15_49_1871,
+                      women_share_15_49_1871
+        Controls:     Poptot, ln_pop, plus iPEHD covariates
     """
     if data_dir is None:
         data_dir = DATA_RAW
@@ -131,7 +143,28 @@ def build_analysis_panel(
     
     # Log population
     panel["ln_pop"] = np.log(panel["Poptot"])
-    
+
+    # Migration rates (per 1,000), where Galloway records migration that year.
+    # Coverage: 1862-1867 (totals only) and 1872-1886 (sex-summed). Years
+    # 1868-1871 and 1887+ have no migration columns -> NaN propagates.
+    panel["inmig_rate"] = np.where(
+        panel["Inmigtot"].notna() & (panel["Poptot"] > 0),
+        panel["Inmigtot"] / panel["Poptot"] * 1000.0,
+        np.nan,
+    )
+    panel["outmig_rate"] = np.where(
+        panel["Outmigtot"].notna() & (panel["Poptot"] > 0),
+        panel["Outmigtot"] / panel["Poptot"] * 1000.0,
+        np.nan,
+    )
+    panel["net_mig_rate"] = np.where(
+        panel["Inmigtot"].notna()
+        & panel["Outmigtot"].notna()
+        & (panel["Poptot"] > 0),
+        (panel["Inmigtot"] - panel["Outmigtot"]) / panel["Poptot"] * 1000.0,
+        np.nan,
+    )
+
     # ------------------------------------------------------------------
     # 5. Treatment variables for the Kulturkampf DiD
     # ------------------------------------------------------------------
@@ -184,6 +217,66 @@ def build_analysis_panel(
         panel = merge_ipehd_controls(panel)
     except FileNotFoundError as exc:
         logger.warning("iPEHD merge skipped (file not found): %s", exc)
+
+    # ------------------------------------------------------------------
+    # 6c. Merge POP1871 age x sex pyramid (time-invariant 1871 cross-section)
+    # and construct the General Fertility Rate using women aged 15-49 in 1871
+    # as a static denominator. This addresses the standard demographic
+    # critique that CBR is mechanically affected by age structure.
+    # ------------------------------------------------------------------
+    try:
+        age1871 = load_pop1871_age_structure()
+        panel = panel.merge(age1871, on="Code", how="left")
+
+        # Women of reproductive age, 1871 census (count and share of total pop)
+        repro_age_cols = [
+            "age_15_19_f_1871",
+            "age_20_29_f_1871",
+            "age_30_39_f_1871",
+            "age_40_49_f_1871",
+        ]
+        if all(c in panel.columns for c in repro_age_cols):
+            panel["women_15_49_1871"] = panel[repro_age_cols].sum(axis=1, min_count=1)
+            panel["women_share_15_49_1871"] = np.where(
+                panel["pop_total_1871"] > 0,
+                panel["women_15_49_1871"] / panel["pop_total_1871"] * 100.0,
+                np.nan,
+            )
+
+            # General Fertility Rate (per 1,000 women aged 15-49 in 1871).
+            # Static denominator -> interpretable as "births per 1,000 women
+            # of reproductive age, holding age structure at its 1871 level".
+            panel["gfr_static_1871"] = np.where(
+                panel["women_15_49_1871"].fillna(0) > 0,
+                panel["Birtot"] / panel["women_15_49_1871"] * 1000.0,
+                np.nan,
+            )
+            # Mirror the cbr_flag treatment: an extreme CBR signals a bad
+            # Birtot or denominator that year, which equally contaminates GFR.
+            if "cbr_flag" in panel.columns:
+                panel.loc[panel["cbr_flag"].fillna(False), "gfr_static_1871"] = np.nan
+
+            # GFR-specific flag: a static 1871 denominator paired with a
+            # post-1873 boundary-reform Birtot can produce demographically
+            # impossible rates (>1 birth per woman per year). Cap at a tight
+            # historical-plausibility ceiling (400 per 1,000 women 15-49 ~
+            # cohort TFR of 12, well above any pre-modern observation).
+            panel["gfr_flag"] = (
+                panel["gfr_static_1871"].notna() & (panel["gfr_static_1871"] > 400)
+            )
+            n_gfr_flagged = int(panel["gfr_flag"].sum())
+            if n_gfr_flagged > 0:
+                logger.warning(
+                    "%d observations with extreme gfr_static_1871 (>400); set to NaN",
+                    n_gfr_flagged,
+                )
+                panel.loc[panel["gfr_flag"], "gfr_static_1871"] = np.nan
+            n_matched = panel["women_15_49_1871"].notna().sum()
+            logger.info("POP1871 age structure merged: %d of %d obs matched", n_matched, len(panel))
+        else:
+            logger.warning("POP1871 age structure merge: expected columns missing -> skipping GFR")
+    except FileNotFoundError as exc:
+        logger.warning("POP1871 age-structure merge skipped (file not found): %s", exc)
 
     # Enforce panel-key uniqueness. Source files occasionally contain a
     # duplicate (Code, Year) — most often a mislabeled year in a city/county
