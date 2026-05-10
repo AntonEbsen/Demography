@@ -388,21 +388,23 @@ def plot_event_study(
     return fig, ax
 
 
-def plot_event_study_cbr_gfr(
+def plot_event_study_cbr_ig(
     coefs_cbr: pd.DataFrame,
-    coefs_gfr: pd.DataFrame,
+    coefs_ig: pd.DataFrame,
     pretrends_cbr: dict | None = None,
-    pretrends_gfr: dict | None = None,
+    pretrends_ig: dict | None = None,
     ref_year: int = 1872,
     savepath: str | None = None,
 ):
     """
-    Side-by-side event-study figure: CBR (left) and the static-1871 GFR
-    (right). The GFR panel addresses the standard demographic critique that
-    CBR is mechanically affected by age structure -- a Demography reader
-    can verify directly that the event-study shape, the timing of the
-    departure from zero, and the pre-trends test all carry over to the
-    age-standardised outcome.
+    Side-by-side event-study figure: CBR (left) and Coale's $I_g$
+    (right). $I_g$ is the Princeton EFP marital-fertility index --
+    legitimate births per married woman 15--49, normalised against the
+    Hutterite natural-fertility maximum -- and the headline outcome in
+    Galloway, Hammel & Lee (1994). Reading the two panels jointly tells
+    a Demography-aware reader whether the event-study shape and
+    pre-trends conclusion hold both for the broad CBR and for the
+    nuptiality-netted marital-fertility index.
 
     Each panel shades the Kulturkampf enforcement window (1872--1878),
     plots the 95% CI ribbon, the point estimates, and the omitted
@@ -413,10 +415,10 @@ def plot_event_study_cbr_gfr(
 
     Parameters
     ----------
-    coefs_cbr, coefs_gfr : pd.DataFrame
+    coefs_cbr, coefs_ig : pd.DataFrame
         Output of ``run_event_study(...)['coefs']`` for each outcome.
         Must have columns ``Year, beta, ci_lo, ci_hi``.
-    pretrends_cbr, pretrends_gfr : dict, optional
+    pretrends_cbr, pretrends_ig : dict, optional
         Output of ``pretrends_wald_test(...)``. If provided, annotated.
     ref_year : int
         Reference (omitted) event-study year.
@@ -428,10 +430,10 @@ def plot_event_study_cbr_gfr(
     panels = [
         (axes[0], coefs_cbr, pretrends_cbr,
          "Crude birth rate",
-         "Coefficient on CathShare $\\times$ Year (per 1,000 pop)"),
-        (axes[1], coefs_gfr, pretrends_gfr,
-         "GFR (1871 base)",
-         "Coefficient on CathShare $\\times$ Year (per 1,000 women 15--49)"),
+         "Coefficient on CathShare $\\times$ Year (per 1,000 mid-year pop)"),
+        (axes[1], coefs_ig, pretrends_ig,
+         "$I_g$ (Coale marital fertility)",
+         "Coefficient on CathShare $\\times$ Year ($I_g$ units)"),
     ]
     for ax, coefs, pre, title, ylabel in panels:
         ax.axvspan(1872, 1878, alpha=0.12, color=COLORS["kulturkampf"])
@@ -467,7 +469,7 @@ def plot_event_study_cbr_gfr(
         ax.legend(loc="lower left", frameon=True, fontsize=8)
 
     fig.suptitle(
-        "Event study: CBR vs General Fertility Rate (1871 denominator)",
+        "Event study: CBR vs $I_g$ (Coale marital fertility)",
         fontsize=13, fontweight="bold", y=1.00,
     )
     plt.tight_layout()

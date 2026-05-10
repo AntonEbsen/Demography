@@ -40,6 +40,13 @@ PANEL_SCHEMA = DataFrameSchema(
         # carried forward in inter-census years), retained as the
         # robustness row in the headline DiD table.
         "cbr_carryforward": Column(float, Check.in_range(0, 100), nullable=True),
+        # Coale Princeton EFP indices. I_g is the Galloway-tradition
+        # marital-fertility headline (Hutterite-normalised; ~0.7 in 1871
+        # Prussia per Coale 1986). Bound generously so flag-survivor
+        # boundary-reform residuals are still caught by the schema.
+        "I_f": Column(float, Check.in_range(0, 1.2), nullable=True),
+        "I_g": Column(float, Check.in_range(0, 1.5), nullable=True),
+        "gmfr": Column(float, Check.in_range(0, 600), nullable=True),
     },
     strict=False,
     unique=["Code", "Year"],
