@@ -4,7 +4,7 @@
 
 This appendix documents every variable, data source, sample-construction rule, and estimation specification used in the empirical analysis. It is written so a reader can answer the three transparency questions for any number that appears in the paper: **what is it**, **how is it computed**, and **where does it come from?**
 
-The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **10,783 county-year observations** spanning **392 Prussian counties** over **29 years (1862–1890)**, with **78 columns**.
+The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **10,783 county-year observations** spanning **392 Prussian counties** over **29 years (1862–1890)**, with **86 columns**.
 
 ---
 
@@ -255,7 +255,24 @@ These are the columns produced by [`build_analysis_panel()`](src/data/build_data
 
 These are **measured** migration rates from Galloway, distinct from the *implied* migration rate computed inside [`run_emigration_robustness()`](src/analysis/regressions.py:772) as the residual of the demographic accounting identity. Coverage gap: 1868–1871 and 1887–1890 have no migration columns in any VIT file → both annual rates are NaN for those years (8 of 29 panel years; ~28% of obs). `Outmigunoff` is recorded only 1875–1886 and is **not** included in the `outmig_rate` numerator — interpret `outmig_rate` as official-permit out-migration only.
 
-### 6.4 Constructed 1871 covariates (time-invariant)
+### 6.4 Mid-year-denominator rate variants (proper demographic convention)
+
+Galloway's `Poptot` carries the previous December census forward in inter-census years (see §9 caveat), which is *not* the standard mid-year-population denominator used for CBR. We construct a `Poptot_midyear` series via linear interpolation between consecutive December censuses, evaluated at July 1 of each calendar year, in [`compute_midyear_population()`](src/data/load_data.py:312). All `Poptot`-denominated rates are then recomputed against this proper denominator.
+
+| Variable | Definition | Built at |
+|---|---|---|
+| `Poptot_midyear` | Mid-year population (linear interpolation between Dec censuses, evaluated at July 1) | [`load_data.py:312–376`](src/data/load_data.py:312); merged into panel at [`build_dataset.py:170`](src/data/build_dataset.py:170) |
+| `cbr_midyear` | $\texttt{Birtot}/\texttt{Poptot\_midyear}\times 1000$ | [`build_dataset.py:172–175`](src/data/build_dataset.py:172) |
+| `legitimate_br_midyear` | $\texttt{Birlegtot}/\texttt{Poptot\_midyear}\times 1000$ | [`build_dataset.py:176–179`](src/data/build_dataset.py:176) |
+| `illegitimate_br_midyear` | $\texttt{Birbastot}/\texttt{Poptot\_midyear}\times 1000$ | [`build_dataset.py:180–183`](src/data/build_dataset.py:180) |
+| `marriage_rate_midyear` | $\texttt{Martot}/\texttt{Poptot\_midyear}\times 1000$ | [`build_dataset.py:184–187`](src/data/build_dataset.py:184) |
+| `inmig_rate_midyear` | $\texttt{Inmigtot}/\texttt{Poptot\_midyear}\times 1000$ | [`build_dataset.py:188–191`](src/data/build_dataset.py:188) |
+| `outmig_rate_midyear` | $\texttt{Outmigtot}/\texttt{Poptot\_midyear}\times 1000$ | [`build_dataset.py:192–195`](src/data/build_dataset.py:192) |
+| `net_mig_rate_midyear` | $(\texttt{Inmigtot}-\texttt{Outmigtot})/\texttt{Poptot\_midyear}\times 1000$ | [`build_dataset.py:196–200`](src/data/build_dataset.py:196) |
+
+**Why both versions are kept.** Galloway-tradition work uses the carried-forward denominator (the headline `cbr`, `marriage_rate`, …), so retaining those variables preserves comparability with the existing literature. The `_midyear` variants are the proper demographic convention; on the current build, switching to mid-year *strengthens* the marriage-rate DiD coefficient (from $-0.0036$ to $-0.0042$, both $p<0.001$) and increases the magnitude of the CBR coefficient from near-zero to $-0.0041$ (still not significant). The headline DiD table (`baseline_did.tex`) reports both side by side. Note that `gfr_static_1871`, `illegitimacy_ratio`, `infant_mortality_rate`, and `cath_marriage_share` are unaffected because their denominators do not use `Poptot`.
+
+### 6.5 Constructed 1871 covariates (time-invariant)
 
 | Variable | Definition | Formula | Unit | Built at |
 |---|---|---|---|---|
@@ -264,12 +281,12 @@ These are **measured** migration rates from Galloway, distinct from the *implied
 
 `women_share_15_49_1871` is the demographic-age-structure analogue of the iPEHD socio-economic baselines — used in §8.7 as a Bai/Hsiao pre-treatment-trend test of whether differential *fertility capacity* (rather than religion) drives differential trajectories.
 
-### 6.5 Other constructed variables
+### 6.6 Other constructed variables
 
 | Variable | Definition | Formula | Unit | Built at |
 |---|---|---|---|---|
 | `ln_pop` | Log population | $\ln(\texttt{Poptot})$ | log persons | [`build_dataset.py:145`](src/data/build_dataset.py:145) |
-| `cbr_flag` | CBR outlier flag | $\mathbb{1}[\texttt{cbr}>70 \text{ or } \texttt{cbr}<15]$ | bool; **5 obs = TRUE** | [`build_dataset.py:201`](src/data/build_dataset.py:201) |
+| `cbr_flag` | CBR outlier flag (catches extremes under either carry-forward or mid-year denominator) | $\mathbb{1}[\texttt{cbr}\notin[15,70]\,\text{or}\,\texttt{cbr\_midyear}\notin[15,70]]$ | bool; **6 obs = TRUE** | [`build_dataset.py:201–212`](src/data/build_dataset.py:201) |
 | `gfr_flag` | GFR outlier flag | $\mathbb{1}[\texttt{gfr\_static\_1871}>400]$ | bool; **10 obs = TRUE** (mostly 1869–1872 boundary-reform artefacts) | [`build_dataset.py:264–266`](src/data/build_dataset.py:264) |
 
 When `cbr_flag` is TRUE the *rate* columns (`cbr`, `legitimate_br`, `illegitimate_br`, `illegitimacy_ratio`, `marriage_rate`) are set to `NaN` ([`build_dataset.py:206–208`](src/data/build_dataset.py:206)) and `gfr_static_1871` is also nulled ([`build_dataset.py:256–257`](src/data/build_dataset.py:256)). When `gfr_flag` is TRUE only `gfr_static_1871` is set to `NaN` ([`build_dataset.py:271–273`](src/data/build_dataset.py:271)). The row is preserved so entity FE are not perturbed.
@@ -296,7 +313,7 @@ A row is in the final analysis panel iff it survives every rule below, applied i
 |  | |
 |---|---|
 | Observations | **10,783** |
-| Columns | **78** |
+| Columns | **86** |
 | Counties | **392** |
 | Years | **1862–1890 (29)** |
 | High-Catholic counties (`cath_share > 50`) | **130** |
@@ -476,6 +493,7 @@ Defined in [`channels.py`](src/analysis/channels.py):
 
 A short, honest accounting. Each item is annotated with where it bites.
 
+- **Galloway's `Poptot` is end-of-year, carry-forward — not mid-year.** In census years (1861, 1864, 1867, 1871, 1875, 1880, 1885, 1890) `Poptot` equals the December 1 census exactly; in inter-census years it is the *previous* December census carried forward unchanged. Empirically, **55% of panel observations have `Poptot` identical to the prior year's value**. The standard demographic CBR convention is mid-year (July 1) population — an approximation to person-years lived; the December carry-forward biases CBR upward by ~1–3% in growing populations and produces a sawtooth artefact at each census year. We address this by constructing `Poptot_midyear` via linear interpolation between Dec censuses evaluated at July 1, plus mid-year variants of all `Poptot`-denominated rates (§6.4). The headline DiD table (`baseline_did.tex`) reports both conventions side by side. Identification under entity FE is robust because the convention is the same across all counties; on the current build the marriage-rate coefficient *strengthens* under mid-year (from $-0.0036$ to $-0.0042$).
 - **Pre-1872 population is interpolated, not measured** ([`load_data.py:171–175`](src/data/load_data.py:171)). On the current snapshot 3,632 of 11,493 raw VIT obs (≈ 32%) entered interpolation. Affects the denominator of every constructed rate for 1862–1871.
 - **Infant-mortality definition changes in 1875.** `Dth_infant_leg` falls back from `Dth<1leg` (true infant deaths) to `Dthyoung` (broader young-age deaths) when the former is absent ([`load_data.py:253–258`](src/data/load_data.py:253)). The analysis using `infant_mortality_rate` is therefore restricted to 1875+ ([`channels.py:80`](src/analysis/channels.py:80)).
 - **Marriage-by-denomination columns are sparse pre-1875.** `Marcath` and `Marevan` have ~43% NaN in the panel, concentrated pre-1875 (≈ 13 years × 392 counties ≈ 5,096 missing). `cath_marriage_share` therefore inherits this gap.

@@ -19,6 +19,7 @@ from src.data.load_data import (
     load_rel1871,
     load_vit_panel,
     interpolate_population,
+    compute_midyear_population,
     load_pop1871_age_structure,
     DATA_RAW,
     DATA_PROCESSED,
@@ -60,6 +61,10 @@ def build_analysis_panel(
         Outcomes:     cbr, legitimate_br, illegitimate_br, marriage_rate,
                       cath_marriage_share, infant_mortality_rate,
                       gfr_static_1871
+        Mid-year:     Poptot_midyear, cbr_midyear, legitimate_br_midyear,
+                      illegitimate_br_midyear, marriage_rate_midyear,
+                      inmig_rate_midyear, outmig_rate_midyear,
+                      net_mig_rate_midyear
         Migration:    Inmigtot, Outmigtot, Outmigunoff,
                       inmig_rate, outmig_rate, net_mig_rate
         1871 census:  pop_*_1871, age_*_1871, women_15_49_1871,
@@ -166,6 +171,46 @@ def build_analysis_panel(
     )
 
     # ------------------------------------------------------------------
+    # 4b. Mid-year population & mid-year-denominator rates (proper
+    # demographic CBR convention). Galloway's `Poptot` is the previous
+    # December census carried forward in inter-census years; mid-year
+    # population is what CBR is meant to be normalised by (an
+    # approximation to person-years lived). See compute_midyear_population
+    # docstring for details.
+    # ------------------------------------------------------------------
+    panel = compute_midyear_population(panel, data_dir=data_dir)
+    pop_my = panel["Poptot_midyear"]
+    panel["cbr_midyear"] = np.where(
+        pop_my.notna() & (pop_my > 0),
+        panel["Birtot"] / pop_my * 1000.0, np.nan,
+    )
+    panel["legitimate_br_midyear"] = np.where(
+        pop_my.notna() & (pop_my > 0),
+        panel["Birlegtot"] / pop_my * 1000.0, np.nan,
+    )
+    panel["illegitimate_br_midyear"] = np.where(
+        pop_my.notna() & (pop_my > 0),
+        panel["Birbastot"] / pop_my * 1000.0, np.nan,
+    )
+    panel["marriage_rate_midyear"] = np.where(
+        pop_my.notna() & (pop_my > 0),
+        panel["Martot"] / pop_my * 1000.0, np.nan,
+    )
+    panel["inmig_rate_midyear"] = np.where(
+        panel["Inmigtot"].notna() & pop_my.notna() & (pop_my > 0),
+        panel["Inmigtot"] / pop_my * 1000.0, np.nan,
+    )
+    panel["outmig_rate_midyear"] = np.where(
+        panel["Outmigtot"].notna() & pop_my.notna() & (pop_my > 0),
+        panel["Outmigtot"] / pop_my * 1000.0, np.nan,
+    )
+    panel["net_mig_rate_midyear"] = np.where(
+        panel["Inmigtot"].notna() & panel["Outmigtot"].notna()
+        & pop_my.notna() & (pop_my > 0),
+        (panel["Inmigtot"] - panel["Outmigtot"]) / pop_my * 1000.0, np.nan,
+    )
+
+    # ------------------------------------------------------------------
     # 5. Treatment variables for the Kulturkampf DiD
     # ------------------------------------------------------------------
     
@@ -198,7 +243,19 @@ def build_analysis_panel(
     # errors) and nullify the derived rate columns so downstream regressions
     # — and the Pandera audit — drop them via NaN handling rather than
     # treating them as real values.
-    panel["cbr_flag"] = (panel["cbr"] > 70) | (panel["cbr"] < 15)
+    # Flag extreme CBR under *either* the carry-forward (cbr) or
+    # mid-year-interpolated (cbr_midyear) convention. The mid-year
+    # convention can produce demographically impossible values when the
+    # 1871-anchored interpolated denominator does not match the post-1872
+    # boundary-reform Birtot (e.g. Tarnowitz 1872, where 1873 county splits
+    # mean the 1872 numerator covers a different geography than the
+    # 1871/1875 census anchors). One unified flag keeps both rate series
+    # consistent with the same set of "good" rows.
+    panel["cbr_flag"] = (
+        (panel["cbr"] > 70) | (panel["cbr"] < 15)
+        | (panel["cbr_midyear"].fillna(panel["cbr"]) > 70)
+        | (panel["cbr_midyear"].fillna(panel["cbr"]) < 15)
+    )
     n_flagged = panel["cbr_flag"].sum()
     if n_flagged > 0:
         logger.warning("%d observations with extreme CBR (>70 or <15 per 1000); "
@@ -206,6 +263,15 @@ def build_analysis_panel(
         rate_cols = ["cbr", "legitimate_br", "illegitimate_br",
                      "illegitimacy_ratio", "marriage_rate"]
         panel.loc[panel["cbr_flag"], rate_cols] = np.nan
+        # Mirror the null-out for mid-year rate columns: if Birtot is
+        # implausible the mid-year ratio is equally contaminated.
+        midyear_rate_cols = [
+            "cbr_midyear", "legitimate_br_midyear", "illegitimate_br_midyear",
+            "marriage_rate_midyear",
+        ]
+        for col in midyear_rate_cols:
+            if col in panel.columns:
+                panel.loc[panel["cbr_flag"], col] = np.nan
 
     # ------------------------------------------------------------------
     # 6b. Merge iPEHD controls (cross-sectional, time-invariant).

@@ -299,6 +299,23 @@ def baseline_did_table(
     n_out = len(outcomes)
     n = len(cols)
 
+    # Mid-year-denominator robustness: rerun TWFE and Year x Rb on the
+    # `_midyear` rate variants, where the population denominator is a
+    # linear interpolation between consecutive December censuses
+    # evaluated at July 1 of each calendar year. This is the standard
+    # demographic CBR convention; Galloway's Poptot is the *previous*
+    # December census carried forward in inter-census years.
+    _midyear_map = {
+        "cbr": "cbr_midyear",
+        "legitimate_br": "legitimate_br_midyear",
+        "illegitimate_br": "illegitimate_br_midyear",
+        "marriage_rate": "marriage_rate_midyear",
+    }
+    midyear_outcomes = [_midyear_map.get(o, o) for o in outcomes]
+    cols_my_twfe = [_did_column(panel, o, "twfe") for o in midyear_outcomes]
+    cols_my_strict = [_did_column(panel, o, "year_x_rb") for o in midyear_outcomes]
+    cols_my = cols_my_twfe + cols_my_strict
+
     # Pre-trends Wald chi-squared per outcome (TWFE event study), and a
     # GFR comparison reported on a single auxiliary line.
     pretrends_per_outcome = [
@@ -370,6 +387,21 @@ def baseline_did_table(
         + " & ".join(f"{pt['p_value']:.3f}" for pt in pretrends_per_outcome)
         + r" \\"
     )
+
+    # Mid-year-denominator robustness rows: same TWFE / Year x Rb FE
+    # specification but using the rate variables built from a
+    # mid-year-interpolated population denominator. Two rows (coef + SE)
+    # so the table stays compact rather than adding a third panel.
+    midyear_coef_row = (
+        "\\quad CathShare $\\times$ Post (mid-year denom.) & "
+        + " & ".join(_fmt_coef(c["coef"], c["p"]) for c in cols_my)
+        + r" \\"
+    )
+    midyear_se_row = (
+        " & "
+        + " & ".join(_fmt_se(c["se"]) for c in cols_my)
+        + r" \\"
+    )
     # One-line GFR pre-trends Wald comparison (spans full table width).
     pretrends_gfr_row = (
         f"\\multicolumn{{{n + 1}}}{{l}}{{"
@@ -402,6 +434,12 @@ def baseline_did_table(
         + "Within $R^{2}$ & "
         + " & ".join(f"{c['r2']:.3f}" for c in cols)
         + " \\\\\n"
+        + "\\midrule\n"
+        + f"\\multicolumn{{{n + 1}}}{{l}}{{\\textit{{Mid-year denominator robustness}} (rate $=$ count $/$ "
+        f"linear-interpolated mid-year population)}} \\\\\n"
+        + midyear_coef_row + "\n"
+        + midyear_se_row + "\n"
+        + "\\midrule\n"
         + pretrends_p_row + "\n"
         + "\\addlinespace\n"
         + pretrends_gfr_row + "\n"
@@ -422,6 +460,13 @@ def baseline_did_table(
             "in Panel~B. Post is an indicator for $t \\geq 1873$. Standard errors "
             "clustered at the county level in parentheses. Birth and marriage rates "
             "per 1{,}000 population; illegitimacy ratio in percent. The "
+            "``Mid-year denominator robustness'' row re-runs the same TWFE / "
+            "Year~$\\times$~Rb specifications but uses rate variables built from "
+            "a population denominator linearly interpolated between consecutive "
+            "December censuses and evaluated at July 1 of each year. This is the "
+            "standard demographic CBR convention; Galloway's raw \\texttt{Poptot} "
+            "is the previous December census carried forward in inter-census years, "
+            "which biases CBR upward by 1--3\\% in growing populations. The "
             "``Pre-trends $\\chi^{2}$ $p$'' row reports the joint Wald test that "
             "all event-study coefficients in the pre-1872 period equal zero "
             "(estimated separately on the TWFE event-study; identical $p$-value "
