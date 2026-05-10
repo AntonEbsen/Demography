@@ -79,7 +79,9 @@ def build_analysis_panel(
                       net_mig_rate_carryforward
         1871 census:  pop_*_1871, age_*_1871, women_15_49_1871,
                       women_share_15_49_1871
-        Controls:     Poptot (raw Galloway), ln_pop, plus iPEHD covariates
+        Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
+                      raw Galloway `Poptot` is also retained as a column
+                      for users who want to recompute carry-forward rates
     """
     if data_dir is None:
         data_dir = DATA_RAW
@@ -174,9 +176,11 @@ def build_analysis_panel(
         np.nan,
     )
 
-    # Log population (uses raw Galloway Poptot so the year-effect absorbs
-    # the carry-forward sawtooth; not used as an outcome).
-    panel["ln_pop"] = np.log(panel["Poptot"])
+    # Log mid-year population: standard control for county-size effects,
+    # using the same mid-year-interpolated denominator as the headline
+    # rate variables (avoids mixing carry-forward and mid-year
+    # conventions inside the same regression).
+    panel["ln_pop"] = np.log(panel["Poptot_midyear"])
 
     # Headline migration rates: mid-year denominator (per 1,000 pop).
     # Coverage: 1862-1867 (totals only) and 1872-1886 (sex-summed); years

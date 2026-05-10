@@ -287,7 +287,7 @@ These are **measured** migration rates from Galloway, distinct from the *implied
 
 | Variable | Definition | Formula | Unit | Built at |
 |---|---|---|---|---|
-| `ln_pop` | Log population | $\ln(\texttt{Poptot})$ | log persons | [`build_dataset.py:145`](src/data/build_dataset.py:145) |
+| `ln_pop` | Log mid-year population (county-size control) | $\ln(\texttt{Poptot\_midyear})$ — uses the same mid-year denominator as the headline rates so the regression does not mix conventions | log persons | [`build_dataset.py:178–181`](src/data/build_dataset.py:178) |
 | `cbr_flag` | CBR outlier flag (catches extremes under either mid-year or Galloway carry-forward denominator) | $\mathbb{1}[\texttt{cbr}\notin[15,70]\,\text{or}\,\texttt{cbr\_carryforward}\notin[15,70]]$ | bool; **6 obs = TRUE** | [`build_dataset.py:222–230`](src/data/build_dataset.py:222) |
 | `gfr_flag` | GFR outlier flag | $\mathbb{1}[\texttt{gfr\_static\_1871}>400]$ | bool; **10 obs = TRUE** (mostly 1869–1872 boundary-reform artefacts) | [`build_dataset.py:264–266`](src/data/build_dataset.py:264) |
 
