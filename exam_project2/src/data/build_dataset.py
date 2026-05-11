@@ -66,8 +66,12 @@ def build_analysis_panel(
         Identifiers:  Code, Rb, Kreis, Year
         Treatment:    cath_share, high_cath, post_kulturkampf, treat_x_post
         Outcomes:     cbr, legitimate_br, illegitimate_br, marriage_rate,
-                      cath_marriage_share, infant_mortality_rate,
-                      illegitimacy_ratio
+                      cath_marriage_share, illegitimacy_ratio,
+                      infant_mortality_rate (TOTAL IMR, headline -- 1875+
+                      only by construction; Galloway 1994 convention),
+                      infant_mortality_rate_leg (legitimate-only,
+                      diagnostic variable used by fig_imr_break.png to
+                      show the 1875 measurement break -- not analytical)
         Coale/Galloway: I_f (general fertility), I_g (marital fertility,
                        Hutterite-normalised; analogue of Galloway's GMFR),
                        I_h (illegitimate fertility), gmfr (legitimate
@@ -174,9 +178,34 @@ def build_analysis_panel(
         np.nan,
     )
 
-    # Infant mortality rate (infant deaths / live births, per 1,000).
-    # Birlegtot denominator -- unaffected by Poptot convention.
+    # Headline infant mortality rate: TOTAL infant deaths per 1,000
+    # TOTAL live births -- the standard demographic definition (HMD,
+    # WHO, Princeton EFP, Galloway, Hammel & Lee 1994 convention).
+    # Well-defined only from 1875 onwards because Galloway's
+    # illegitimate-infant-death column Dth<1bas does not appear earlier;
+    # pre-1875 this is NaN by construction. Channels.py
+    # infant_mortality_analysis already restricts to 1875+ so this is
+    # consistent with the existing analysis.
+    total_imr_denom = (panel["Birlegtot"].fillna(0) + panel["Birbastot"].fillna(0))
+    total_imr_num = (
+        panel["Dth_infant_leg"].fillna(0) + panel["Dth_infant_bas"].fillna(0)
+    )
     panel["infant_mortality_rate"] = np.where(
+        panel["Dth_infant_bas"].notna()
+        & panel["Dth_infant_leg"].notna()
+        & (total_imr_denom > 0),
+        total_imr_num / total_imr_denom * 1000.0,
+        np.nan,
+    )
+
+    # Legitimate-only infant mortality rate, retained as a diagnostic
+    # variable used by fig_imr_break.png to document the Galloway 1875
+    # data-definition change (Dthyoung -> Dth<1leg). Pre-1875 falls
+    # back to Dthyoung, which produces the ~3-4x level discontinuity at
+    # 1875 visible in the figure. NOT recommended as an analytical
+    # outcome -- the headline `infant_mortality_rate` above is the
+    # standard demographic measure.
+    panel["infant_mortality_rate_leg"] = np.where(
         panel["Dth_infant_leg"].notna() & (panel["Birlegtot"] > 0),
         panel["Dth_infant_leg"] / panel["Birlegtot"] * 1000,
         np.nan,
