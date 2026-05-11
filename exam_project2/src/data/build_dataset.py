@@ -67,7 +67,7 @@ def build_analysis_panel(
         Treatment:    cath_share, high_cath, post_kulturkampf, treat_x_post
         Outcomes:     cbr, legitimate_br, illegitimate_br, marriage_rate,
                       cath_marriage_share, infant_mortality_rate,
-                      illegitimacy_ratio
+                      infant_mortality_rate_total, illegitimacy_ratio
         Coale/Galloway: I_f (general fertility), I_g (marital fertility,
                        Hutterite-normalised; analogue of Galloway's GMFR),
                        I_h (illegitimate fertility), gmfr (legitimate
@@ -174,11 +174,30 @@ def build_analysis_panel(
         np.nan,
     )
 
-    # Infant mortality rate (infant deaths / live births, per 1,000).
-    # Birlegtot denominator -- unaffected by Poptot convention.
+    # Infant mortality rate, legitimate-only (infant deaths / live
+    # births, per 1,000). Birlegtot denominator -- unaffected by Poptot
+    # convention. Pre-1875 the numerator falls back to Dthyoung (see
+    # load_data.py); analyses using this variable should restrict to
+    # 1875+ (channels.infant_mortality_analysis enforces this).
     panel["infant_mortality_rate"] = np.where(
         panel["Dth_infant_leg"].notna() & (panel["Birlegtot"] > 0),
         panel["Dth_infant_leg"] / panel["Birlegtot"] * 1000,
+        np.nan,
+    )
+
+    # Infant mortality rate, total (legitimate + illegitimate infant
+    # deaths per 1,000 total live births). Well-defined only from 1875
+    # onwards because pre-1875 the illegitimate-infant-death column
+    # Dth<1bas is absent. NaN pre-1875 by construction.
+    total_imr_denom = (panel["Birlegtot"].fillna(0) + panel["Birbastot"].fillna(0))
+    total_imr_num = (
+        panel["Dth_infant_leg"].fillna(0) + panel["Dth_infant_bas"].fillna(0)
+    )
+    panel["infant_mortality_rate_total"] = np.where(
+        panel["Dth_infant_bas"].notna()
+        & panel["Dth_infant_leg"].notna()
+        & (total_imr_denom > 0),
+        total_imr_num / total_imr_denom * 1000.0,
         np.nan,
     )
 

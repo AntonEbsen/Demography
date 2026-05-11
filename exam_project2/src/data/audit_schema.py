@@ -47,6 +47,12 @@ PANEL_SCHEMA = DataFrameSchema(
         "I_f": Column(float, Check.in_range(0, 1.2), nullable=True),
         "I_g": Column(float, Check.in_range(0, 1.5), nullable=True),
         "gmfr": Column(float, Check.in_range(0, 600), nullable=True),
+        # Total infant mortality (legitimate + illegitimate infant
+        # deaths per 1,000 total live births). Well-defined only 1875+
+        # because Galloway's Dth<1bas column does not appear earlier.
+        "infant_mortality_rate_total": Column(
+            float, Check.in_range(0, 600), nullable=True
+        ),
     },
     strict=False,
     unique=["Code", "Year"],

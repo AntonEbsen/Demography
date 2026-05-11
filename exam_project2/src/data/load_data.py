@@ -322,14 +322,32 @@ def _load_single_vit(path: Path) -> pd.DataFrame:
     else:
         out["Dthtot"] = np.nan
     
-    # --- Infant deaths ---
+    # --- Infant deaths, legitimate ---
+    # Post-1875: Galloway publishes Dth<1leg (deaths of legitimate
+    # children under 1 year). Pre-1875 the only available proxy is
+    # Dthyoung (broader / less complete young-deaths category), which
+    # produces the ~3-4x level discontinuity at 1875 documented in
+    # fig_imr_break.png. IMR-based regressions are therefore restricted
+    # to 1875+ in channels.infant_mortality_analysis.
     if "Dth<1leg" in df.columns:
         out["Dth_infant_leg"] = df["Dth<1leg"]
     elif "Dthyoung" in df.columns:
         out["Dth_infant_leg"] = df["Dthyoung"]
     else:
         out["Dth_infant_leg"] = np.nan
-    
+
+    # --- Infant deaths, illegitimate ---
+    # Galloway publishes Dth<1bas (deaths of illegitimate children
+    # under 1 year) from 1875 onwards. Pre-1875 there is no separate
+    # illegitimate-infant-death column, so we leave this NaN -- the
+    # `Dthyoung` fallback for legitimate infants does not extend to
+    # the illegitimate series and the combined-infant total below is
+    # therefore well-defined only for 1875+.
+    if "Dth<1bas" in df.columns:
+        out["Dth_infant_bas"] = df["Dth<1bas"]
+    else:
+        out["Dth_infant_bas"] = np.nan
+
     # --- Marriages ---
     out["Martot"] = df["Martot"] if "Martot" in df.columns else np.nan
     out["Marevan"] = df["Marevan"] if "Marevan" in df.columns else np.nan
