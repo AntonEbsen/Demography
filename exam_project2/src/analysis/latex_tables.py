@@ -2455,6 +2455,7 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
         plot_lexis_diagram,
         plot_population_and_migration,
         plot_imr_break,
+        plot_imr_by_group,
     )
     lexis_path = FIGURES_DIR / "fig_lexis.png"
     lexis_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2471,6 +2472,13 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
     imr_path = FIGURES_DIR / "fig_imr_break.png"
     plot_imr_break(panel, break_year=1875, savepath=str(imr_path))
     logger.info("Wrote %s", imr_path)
+
+    # IMR by high-Cath vs low-Cath: shows the 1875 break is uniform
+    # across groups (measurement, not behaviour) and that the two IMR
+    # series track closely post-1875 (visual IMR null).
+    imr_grp_path = FIGURES_DIR / "fig_imr_by_group.png"
+    plot_imr_by_group(panel, break_year=1875, savepath=str(imr_grp_path))
+    logger.info("Wrote %s", imr_grp_path)
 
     # Choropleth maps of sub-region treatment effects (Polish / German
     # Catholic / Protestant rest). Pairs with Table tab:wild_bootstrap.
