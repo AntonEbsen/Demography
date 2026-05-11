@@ -74,8 +74,14 @@ def infant_mortality_analysis(df: pd.DataFrame):
     """
     Did disruption of Catholic health services affect infant survival?
 
-    IMPORTANT: Galloway's infant mortality measure changes definition in 1875.
-    We therefore restrict this analysis to 1875+ only.
+    The headline outcome `infant_mortality_rate` is total IMR (= total
+    infant deaths / total live births x 1000), the standard demographic
+    measure (Princeton EFP / HMD / Galloway, Hammel & Lee 1994
+    convention). It is well-defined only from 1875 onwards because
+    Galloway's illegitimate-infant-death column `Dth<1bas` does not
+    appear in pre-1875 VIT files; we therefore restrict the analysis
+    to 1875+ regardless. See fig_imr_break.png for the data-break
+    diagnostic on the legitimate-only series.
     """
     df = df[df["Year"] >= 1875].copy()
 

@@ -487,28 +487,27 @@ def plot_imr_break(
     Time-series plot of mean infant mortality rate (IMR) by year,
     1862--1890, documenting the Galloway data break at 1875.
 
-    Why this matters. Galloway's ``Dth_infant_leg`` is derived from
-    ``Dth<1leg`` (true infant deaths) when present and from
-    ``Dthyoung`` (broader young-age deaths) as a fallback otherwise.
-    Pre-1875 the canonical infant-deaths column is largely absent, so
-    the fallback kicks in and the IMR numerator captures a different
-    age window than post-1875. Empirically this produces a ~3-4x level
-    discontinuity at 1875, visible in this figure as a sharp jump from
-    ~60-75 per 1{,}000 to ~210-230 per 1{,}000. The discontinuity is
-    *not* a real change in infant survival; it is a measurement-
-    definition change. This is why ``channels.infant_mortality_analysis``
-    restricts IMR regressions to 1875+ (see DATA_APPENDIX.md sec. 9).
+    Uses the diagnostic legitimate-only series
+    ``infant_mortality_rate_leg`` (= Dth_infant_leg / Birlegtot x 1000)
+    because that is where the 1875 break is visible. Pre-1875 the
+    numerator falls back to Dthyoung; from 1875 it switches to
+    Dth<1leg, producing the ~3-4x level discontinuity in the figure.
+    The headline analytical variable ``infant_mortality_rate`` (total
+    IMR) is restricted to 1875+ by construction (Galloway's Dth<1bas
+    column does not appear earlier) and so cannot show the break --
+    that is why we plot the legitimate-only diagnostic here.
     """
+    imr_col = "infant_mortality_rate_leg"
     annual = (
-        panel.dropna(subset=["infant_mortality_rate"])
-        .groupby("Year")["infant_mortality_rate"]
+        panel.dropna(subset=[imr_col])
+        .groupby("Year")[imr_col]
         .mean()
         .reset_index()
     )
 
     fig, ax = plt.subplots(figsize=(10, 5.5))
 
-    y_max = max(annual["infant_mortality_rate"]) * 1.18
+    y_max = max(annual[imr_col]) * 1.18
     # Shade pre/post regions to emphasise the two definitional regimes.
     ax.axvspan(
         annual["Year"].min() - 0.5, break_year - 0.5,
@@ -522,9 +521,9 @@ def plot_imr_break(
     )
 
     ax.plot(
-        annual["Year"], annual["infant_mortality_rate"],
+        annual["Year"], annual[imr_col],
         color=COLORS["catholic"], linewidth=2, marker="o", markersize=4,
-        label="Mean IMR (across counties)",
+        label="Mean legitimate-IMR (diagnostic series)",
     )
 
     ax.axvline(break_year, color="black", linestyle="--", linewidth=1.3)
@@ -565,17 +564,23 @@ def plot_imr_by_group(
     savepath: str | None = None,
 ):
     """
-    Time-series plot of mean infant mortality rate (IMR) by year and
-    by Catholic-share group (high vs low), with the 1875 data-break
-    line and the Kulturkampf enforcement / rollback windows shaded.
+    Time-series plot of total infant mortality rate by year and
+    by Catholic-share group (high vs low), 1875--1890. The
+    Kulturkampf enforcement (1872--78) and rollback (1880--87)
+    windows are shaded for context.
 
-    Companion to ``plot_imr_break``. The single-line version shows
-    *that* the break exists; this two-line version shows that the
-    break is uniform across groups (so the discontinuity is clearly a
-    measurement artefact, not a behavioural change) and that post-1875
-    the High-Cath and Low-Cath IMR series track each other closely with
-    no obvious divergence around the 1873 May Laws or the 1880-87
-    rollback period -- visual confirmation of the IMR null result in
+    Uses the headline analytical variable ``infant_mortality_rate``
+    (total IMR = total infant deaths / total live births x 1000),
+    which is well-defined only from 1875 onwards because Galloway's
+    illegitimate-infant-death column ``Dth<1bas`` does not appear
+    earlier. Pre-1875 values are therefore omitted entirely; the
+    companion plot ``plot_imr_break`` documents the data-break issue
+    using the legitimate-only diagnostic series.
+
+    The two-line layout shows that post-1875 High-Catholic and
+    Low-Catholic IMR series track each other closely with no obvious
+    divergence around the rollback or post-rollback periods -- visual
+    confirmation of the IMR null result in
     ``channels.infant_mortality_analysis``.
     """
     df = panel.dropna(subset=["infant_mortality_rate"]).copy()
@@ -587,23 +592,22 @@ def plot_imr_by_group(
     )
 
     fig, ax = plt.subplots(figsize=(10, 5.5))
-    y_max = max(annual.max()) * 1.18
+    y_min = max(0, min(annual.min()) - 30)
+    y_max = max(annual.max()) * 1.08
 
-    # Kulturkampf enforcement window (light purple).
+    # Kulturkampf enforcement window (light purple) -- only the portion
+    # that overlaps the visible 1875+ range.
     ax.axvspan(
-        enforcement_years[0], enforcement_years[1],
+        max(enforcement_years[0], annual.index.min()),
+        enforcement_years[1],
         alpha=0.12, color=COLORS["kulturkampf"],
         label=f"Kulturkampf enforcement ({enforcement_years[0]}-{enforcement_years[1]})",
     )
-
-    # 1875 break.
-    ax.axvline(break_year, color="black", linestyle="--", linewidth=1.3)
-    ax.text(
-        break_year - 0.3, y_max * 0.97,
-        "Galloway IMR definition\nchange at 1875",
-        fontsize=9, va="top", ha="right",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                  edgecolor="grey", alpha=0.9),
+    # Rollback window (light grey).
+    ax.axvspan(
+        rollback_years[0], rollback_years[1],
+        alpha=0.10, color="#7F8C8D",
+        label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
     )
 
     # Two group lines.
@@ -619,15 +623,15 @@ def plot_imr_by_group(
         )
 
     ax.set_xlim(annual.index.min() - 0.5, annual.index.max() + 0.5)
-    ax.set_ylim(0, y_max)
+    ax.set_ylim(y_min, y_max)
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel(
-        "Mean infant mortality rate (per 1,000 legitimate live births)",
+        "Mean total infant mortality rate (per 1,000 total live births)",
         fontsize=10,
     )
     ax.set_title(
-        "Infant mortality rate by Catholic-share group, 1862-1890\n"
-        "(1875 data break uniform across groups; no IMR divergence post-1873)",
+        "Total infant mortality rate by Catholic-share group, 1875-1890\n"
+        "(no Catholic-specific IMR response to the Kulturkampf)",
         fontsize=12, fontweight="bold",
     )
     ax.legend(loc="lower right", fontsize=9, frameon=True)

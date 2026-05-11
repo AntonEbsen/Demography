@@ -47,10 +47,14 @@ PANEL_SCHEMA = DataFrameSchema(
         "I_f": Column(float, Check.in_range(0, 1.2), nullable=True),
         "I_g": Column(float, Check.in_range(0, 1.5), nullable=True),
         "gmfr": Column(float, Check.in_range(0, 600), nullable=True),
-        # Total infant mortality (legitimate + illegitimate infant
-        # deaths per 1,000 total live births). Well-defined only 1875+
-        # because Galloway's Dth<1bas column does not appear earlier.
-        "infant_mortality_rate_total": Column(
+        # Headline IMR: total infant deaths / total live births x 1000.
+        # 1875+ only (Galloway's Dth<1bas column starts in 1875).
+        "infant_mortality_rate": Column(
+            float, Check.in_range(0, 600), nullable=True
+        ),
+        # Legitimate-only IMR, retained as a diagnostic for the 1875
+        # data-break figure.
+        "infant_mortality_rate_leg": Column(
             float, Check.in_range(0, 600), nullable=True
         ),
     },
