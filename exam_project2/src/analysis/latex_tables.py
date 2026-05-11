@@ -277,6 +277,124 @@ def summary_statistics_table(
     return out
 
 
+def descriptive_statistics_table(
+    panel: pd.DataFrame,
+    out_path: Path | None = None,
+) -> str:
+    """Compact two-panel descriptive statistics for the paper's front matter.
+
+    Format follows the standard JEH/Population Studies layout: a single
+    means-only table with Panel A (Pre- vs Post-Kulturkampf, on the full
+    sample period) and Panel B (Low-Cath vs High-Cath, across the same
+    full panel). The intention is to motivate the DiD by showing both
+    (i) the *temporal* shift around the 1873 May Laws and (ii) the
+    *cross-sectional* religious gap that the DiD identifies off changes
+    in.
+
+    Requires the following LaTeX preamble in the paper:
+    ``\\usepackage{booktabs, threeparttable, siunitx}``.
+    """
+    out_path = out_path or TABLES_DIR / "descriptive_statistics.tex"
+    df = panel.copy()
+    df["period_lbl"] = np.where(df["Year"] >= 1873, "Post", "Pre")
+    df["group_lbl"] = np.where(df["high_cath"] == 1, "HighCath", "LowCath")
+
+    # The outcomes we want as rows. I_g is included because it is the
+    # Galloway, Hammel & Lee (1994) headline marital-fertility outcome;
+    # this is what a demography-aware reader will look for first.
+    row_specs: list[tuple[str, str, bool, bool]] = [
+        # (column, label, show_in_panel_A, show_in_panel_B)
+        ("cbr", "Crude Birth Rate (CBR)", True, True),
+        ("legitimate_br", "Legitimate Birth Rate", True, True),
+        ("marriage_rate", "Marriage Rate", True, True),
+        ("I_g", "Marital Fertility ($I_g$)", True, True),
+        ("cath_share", "Share Catholic (\\%)", False, True),
+    ]
+
+    def _mean(mask: pd.Series, col: str) -> str:
+        v = df.loc[mask, col].mean()
+        return f"{v:.2f}" if pd.notna(v) else "{-}"
+
+    pre_mask = df["period_lbl"] == "Pre"
+    post_mask = df["period_lbl"] == "Post"
+    low_mask = df["group_lbl"] == "LowCath"
+    high_mask = df["group_lbl"] == "HighCath"
+
+    body_rows: list[str] = []
+    for col, label, in_a, in_b in row_specs:
+        if col not in df.columns:
+            continue
+        a1 = _mean(pre_mask, col) if in_a else "{-}"
+        a2 = _mean(post_mask, col) if in_a else "{-}"
+        b1 = _mean(low_mask, col) if in_b else "{-}"
+        b2 = _mean(high_mask, col) if in_b else "{-}"
+        body_rows.append(f"{label}   & {a1} & {a2} & & {b1} & {b2} \\\\")
+
+    # Footer: county counts and observation counts.
+    n_pre_counties = int(df.loc[pre_mask, "Code"].nunique())
+    n_post_counties = int(df.loc[post_mask, "Code"].nunique())
+    n_low_counties = int(df.loc[low_mask, "Code"].nunique())
+    n_high_counties = int(df.loc[high_mask, "Code"].nunique())
+    n_pre = int(pre_mask.sum())
+    n_post = int(post_mask.sum())
+    n_total = len(df)
+
+    body = (
+        "\\begin{threeparttable}\n"
+        "\\caption{Descriptive statistics}\n"
+        "\\label{tab:descriptive_statistics}\n"
+        "\\begin{tabular}{l S[table-format=2.2] S[table-format=2.2] c S[table-format=2.2] S[table-format=2.2]}\n"
+        "\\toprule\n"
+        " & \\multicolumn{2}{c}{\\textbf{Panel A: By Period}} & & "
+        "\\multicolumn{2}{c}{\\textbf{Panel B: By Religious Group}} \\\\\n"
+        "\\cmidrule(lr){2-3} \\cmidrule(lr){5-6}\n"
+        " & {Pre-1873} & {Post-1873} & & {Low-Cath} & {High-Cath} \\\\\n"
+        "\\textbf{Variable} & {Mean} & {Mean} & & {Mean} & {Mean} \\\\\n"
+        "\\midrule\n"
+        + "\n".join(body_rows) + "\n"
+        "\\midrule\n"
+        f"Counties (N) & {{{n_pre_counties}}} & {{{n_post_counties}}} & & "
+        f"{{{n_low_counties}}} & {{{n_high_counties}}} \\\\\n"
+        f"Observations ($N \\times T$) & \\multicolumn{{2}}{{c}}{{{n_pre:,} / {n_post:,}}} "
+        f"& & \\multicolumn{{2}}{{c}}{{{n_total:,} (Total)}} \\\\\n"
+        "\\bottomrule\n"
+        "\\end{tabular}\n"
+        "\\begin{tablenotes}\n"
+        "\\footnotesize\n"
+        "\\item \\textit{Note:} Low-Catholic counties defined as $\\le 50\\%$ "
+        "Catholic in 1871; High-Catholic as $> 50\\%$. Panel~A shows the temporal "
+        "shift around the 1873 May Laws (full panel of 392 counties, "
+        "Pre-1873 vs Post-1873). Panel~B shows the baseline cross-sectional "
+        "differences across the entire 1862--1890 sample period. Birth and "
+        "marriage rates are per 1{,}000 \\emph{mid-year} population; $I_g$ is "
+        "Coale's Hutterite-normalised marital-fertility index (Princeton EFP "
+        "convention, headline outcome in Galloway, Hammel \\& Lee 1994). "
+        "Share Catholic is time-invariant (1871 census) and is therefore "
+        "omitted from Panel~A.\n"
+        "\\item \\textit{Source:} Author's calculations from the Galloway "
+        "Prussia Database \\citep{Galloway2007}; mid-year population "
+        "constructed via linear interpolation between consecutive December "
+        "censuses (see \\citealp{GallowayHammelLee1994}).\n"
+        "\\end{tablenotes}\n"
+        "\\end{threeparttable}\n"
+    )
+
+    # Manually wrap (do not use _wrap_table because threeparttable replaces
+    # the standard caption / label scaffolding).
+    out = (
+        "% Auto-generated by src/analysis/latex_tables.py -- do not edit by hand.\n"
+        "% LaTeX preamble required: \\usepackage{booktabs, threeparttable, siunitx}\n"
+        "% Citations used: \\citep{Galloway2007}, \\citealp{GallowayHammelLee1994}.\n"
+        "\\begin{table}[htbp]\n"
+        "\\centering\n"
+        "\\small\n"
+        + body +
+        "\\end{table}\n"
+    )
+    _write(out_path, out)
+    return out
+
+
 def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
     """One column of the baseline_did table."""
     res = run_baseline_did(
@@ -2264,6 +2382,9 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "summary_stats.tex")
     summary_statistics_table(panel, out_path=written[-1])
+
+    written.append(out_dir / "descriptive_statistics.tex")
+    descriptive_statistics_table(panel, out_path=written[-1])
 
     written.append(out_dir / "baseline_did.tex")
     baseline_did_table(panel, out_path=written[-1])
