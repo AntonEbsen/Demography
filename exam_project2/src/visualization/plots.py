@@ -478,6 +478,85 @@ def plot_event_study_cbr_ig(
     return fig, axes
 
 
+def plot_imr_break(
+    panel: pd.DataFrame,
+    break_year: int = 1875,
+    savepath: str | None = None,
+):
+    """
+    Time-series plot of mean infant mortality rate (IMR) by year,
+    1862--1890, documenting the Galloway data break at 1875.
+
+    Why this matters. Galloway's ``Dth_infant_leg`` is derived from
+    ``Dth<1leg`` (true infant deaths) when present and from
+    ``Dthyoung`` (broader young-age deaths) as a fallback otherwise.
+    Pre-1875 the canonical infant-deaths column is largely absent, so
+    the fallback kicks in and the IMR numerator captures a different
+    age window than post-1875. Empirically this produces a ~3-4x level
+    discontinuity at 1875, visible in this figure as a sharp jump from
+    ~60-75 per 1{,}000 to ~210-230 per 1{,}000. The discontinuity is
+    *not* a real change in infant survival; it is a measurement-
+    definition change. This is why ``channels.infant_mortality_analysis``
+    restricts IMR regressions to 1875+ (see DATA_APPENDIX.md sec. 9).
+    """
+    annual = (
+        panel.dropna(subset=["infant_mortality_rate"])
+        .groupby("Year")["infant_mortality_rate"]
+        .mean()
+        .reset_index()
+    )
+
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+
+    y_max = max(annual["infant_mortality_rate"]) * 1.18
+    # Shade pre/post regions to emphasise the two definitional regimes.
+    ax.axvspan(
+        annual["Year"].min() - 0.5, break_year - 0.5,
+        alpha=0.10, color="#C0392B",
+        label=r"Pre-1875: $\mathrm{Dth_{young}}$ fallback (broader young-age deaths)",
+    )
+    ax.axvspan(
+        break_year - 0.5, annual["Year"].max() + 0.5,
+        alpha=0.10, color="#27AE60",
+        label=r"Post-1875: $\mathrm{Dth_{<1\,leg}}$ (true infant deaths)",
+    )
+
+    ax.plot(
+        annual["Year"], annual["infant_mortality_rate"],
+        color=COLORS["catholic"], linewidth=2, marker="o", markersize=4,
+        label="Mean IMR (across counties)",
+    )
+
+    ax.axvline(break_year, color="black", linestyle="--", linewidth=1.3)
+    ax.text(
+        break_year - 0.3, y_max * 0.97,
+        "Galloway IMR definition\nchange at 1875",
+        fontsize=9, va="top", ha="right",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                  edgecolor="grey", alpha=0.9),
+    )
+
+    ax.set_xlim(annual["Year"].min() - 0.5, annual["Year"].max() + 0.5)
+    ax.set_ylim(0, y_max)
+    ax.set_xlabel("Year", fontsize=11)
+    ax.set_ylabel(
+        "Mean infant mortality rate (per 1,000 legitimate live births)",
+        fontsize=10,
+    )
+    ax.set_title(
+        "Infant mortality rate, Prussian counties 1862-1890\n"
+        "(Galloway data-definition break at 1875)",
+        fontsize=12, fontweight="bold",
+    )
+    ax.legend(loc="lower right", fontsize=9, frameon=True)
+    ax.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    return fig, ax
+
+
 def plot_cath_distribution(
     df: pd.DataFrame,
     savepath: str = None,
