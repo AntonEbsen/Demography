@@ -395,6 +395,93 @@ def descriptive_statistics_table(
     return out
 
 
+def war_province_diagnostic_table(
+    panel: pd.DataFrame,
+    out_path: Path | None = None,
+    war_years: tuple[int, ...] = (1866, 1870, 1871),
+    ref_years: tuple[int, ...] = (1864, 1865, 1868, 1869),
+    outcome: str = "cbr",
+) -> str:
+    """
+    By-Regierungsbezirk war-year CBR-drop diagnostic.
+
+    Tests whether the pre-1873 CBR trend in the event study is driven
+    by differential Prussian-Army recruitment burden across
+    Protestant- vs Catholic-majority Regierungsbezirke. Each row shows
+    mean CBR in war years (1866 + 1870-71), mean in flanking non-war
+    years (1864-65, 1868-69), the difference, and the Rb's 1871
+    Catholic share. Rbs ordered by largest war-year drop first.
+
+    Companion to ``fig_war_context.png``. Both are diagnostic
+    artefacts addressing the question: "are the Catholic-Protestant
+    pre-trends in the event study a behavioural story or a
+    war-cohort mechanical story?"
+    """
+    from src.analysis.war_robustness import province_war_effect
+
+    out_path = out_path or TABLES_DIR / "war_province_diagnostic.tex"
+    pwe = province_war_effect(
+        panel, war_years=war_years, ref_years=ref_years, outcome=outcome,
+    )
+
+    n_rb = len(pwe)
+    corr_value = pwe["cath_share_rb_mean"].corr(pwe["diff"])
+
+    body_rows = []
+    for _, row in pwe.iterrows():
+        body_rows.append(
+            f"{row['Rb']} & "
+            f"{row['mean_war_years']:.2f} & "
+            f"{row['mean_nonwar_years']:.2f} & "
+            f"{row['diff']:+.2f} & "
+            f"{row['cath_share_rb_mean']:.1f} & "
+            f"{int(row['n_counties'])} \\\\"
+        )
+
+    body = (
+        "\\begin{tabular}{l*{5}{c}}\n"
+        "\\toprule\n"
+        f"Regierungsbezirk & War-years mean & Non-war mean & "
+        f"Diff (war$-$non) & Cath.\\ share (\\%) & $N_{{counties}}$ \\\\\n"
+        "\\midrule\n"
+        + "\n".join(body_rows) + "\n"
+        "\\midrule\n"
+        f"$\\mathrm{{corr}}(\\text{{Cath. share}}, \\text{{Diff}})$ "
+        f"& \\multicolumn{{5}}{{c}}{{{corr_value:+.3f} "
+        f"({n_rb} Rbs)}} \\\\\n"
+        "\\bottomrule\n"
+        "\\end{tabular}\n"
+    )
+
+    out = _wrap_table(
+        body,
+        caption=(
+            "War-cohort diagnostic: war-year (1866, 1870--71) vs "
+            "non-war-year (1864--65, 1868--69) mean CBR by Regierungsbezirk"
+        ),
+        label="tab:war_province_diagnostic",
+        n_cols=6,
+        notes=(
+            "Each row reports the mean crude birth rate in "
+            "Austro-Prussian (1866) and Franco-Prussian (1870--71) war "
+            "years, the mean in flanking non-war years (1864--65, "
+            "1868--69), and the difference. ``Cath.\\ share (\\%)'' is "
+            "the Regierungsbezirk-mean of \\texttt{cath\\_share} (1871 "
+            "census). Rbs are sorted ascending by the war$-$non-war "
+            "difference (most-negative dip first). The bottom-row "
+            "correlation tests whether more-Catholic Rbs dipped less "
+            "during war years (positive correlation = expected under "
+            "the differential-conscription hypothesis); a value near "
+            "zero indicates the pre-1873 Catholic-Protestant CBR "
+            "trend is not driven by war-cohort mechanics. Diagnostic "
+            "for the pre-trends discussion in Section "
+            "\\ref{sec:pretrends}; pairs with \\texttt{fig\\_war\\_context.png}."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
 def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
     """One column of the baseline_did table."""
     res = run_baseline_did(
@@ -2456,6 +2543,7 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
         plot_population_and_migration,
         plot_imr_break,
         plot_imr_by_group,
+        plot_cbr_war_context,
     )
     lexis_path = FIGURES_DIR / "fig_lexis.png"
     lexis_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2479,6 +2567,17 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
     imr_grp_path = FIGURES_DIR / "fig_imr_by_group.png"
     plot_imr_by_group(panel, break_year=1875, savepath=str(imr_grp_path))
     logger.info("Wrote %s", imr_grp_path)
+
+    # War-cohort diagnostic for the pre-1873 CBR trend: raw means
+    # by Catholic-share group with the Austro-Prussian (1866) and
+    # Franco-Prussian (1870-71) wars shaded, plus an Rb-level
+    # comparison of war-year vs non-war-year CBR.
+    war_fig_path = FIGURES_DIR / "fig_war_context.png"
+    plot_cbr_war_context(panel, savepath=str(war_fig_path))
+    logger.info("Wrote %s", war_fig_path)
+
+    written.append(out_dir / "war_province_diagnostic.tex")
+    war_province_diagnostic_table(panel, out_path=written[-1])
 
     # Choropleth maps of sub-region treatment effects (Polish / German
     # Catholic / Protestant rest). Pairs with Table tab:wild_bootstrap.

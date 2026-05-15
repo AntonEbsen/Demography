@@ -534,6 +534,97 @@ def plot_event_study_cbr_ig(
     return fig, axes
 
 
+def plot_cbr_war_context(
+    panel: pd.DataFrame,
+    outcome: str = "cbr",
+    austro_prussian_year: int = 1866,
+    franco_prussian_years: tuple[int, int] = (1870, 1871),
+    kulturkampf_year: int = 1873,
+    ylabel: str | None = None,
+    title: str | None = None,
+    savepath: str | None = None,
+):
+    """
+    Raw-means time-series of CBR (or any outcome) by high-/low-Catholic
+    group, 1862--1890, with wartime years shaded.
+
+    Diagnostic for the pre-1873 CBR trend: if Protestant CBR dips
+    during the Austro-Prussian War (1866) and the Franco-Prussian War
+    (1870-71) but Catholic CBR does not, then the apparent "Catholic
+    counties trending upward relative to Protestant counties" in
+    1865-1872 is mechanical war-cohort effect rather than a behavioural
+    pre-trend that threatens DiD identification.
+
+    Cleanly: war-year shading on a means plot answers, at a glance,
+    whether the pre-trend in the event-study figure is a parallel-
+    trends violation or a Prussian-Army-recruitment-burden artefact.
+    """
+    if outcome not in panel.columns:
+        raise KeyError(f"Outcome {outcome!r} not in panel.")
+
+    df = panel.dropna(subset=[outcome, "high_cath"]).copy()
+    df["group"] = df["high_cath"].map({0: "Low Catholic", 1: "High Catholic"})
+    annual = (
+        df.groupby(["Year", "group"])[outcome]
+        .mean()
+        .unstack()
+    )
+
+    fig, ax = plt.subplots(figsize=(11, 6))
+    y_max = max(annual.max()) * 1.06
+    y_min = min(annual.min()) * 0.94
+
+    # Shade the two Prussian wars.
+    ax.axvspan(
+        austro_prussian_year - 0.5, austro_prussian_year + 0.5,
+        alpha=0.25, color="#7F8C8D",
+        label=f"Austro-Prussian War ({austro_prussian_year})",
+    )
+    ax.axvspan(
+        franco_prussian_years[0] - 0.5, franco_prussian_years[1] + 0.5,
+        alpha=0.25, color="#34495E",
+        label=f"Franco-Prussian War ({franco_prussian_years[0]}-{franco_prussian_years[1]})",
+    )
+
+    # Vertical line at the Kulturkampf May Laws.
+    ax.axvline(
+        kulturkampf_year, color="#C0392B", linestyle="--", linewidth=1.3,
+        label=f"May Laws ({kulturkampf_year})",
+    )
+
+    # Two group lines.
+    for grp, color, marker in [
+        ("High Catholic", COLORS["catholic"], "o"),
+        ("Low Catholic", COLORS["protestant"], "s"),
+    ]:
+        if grp not in annual.columns:
+            continue
+        ax.plot(
+            annual.index, annual[grp],
+            color=color, linewidth=2, marker=marker, markersize=5, label=grp,
+        )
+
+    ax.set_xlim(annual.index.min() - 0.5, annual.index.max() + 0.5)
+    ax.set_ylim(y_min, y_max)
+    ax.set_xlabel("Year", fontsize=11)
+    if ylabel is None:
+        ylabel = "Mean " + outcome.upper().replace("_", " ")
+    ax.set_ylabel(ylabel, fontsize=11)
+    if title is None:
+        title = (
+            f"Mean {outcome.upper()} by Catholic-share group, "
+            "1862-1890, with Prussian wars shaded"
+        )
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.legend(loc="lower left", fontsize=9, frameon=True)
+    ax.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    return fig, ax
+
+
 def plot_imr_break(
     panel: pd.DataFrame,
     break_year: int = 1875,
