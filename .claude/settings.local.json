@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(python -m src.data.build_dataset)",
+      "Bash(python -m src.data.audit_schema)"
+    ]
+  }
+}
