@@ -394,6 +394,8 @@ def plot_event_study_cbr_ig(
     pretrends_cbr: dict | None = None,
     pretrends_ig: dict | None = None,
     ref_year: int = 1872,
+    enforcement_years: tuple[int, int] = (1873, 1878),
+    rollback_years: tuple[int, int] = (1880, 1887),
     savepath: str | None = None,
 ):
     """
@@ -406,12 +408,22 @@ def plot_event_study_cbr_ig(
     pre-trends conclusion hold both for the broad CBR and for the
     nuptiality-netted marital-fertility index.
 
-    Each panel shades the Kulturkampf enforcement window (1872--1878),
-    plots the 95% CI ribbon, the point estimates, and the omitted
-    reference year. If pre-trends Wald dictionaries (output of
-    ``regressions.pretrends_wald_test``) are passed, the $\\chi^2$
-    statistic, df, and $p$-value are annotated in the upper-left corner of
-    each panel.
+    Each panel shades the two policy phases distinctly:
+
+    - **Enforcement (1873--1878)** -- the May Laws are in force, Catholic
+      clergy face expulsions and incarceration, civil marriage replaces
+      Catholic-parish marriage (1875), parochial-school inspection is
+      transferred to the state.
+    - **Rollback (1880--1887)** -- progressive repeal beginning under
+      Leo XIII's diplomatic settlement; legislation still on the books
+      but weakened; Polish-Catholic restrictions persist longer than
+      German-Catholic ones (Polenausweisungen, 1885--86).
+    - Years 1879 and 1888+ are the transition / post-rollback periods.
+
+    The two shaded blocks let the reader see at a glance whether the
+    event-study coefficients move during legislative enforcement, during
+    rollback, or both -- the standard demographic-transition question
+    for an institutional shock that was *gradually* reversed.
 
     Parameters
     ----------
@@ -422,6 +434,8 @@ def plot_event_study_cbr_ig(
         Output of ``pretrends_wald_test(...)``. If provided, annotated.
     ref_year : int
         Reference (omitted) event-study year.
+    enforcement_years, rollback_years : (int, int)
+        Inclusive year ranges for the two shaded policy windows.
     savepath : str, optional
         Where to write the PNG.
     """
@@ -435,8 +449,25 @@ def plot_event_study_cbr_ig(
          "$I_g$ (Coale marital fertility)",
          "Coefficient on CathShare $\\times$ Year ($I_g$ units)"),
     ]
+    enf_color = "#9B59B6"   # light purple for enforcement
+    roll_color = "#7F8C8D"  # neutral grey for rollback
+
     for ax, coefs, pre, title, ylabel in panels:
-        ax.axvspan(1872, 1878, alpha=0.12, color=COLORS["kulturkampf"])
+        # Enforcement shading (light purple, 1873-1878). Use axvspan from
+        # enf_start - 0.5 to enf_end + 0.5 to align block edges with
+        # year-tick centres.
+        ax.axvspan(
+            enforcement_years[0] - 0.5, enforcement_years[1] + 0.5,
+            alpha=0.15, color=enf_color,
+            label=f"Enforcement ({enforcement_years[0]}-{enforcement_years[1]})",
+        )
+        # Rollback shading (neutral grey, 1880-1887).
+        ax.axvspan(
+            rollback_years[0] - 0.5, rollback_years[1] + 0.5,
+            alpha=0.18, color=roll_color,
+            label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
+        )
+
         ax.axhline(0, color="black", linewidth=0.8, linestyle="-")
         ax.fill_between(
             coefs["Year"], coefs["ci_lo"], coefs["ci_hi"],
@@ -445,11 +476,13 @@ def plot_event_study_cbr_ig(
         ax.plot(
             coefs["Year"], coefs["beta"],
             color=COLORS["catholic"], linewidth=2, marker="o", markersize=4,
+            label="Point estimate (95\\% CI ribbon)",
         )
         ax.scatter(
             [ref_year], [0], color="black", s=80, zorder=5,
             marker="D", label=f"Reference year ({ref_year})",
         )
+
         if pre is not None:
             txt = (
                 f"Pre-trends Wald $\\chi^2$ = {pre['wald_chi2']:.2f} "
@@ -469,7 +502,8 @@ def plot_event_study_cbr_ig(
         ax.legend(loc="lower left", frameon=True, fontsize=8)
 
     fig.suptitle(
-        "Event study: CBR vs $I_g$ (Coale marital fertility)",
+        "Event study: CBR vs $I_g$ (Coale marital fertility) "
+        "-- enforcement (1873-78) and rollback (1880-87) shaded",
         fontsize=13, fontweight="bold", y=1.00,
     )
     plt.tight_layout()
