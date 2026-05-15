@@ -158,6 +158,84 @@ def run_political_mobilization_did(
     return out
 
 
+def run_political_mobilization_event_study(
+    panel: pd.DataFrame,
+    outcome: str = "zentrum_share",
+    ref_year: int = 1871,
+) -> dict:
+    """
+    Event-study version of the political-mobilisation DiD.
+
+    Estimates year-specific coefficients on
+    cath_share x 1{Year = t} for each post-reference election year:
+
+      Y_{it} = sum_{t != 1871} beta_t (cath_share_i x 1[Year=t])
+              + alpha_i + delta_t + e_{it}
+
+    1871 is the omitted reference (pre-Kulturkampf). The remaining six
+    elections (1874, 1878, 1881, 1884, 1887, 1890) each get their own
+    coefficient, tracing the *timing* of the Catholic political-
+    mobilisation response: how soon did Zentrum vote share jump after
+    the May Laws, did it accelerate during enforcement, peak during
+    rollback, or revert post-rollback?
+
+    Returns
+    -------
+    dict with keys:
+      - result: the PanelOLSResults
+      - coefs: DataFrame with columns Year, beta, se, ci_lo, ci_hi
+        (one row per election year, including ref_year with beta=0)
+      - n_obs, n_counties: sample sizes
+    """
+    df = build_election_did_panel(panel)
+    if outcome not in df.columns:
+        raise KeyError(f"Outcome {outcome!r} not in election DiD panel.")
+
+    df = df.dropna(subset=[outcome, "cath_share"]).copy()
+
+    # Build cath_share x year-dummy interactions for every election year
+    # except ref_year.
+    election_years = sorted(df["Year"].unique())
+    interaction_cols: list[str] = []
+    for yr in election_years:
+        if yr == ref_year:
+            continue
+        col = f"cath_x_{yr}"
+        df[col] = df["cath_share"] * (df["Year"] == yr).astype(float)
+        interaction_cols.append(col)
+
+    df = df.set_index(["Code", "Year"])
+    y = df[outcome]
+    X = df[interaction_cols]
+
+    mod = PanelOLS(y, X, entity_effects=True, time_effects=True)
+    res = mod.fit(cov_type="clustered", cluster_entity=True)
+
+    rows = [{"Year": ref_year, "beta": 0.0, "se": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}]
+    for yr in election_years:
+        if yr == ref_year:
+            continue
+        col = f"cath_x_{yr}"
+        b = float(res.params[col])
+        s = float(res.std_errors[col])
+        rows.append({
+            "Year": yr,
+            "beta": b,
+            "se": s,
+            "ci_lo": b - 1.96 * s,
+            "ci_hi": b + 1.96 * s,
+            "p": float(res.pvalues[col]),
+        })
+    coefs = pd.DataFrame(rows).sort_values("Year").reset_index(drop=True)
+
+    return {
+        "result": res,
+        "coefs": coefs,
+        "n_obs": int(res.nobs),
+        "n_counties": int(df.index.get_level_values("Code").nunique()),
+    }
+
+
 def annual_political_mobilization_table(
     panel: pd.DataFrame,
     outcome: str = "zentrum_share",
