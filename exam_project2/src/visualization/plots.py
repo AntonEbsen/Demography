@@ -339,49 +339,71 @@ def plot_event_study(
     ref_year: int = 1872,
     title: str = "Event study: Catholic share × Year",
     ylabel: str = "Coefficient on CathShare × Year",
+    enforcement_years: tuple[int, int] = (1873, 1878),
+    rollback_years: tuple[int, int] = (1880, 1887),
     savepath: str = None,
 ):
     """
     Plot event-study coefficients with 95% confidence intervals.
-    
+
+    Shades the two Kulturkampf policy phases distinctly so the reader
+    can see whether coefficients move during legislative *enforcement*
+    (1873-1878, light purple) or during the gradual *rollback*
+    (1880-1887, neutral grey), or both. Year 1879 (transition) and
+    1888+ (post-rollback) are unshaded.
+
     Parameters
     ----------
     coefs : pd.DataFrame
         Output from regressions.run_event_study()['coefs'].
         Must have columns: Year, beta, ci_lo, ci_hi.
+    ref_year : int
+        Reference (omitted) event-study year, marked with a diamond.
+    enforcement_years, rollback_years : (int, int)
+        Inclusive year ranges for the two shaded policy windows.
     """
     fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Shade Kulturkampf
-    ax.axvspan(1872, 1878, alpha=0.12, color=COLORS["kulturkampf"])
-    
+
+    # Two-phase Kulturkampf shading.
+    ax.axvspan(
+        enforcement_years[0] - 0.5, enforcement_years[1] + 0.5,
+        alpha=0.15, color="#9B59B6",
+        label=f"Enforcement ({enforcement_years[0]}-{enforcement_years[1]})",
+    )
+    ax.axvspan(
+        rollback_years[0] - 0.5, rollback_years[1] + 0.5,
+        alpha=0.18, color="#7F8C8D",
+        label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
+    )
+
     # Zero line
     ax.axhline(0, color="black", linewidth=0.8, linestyle="-")
-    
+
     # Confidence intervals
     ax.fill_between(
         coefs["Year"], coefs["ci_lo"], coefs["ci_hi"],
         alpha=0.25, color=COLORS["catholic"],
     )
-    
+
     # Point estimates
     ax.plot(
         coefs["Year"], coefs["beta"],
         color=COLORS["catholic"], linewidth=2, marker="o", markersize=4,
+        label="Point estimate (95% CI ribbon)",
     )
-    
+
     # Mark reference year
     ax.scatter(
-        [ref_year], [0], color="black", s=80, zorder=5, 
+        [ref_year], [0], color="black", s=80, zorder=5,
         marker="D", label=f"Reference year ({ref_year})",
     )
-    
+
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
     ax.set_title(title, fontsize=13, fontweight="bold")
     ax.legend(loc="best", frameon=True, fontsize=9)
     ax.grid(axis="y", alpha=0.3)
-    
+
     plt.tight_layout()
     if savepath:
         fig.savefig(savepath, dpi=300, bbox_inches="tight")
