@@ -62,6 +62,86 @@ def franco_prussian_war_analysis(df: pd.DataFrame):
     return {"result": res, "fig": fig}
 
 
+def province_war_effect(
+    df: pd.DataFrame,
+    war_years: tuple[int, ...] = (1866, 1870, 1871),
+    ref_years: tuple[int, ...] = (1864, 1865, 1868, 1869),
+    outcome: str = "cbr",
+    min_counties: int = 3,
+) -> pd.DataFrame:
+    """
+    By-Regierungsbezirk comparison of mean outcome (default: CBR) in
+    war years vs flanking non-war years. Used to test whether the
+    pre-1873 CBR trend in the event study is driven by differential
+    Prussian-Army recruitment burden across Protestant- vs
+    Catholic-majority provinces.
+
+    The Austro-Prussian War (1866) and Franco-Prussian War (1870-71)
+    mobilised young men from each Regierungsbezirk in proportion to
+    its population and conscription quotas. If Protestant provinces
+    shouldered more of the recruitment burden, their CBR would dip in
+    war years (men away from wives, partial cohort mortality) while
+    Catholic provinces -- especially Polish-Catholic areas where
+    conscription was less aggressive politically -- would dip less.
+    The differential dip then opens a Catholic-Protestant CBR gap
+    during the war years that mechanically *closes* in the years
+    immediately after, generating an apparent pre-trend in the
+    event study without any behavioural Catholic-Protestant fertility
+    difference.
+
+    Returns a DataFrame keyed by Rb with columns:
+      - mean_war_years        : mean outcome in war_years
+      - mean_nonwar_years     : mean outcome in ref_years
+      - diff                  : mean_war - mean_nonwar (negative = dip)
+      - cath_share_rb_mean    : Rb-mean of cath_share (1871 census)
+      - n_counties            : number of counties in the Rb
+    sorted ascending by `diff` (most-negative war dip first).
+
+    Rbs with fewer than `min_counties` counties are dropped.
+    """
+    if outcome not in df.columns:
+        raise KeyError(f"Outcome {outcome!r} not in panel.")
+
+    war_mask = df["Year"].isin(war_years)
+    ref_mask = df["Year"].isin(ref_years)
+
+    war_means = (
+        df.loc[war_mask, ["Rb", outcome]]
+        .groupby("Rb")[outcome]
+        .mean()
+        .rename("mean_war_years")
+    )
+    ref_means = (
+        df.loc[ref_mask, ["Rb", outcome]]
+        .groupby("Rb")[outcome]
+        .mean()
+        .rename("mean_nonwar_years")
+    )
+    cath_means = (
+        df[["Rb", "cath_share"]]
+        .drop_duplicates(subset=["Rb", "cath_share"])
+        .groupby("Rb")["cath_share"]
+        .mean()
+        .rename("cath_share_rb_mean")
+    )
+    n_counties = (
+        df.groupby("Rb")["Code"]
+        .nunique()
+        .rename("n_counties")
+    )
+
+    out = (
+        pd.concat([war_means, ref_means, cath_means, n_counties], axis=1)
+        .dropna(subset=["mean_war_years", "mean_nonwar_years"])
+    )
+    out["diff"] = out["mean_war_years"] - out["mean_nonwar_years"]
+    out = out[out["n_counties"] >= min_counties]
+    return out[
+        ["mean_war_years", "mean_nonwar_years", "diff",
+         "cath_share_rb_mean", "n_counties"]
+    ].sort_values("diff").reset_index()
+
+
 def robustness_exclude_war(
     df: pd.DataFrame, outcome: str = "cbr",
     war_years: tuple = (1870, 1871, 1872), ref_year: int = 1869,
