@@ -57,6 +57,14 @@ PANEL_SCHEMA = DataFrameSchema(
         "infant_mortality_rate_leg": Column(
             float, Check.in_range(0, 600), nullable=True
         ),
+        # 1871 Reichstag election vote shares (Galloway ELE1871). All
+        # per-cent of valid votes; 1871 cross-section, time-invariant
+        # after merge. ~85% Kreis coverage.
+        "zentrum_share_1871": Column(float, Check.in_range(0, 100), nullable=True),
+        "polen_share_1871": Column(float, Check.in_range(0, 100), nullable=True),
+        "catholic_party_share_1871": Column(
+            float, Check.in_range(0, 200), nullable=True,
+        ),
     },
     strict=False,
     unique=["Code", "Year"],

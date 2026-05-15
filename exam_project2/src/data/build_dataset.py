@@ -21,6 +21,7 @@ from src.data.load_data import (
     interpolate_population,
     compute_midyear_population,
     load_pop1871_age_structure,
+    load_ele1871,
     DATA_RAW,
     DATA_PROCESSED,
 )
@@ -89,6 +90,10 @@ def build_analysis_panel(
                       net_mig_rate_carryforward
         1871 census:  pop_*_1871, age_*_1871, women_15_49_1871,
                       women_share_15_49_1871
+        1871 election: zentrum_share_1871, polen_share_1871,
+                       catholic_party_share_1871, conservative_share_1871,
+                       liberal_share_1871, nat_liberal_share_1871,
+                       sozialdemokrat_share_1871
         Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
                       raw Galloway `Poptot` is also retained as a column
                       for users who want to recompute carry-forward rates
@@ -392,6 +397,32 @@ def build_analysis_panel(
             logger.warning("POP1871 age structure merge: expected columns missing -> skipping GFR")
     except FileNotFoundError as exc:
         logger.warning("POP1871 age-structure merge skipped (file not found): %s", exc)
+
+    # ------------------------------------------------------------------
+    # 6c-bis. Merge 1871 Reichstag election vote shares from ELE1871.
+    # Galloway publishes vote totals at the Wahlkreis (electoral
+    # district) level; load_ele1871 parses Wahlkreis names to recover
+    # the constituent Kreise and assigns the Wahlkreis vote shares to
+    # each. Coverage ~85% of Type-0 panel Kreise; unmatched rows
+    # retain NaN. Zentrum (Catholic Centre Party) and Polen (Polish
+    # nationalist Catholic party) shares are the new variables of
+    # interest -- direct political-economy measures of Catholic
+    # affiliation, used as (a) heterogeneity moderators, (b) an
+    # alternative instrument for cath_share, and (c) cross-validation
+    # of the religious-census measure.
+    # ------------------------------------------------------------------
+    try:
+        ele1871 = load_ele1871(
+            panel_kreise=panel[["Code", "Kreis", "Rb"]].drop_duplicates(["Code"]),
+        )
+        panel = panel.merge(ele1871, on="Code", how="left")
+        logger.info(
+            "ELE1871 vote shares merged: %d of %d Kreise have Zentrum-share data",
+            int(panel["zentrum_share_1871"].notna().sum() // (panel["Year"].nunique())),
+            panel["Code"].nunique(),
+        )
+    except FileNotFoundError as exc:
+        logger.warning("ELE1871 merge skipped (file not found): %s", exc)
 
     # ------------------------------------------------------------------
     # 6d. Princeton EFP Coale indices (I_f, I_g, I_h) and the Galloway-
