@@ -510,6 +510,166 @@ def load_pop1871_age_structure(path: Optional[Path] = None) -> pd.DataFrame:
 # with Zentrum being the political expression of Catholic identity.
 
 
+ELECTION_YEARS = (1871, 1874, 1878, 1881, 1884, 1887, 1890)
+
+
+def _build_wahlkreis_crosswalk(
+    ele: pd.DataFrame,
+    panel_kreise: pd.DataFrame,
+) -> pd.DataFrame:
+    """Build the Wahlkreis -> Kreis crosswalk for a given ELE file.
+
+    Shared by ``load_ele1871`` and ``load_election_panel`` so the same
+    name-parsing logic applies to every election year.
+    """
+    import re
+    from src.data.merge_ipehd import _clean_name
+
+    def _clean_constituent(name: str) -> str:
+        s = _clean_name(name)
+        s = re.sub(
+            r"\s+(STADT|LAND|NORD|SUED|OST|WEST|I|II|III|IV)$", "", s,
+        )
+        s = s.replace("PRIEGNITZ", "PRIGNITZ")
+        return s.replace("  ", " ").strip()
+
+    ele = ele.copy()
+    ele["wahlkreis_name"] = ele["Wahlkreis"].str.replace(r"^\d+\s+", "", regex=True)
+    ele["constituent_names"] = ele["wahlkreis_name"].str.split("-")
+
+    pk = panel_kreise.copy()
+    pk["kreis_clean"] = pk["Kreis"].apply(_clean_name)
+
+    matches: list[tuple[int, str, int]] = []
+    for _, row in ele.iterrows():
+        rb_w = row["Rb"]
+        for name in row["constituent_names"]:
+            if not isinstance(name, str):
+                continue
+            k_clean = _clean_constituent(name.strip())
+            if not k_clean:
+                continue
+            # 1. exact within Rb -> 2. exact across Rbs ->
+            # 3. contains within Rb -> 4. contains across Rbs.
+            for filt in [
+                (pk["Rb"] == rb_w) & (pk["kreis_clean"] == k_clean),
+                pk["kreis_clean"] == k_clean,
+                (pk["Rb"] == rb_w) & pk["kreis_clean"].str.contains(k_clean, regex=False),
+                pk["kreis_clean"].str.contains(k_clean, regex=False),
+            ]:
+                m = pk[filt]
+                if len(m) == 1:
+                    matches.append(
+                        (int(row["Code"]), rb_w, int(m.iloc[0]["Code"]))
+                    )
+                    break
+
+    return pd.DataFrame(
+        matches, columns=["wahlkreis_code", "wahlkreis_rb", "Code"]
+    ).drop_duplicates(subset=["Code"])
+
+
+def load_election_panel(
+    years: tuple[int, ...] = ELECTION_YEARS,
+    panel_kreise: Optional[pd.DataFrame] = None,
+    data_dir: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
+    Load all 7 Galloway Reichstag-election files (1871, 1874, 1878,
+    1881, 1884, 1887, 1890) and produce a long-format Kreis-by-election
+    panel of vote shares.
+
+    Returns
+    -------
+    pd.DataFrame with columns:
+      - Code (Kreis identifier)
+      - election_year
+      - zentrum_share, polen_share, catholic_party_share (per cent of
+        valid votes)
+
+    Coverage. Same Wahlkreis -> Kreis crosswalk as ``load_ele1871``;
+    typical coverage is ~85-90% of Type-0 Kreise per election year.
+    Unmatched Kreise are omitted from the long panel for that year.
+
+    Notes on column naming. Galloway's German party labels drift over
+    time (e.g. "Konservativ" 1871/1874 vs "Deutsch konservativ" 1878+).
+    Zentrum and Polen are the only two parties with stable names across
+    all seven files, and they are the politically Catholic parties --
+    exactly what we need to study Catholic political mobilisation as a
+    Kulturkampf outcome. Other parties are not extracted in this
+    long-format function; see ``load_ele1871`` for the full per-party
+    breakdown of the 1871 cross-section.
+
+    Use case (political mobilisation as a Kulturkampf outcome): stack
+    the seven election years into a 7x338 = ~2,366-row DiD panel with
+    cath_share x Post as the treatment, Zentrum share as the outcome.
+    This directly measures whether Catholic political support
+    accelerated during enforcement (1874, 1878), persisted during
+    rollback (1881, 1884, 1887), or had decayed by post-rollback
+    (1890).
+    """
+    if data_dir is None:
+        data_dir = DATA_RAW
+
+    # Reference Kreis frame (one row per Kreis).
+    if panel_kreise is None:
+        rel_path = _find_file(data_dir, "REL1871")
+        if rel_path is None:
+            raise FileNotFoundError("REL1871 not found in data/raw/")
+        rel = load_rel1871(path=rel_path)
+        panel_kreise = rel[["Code", "Kreis", "Rb"]].copy()
+
+    all_rows = []
+    for year in years:
+        path = _find_file(data_dir, f"ELE{year}")
+        if path is None:
+            logger.warning("ELE%d not found; skipping", year)
+            continue
+
+        ele = pd.read_excel(path)
+        cw = _build_wahlkreis_crosswalk(ele, panel_kreise)
+        if len(cw) == 0:
+            logger.warning("ELE%d: empty crosswalk; skipping", year)
+            continue
+
+        # Zentrum and Polen are stable column names across all 7 files.
+        valid = ele["Gultige stimmen"].replace(0, np.nan)
+        ele = ele.assign(
+            zentrum_share=ele["Zentrum"] / valid * 100,
+            polen_share=ele["Polen"] / valid * 100,
+        )
+        ele["catholic_party_share"] = (
+            ele["zentrum_share"].fillna(0) + ele["polen_share"].fillna(0)
+        )
+        ele = ele.rename(columns={"Code": "wahlkreis_code", "Rb": "wahlkreis_rb"})
+        merged = cw.merge(
+            ele[
+                ["wahlkreis_code", "wahlkreis_rb",
+                 "zentrum_share", "polen_share", "catholic_party_share"]
+            ],
+            on=["wahlkreis_code", "wahlkreis_rb"], how="inner",
+        )
+        merged["election_year"] = year
+        all_rows.append(
+            merged[["Code", "election_year", "zentrum_share",
+                    "polen_share", "catholic_party_share"]]
+        )
+        logger.info(
+            "ELE%d: %d of %d Kreise matched (%.1f%%)",
+            year, len(merged), len(panel_kreise),
+            100.0 * len(merged) / len(panel_kreise),
+        )
+
+    if not all_rows:
+        return pd.DataFrame(
+            columns=["Code", "election_year", "zentrum_share",
+                     "polen_share", "catholic_party_share"]
+        )
+    return pd.concat(all_rows, ignore_index=True).sort_values(
+        ["Code", "election_year"]
+    ).reset_index(drop=True)
+
+
 def load_ele1871(
     path: Optional[Path] = None,
     panel_kreise: Optional[pd.DataFrame] = None,

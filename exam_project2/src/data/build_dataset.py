@@ -22,6 +22,8 @@ from src.data.load_data import (
     compute_midyear_population,
     load_pop1871_age_structure,
     load_ele1871,
+    load_election_panel,
+    ELECTION_YEARS,
     DATA_RAW,
     DATA_PROCESSED,
 )
@@ -412,17 +414,72 @@ def build_analysis_panel(
     # of the religious-census measure.
     # ------------------------------------------------------------------
     try:
-        ele1871 = load_ele1871(
-            panel_kreise=panel[["Code", "Kreis", "Rb"]].drop_duplicates(["Code"]),
-        )
+        panel_kreise_ref = panel[["Code", "Kreis", "Rb"]].drop_duplicates(["Code"])
+        ele1871 = load_ele1871(panel_kreise=panel_kreise_ref)
         panel = panel.merge(ele1871, on="Code", how="left")
         logger.info(
             "ELE1871 vote shares merged: %d of %d Kreise have Zentrum-share data",
             int(panel["zentrum_share_1871"].notna().sum() // (panel["Year"].nunique())),
             panel["Code"].nunique(),
         )
+
+        # Time-varying Zentrum / Polen / Catholic-party vote shares.
+        # Galloway publishes Reichstag results in 1871, 1874, 1878,
+        # 1881, 1884, 1887, 1890 -- one pre-treatment election (1871)
+        # and six post-treatment elections covering enforcement
+        # (1874, 1878) and rollback (1881, 1884, 1887, 1890).
+        #
+        # We construct three time-varying columns in the panel:
+        #   zentrum_share_current, polen_share_current,
+        #   catholic_party_share_current
+        # Each takes the most-recent-election vote share at panel year
+        # t (i.e. carry-forward from each election until the next one).
+        # Panel years before 1871 inherit the 1871 result; panel years
+        # 1890 inherit the 1890 result.
+        ele_long = load_election_panel(panel_kreise=panel_kreise_ref)
+        if len(ele_long) > 0:
+            # Pivot to wide: one row per Kreis, columns per election year.
+            ele_wide = ele_long.pivot(
+                index="Code", columns="election_year",
+                values=["zentrum_share", "polen_share", "catholic_party_share"],
+            )
+            ele_wide.columns = [f"{a}__{int(b)}" for a, b in ele_wide.columns]
+            ele_wide = ele_wide.reset_index()
+            panel = panel.merge(ele_wide, on="Code", how="left")
+
+            # Build carry-forward time-varying columns.
+            election_yrs = sorted(ele_long["election_year"].unique())
+            for share_col in ("zentrum_share", "polen_share", "catholic_party_share"):
+                cur = pd.Series(np.nan, index=panel.index, dtype=float)
+                for ey in election_yrs:
+                    src_col = f"{share_col}__{int(ey)}"
+                    if src_col not in panel.columns:
+                        continue
+                    # Apply this election's share to all panel rows whose
+                    # Year >= this election_year (overwrites earlier ones).
+                    mask = panel["Year"] >= ey
+                    cur.loc[mask] = panel.loc[mask, src_col].values
+                # For panel years before the earliest election, use the
+                # earliest election's share as a backfill (1862-1870 -> 1871).
+                first_ey = election_yrs[0]
+                first_src = f"{share_col}__{int(first_ey)}"
+                if first_src in panel.columns:
+                    pre_mask = panel["Year"] < first_ey
+                    cur.loc[pre_mask] = panel.loc[pre_mask, first_src].values
+                panel[f"{share_col}_current"] = cur.values
+
+            # Drop the per-election wide columns -- they were intermediate.
+            panel = panel.drop(
+                columns=[c for c in panel.columns if "__" in c and any(
+                    c.startswith(s) for s in ("zentrum_share", "polen_share",
+                                              "catholic_party_share"))]
+            )
+            logger.info(
+                "Time-varying election shares merged: %d election years (%s)",
+                len(election_yrs), election_yrs,
+            )
     except FileNotFoundError as exc:
-        logger.warning("ELE1871 merge skipped (file not found): %s", exc)
+        logger.warning("ELE merge skipped (file not found): %s", exc)
 
     # ------------------------------------------------------------------
     # 6d. Princeton EFP Coale indices (I_f, I_g, I_h) and the Galloway-
