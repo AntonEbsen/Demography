@@ -141,6 +141,8 @@ def compute_coale_indices(
     married_share: dict | None = None,
     pop_col: str = "Poptot_midyear",
     use_county_specific_share: bool = True,
+    use_sta1871: bool = True,
+    marriage_col: str = "married_share_over15_f_1871",
 ) -> pd.DataFrame:
     """
     Compute Coale's $I_f$, $I_g$, $I_h$ for each county-year, plus the
@@ -155,11 +157,11 @@ def compute_coale_indices(
     married women, the Galloway-tradition headline level).
 
     Returns a copy of ``panel`` with new columns ``I_f``, ``I_g``, ``I_h``,
-    and ``gmfr``.
+    ``gmfr``, and (when STA1871 is available) ``married_women_15_49``.
 
-    Implementation. Galloway lacks age structure of married women in the
-    raw VIT files, so we approximate the contemporaneous count of women
-    aged 15-49 by either:
+    Implementation. Galloway VIT files lack age structure of married
+    women, so we approximate the contemporaneous count of women aged
+    15-49 by either:
 
       - **County-specific 1871 share** (default, ``use_county_specific_share=True``):
         $W_t = (\\mathrm{women\\_15\\_49\\_1871} / \\mathrm{pop\\_total\\_1871})
@@ -170,13 +172,30 @@ def compute_coale_indices(
         $W_t = 0.25 \\times \\mathrm{Poptot}_t$. The Coale-Demeny "West"
         Level 7 reference value used in the Princeton EFP.
 
-    The married-share schedule (``married_share`` arg, default
-    ``DEFAULT_MARRIED_SHARE``) is constant across counties and time. This
-    is a necessary approximation because Galloway has no annual age x
-    marital-status data; the $I_m$ (nuptiality) component is therefore
-    captured separately by the observed marriage rate
-    (``Martot / Poptot_midyear``) rather than by a constructed Coale
-    $I_m$ index.
+    Marital-fertility denominator (the proper Princeton EFP one
+    requires $\\sum_a m_a F^H_a$ -- the Hutterite weighted *count of
+    married women* in each age group). Two recalibration paths:
+
+      - **STA1871 recalibration** (default, ``use_sta1871=True``):
+        when ``married_share_over15_f_1871`` (= Marriedover15f /
+        Popover15f from Galloway's STA1871 cross-section) is on the
+        panel, scale the constant marital-fertility weight by the
+        county-specific marriage prevalence shifter
+        $k_i = \\mu_i / \\bar\\mu^{\\mathrm{Prussia}}$,
+        where $\\bar\\mu^{\\mathrm{Prussia}}$ is the 1871 cross-section
+        mean of $\\mu_i$ (~ 0.516). This preserves the Prussia-wide
+        age-pattern of marriage but allows the *level* of marriage
+        prevalence to vary across counties, which is the dominant
+        source of cross-county variation in actual marital-fertility
+        denominators. Assumes within-county marriage prevalence is
+        constant across 1862-1890.
+      - **Constant schedule** (``use_sta1871=False``): the original
+        approximation -- ``DEFAULT_MARRIED_SHARE`` schedule applied
+        identically to every county.
+
+    The ``$I_m$`` (nuptiality) component is captured separately by the
+    observed marriage rate (``Martot / Poptot_midyear``) rather than
+    by a constructed Coale $I_m$ index.
 
     Default population denominator is ``Poptot_midyear`` (the
     linearly-interpolated mid-year column built by
@@ -205,30 +224,77 @@ def compute_coale_indices(
     else:
         W = women_share_of_pop * pop
 
-    # M = total married women 15-49 (used as the GMFR denominator).
-    # NOT an input to I_g / I_h: those use W directly with the
-    # marriage-share-weighted Hutterite averages (Fbar_mar / Fbar_unmar)
-    # which already absorb the per-age married-share schedule. The
-    # Princeton EFP definitions are:
-    #
-    #   I_g = B_leg / sum_i (M_i * F_i^H) = B_leg / (W * Fbar_mar)
-    #   I_h = B_ill / sum_i ((W_i - M_i) * F_i^H) = B_ill / (W * Fbar_unmar)
-    #
-    # so applying an extra marriage-share factor would double-count.
-    married_share_overall = sum(age_dist[a] * married_share[a] for a in age_dist)
-    M = W * married_share_overall
+    # County-specific marriage shifter. k_i applies *proportionally* to
+    # both Fbar_mar and Fbar_unmar so they remain a partition of Fbar_all:
+    # if a county has 10% higher marriage prevalence then 10% more of
+    # the Hutterite-weighted fertility "potential" is in the married
+    # category and 10% less in the unmarried category (subject to
+    # clipping to keep Fbar_unmar non-negative).
+    if (
+        use_sta1871
+        and marriage_col in df.columns
+        and df[marriage_col].notna().any()
+    ):
+        mu = df[marriage_col]
+        mu_ref = float(
+            df.drop_duplicates("Code")[marriage_col].dropna().mean()
+        )
+        k = (mu / mu_ref).clip(lower=0.5, upper=1.5)
+        Fbar_mar_eff = k * Fbar_mar
+        # Keep the marital + non-marital partition consistent: rescale
+        # the unmarried weight so that the implied weighted-average
+        # married share equals the rescaled value, preserving
+        # Fbar_mar + Fbar_unmar' = Fbar_all (the Princeton identity).
+        Fbar_unmar_eff = Fbar_all - Fbar_mar_eff
+        Fbar_unmar_eff = Fbar_unmar_eff.clip(lower=1e-6)
+        used_sta1871 = True
+    else:
+        Fbar_mar_eff = Fbar_mar
+        Fbar_unmar_eff = Fbar_unmar
+        used_sta1871 = False
+
+    # M = implied count of married women 15-49 (used as GMFR denominator
+    # and exposed as a panel column). Under the STA1871 recalibration
+    # this varies across counties; under the constant-schedule fallback
+    # it equals W * mean(rho_a^const).
+    married_share_overall_const = sum(
+        age_dist[a] * married_share[a] for a in age_dist
+    )
+    if used_sta1871:
+        # Implied married-women count among 15-49 is W * mu_i * (ratio
+        # of "implied married rate among 15-49 under reference schedule"
+        # to "empirical married rate over 15"). The ratio is just the
+        # constant married_share_overall_const / mu_ref, baked into k.
+        M = W * k * married_share_overall_const
+    else:
+        M = W * married_share_overall_const
 
     df["I_f"] = df["Birtot"] / (W * Fbar_all)
-    df["I_g"] = df["Birlegtot"] / (W * Fbar_mar)
+    df["I_g"] = df["Birlegtot"] / (W * Fbar_mar_eff)
     df["I_h"] = np.where(
         (W > 0) & df["Birbastot"].notna(),
-        df["Birbastot"] / (W * Fbar_unmar),
+        df["Birbastot"] / (W * Fbar_unmar_eff),
         np.nan,
     )
 
     # Galloway-tradition GMFR: legitimate births per 1{,}000 married women
     # 15--49. Direct unnormalised analogue of the Princeton I_g.
     df["gmfr"] = np.where(M > 0, df["Birlegtot"] / M * 1000.0, np.nan)
+    # Expose the implied married-women count as a panel column so
+    # downstream code can recompute its own rates.
+    df["married_women_15_49"] = M
+
+    if used_sta1871:
+        logger.info(
+            "Coale I_g computed with STA1871 recalibration: mu_ref=%.4f, "
+            "county-specific shifter k_i applied (clipped to [0.5, 1.5])",
+            mu_ref,
+        )
+    else:
+        logger.info(
+            "Coale I_g computed with constant Prussia-wide marriage "
+            "schedule (STA1871 column not found or all-null)"
+        )
 
     return df
 
