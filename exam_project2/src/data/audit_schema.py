@@ -74,6 +74,9 @@ PANEL_SCHEMA = DataFrameSchema(
         "catholic_party_share_current": Column(
             float, Check.in_range(0, 200), nullable=True,
         ),
+        # Time-varying urban share from Galloway URB1875/80/85/90,
+        # linearly interpolated between anchors. NaN pre-1875.
+        "urban_share_current": Column(float, Check.in_range(0, 100), nullable=True),
     },
     strict=False,
     unique=["Code", "Year"],

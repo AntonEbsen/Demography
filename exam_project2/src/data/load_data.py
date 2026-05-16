@@ -569,6 +569,70 @@ def _build_wahlkreis_crosswalk(
     ).drop_duplicates(subset=["Code"])
 
 
+URB_YEARS = (1875, 1880, 1885, 1890)
+
+
+def load_urb_panel(
+    years: tuple[int, ...] = URB_YEARS,
+    data_dir: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
+    Load Galloway's URB{year}.XLS files (urbanisation cross-sections
+    at 1875, 1880, 1885, 1890) and return a long-format panel of
+    Kreis-level urban share by year.
+
+    Output columns
+    --------------
+      Code, Year, percenturban, popurban, poptot
+
+    Filters to Type=0 (combined Stadt+Land Kreise, matching the main
+    analysis panel) and Code<900. URB1885 stores total population in
+    column ``Poptot`` and urban population in ``Poptot-1`` (a Galloway
+    formatting quirk); we harmonise to ``poptot`` / ``popurban`` so
+    downstream code can treat all four years uniformly.
+
+    Note. Galloway's URB ``Percenturban`` is *not* identical to iPEHD's
+    1871 ``f_urban``: the URB definition has a stricter urban-place
+    threshold and uses Galloway's own population denominator, whereas
+    iPEHD harmonises to Becker-Woessmann's Reichstag-1871 base. Levels
+    differ by ~6 pp on average. Treat them as separate measures: keep
+    ``f_urban`` (1871) for the static iPEHD heterogeneity slot, and
+    use the URB-derived ``urban_share_current`` (time-varying, 1875+
+    only, linearly interpolated between URB anchors) for the
+    Bai/Hsiao time-varying-trend spec.
+    """
+    if data_dir is None:
+        data_dir = DATA_RAW
+
+    frames = []
+    for year in years:
+        path = _find_file(data_dir, f"URB{year}")
+        if path is None:
+            logger.warning("URB%d not found; skipping", year)
+            continue
+        df = pd.read_excel(path)
+        # Type-0 Kreise only.
+        df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+
+        # URB1885 uses 'Poptot-1' for urban-pop (Galloway typo); harmonise.
+        urban_col = "Popurban" if "Popurban" in df.columns else "Poptot-1"
+        out = pd.DataFrame({
+            "Code": df["Code"].astype(int),
+            "Year": int(year),
+            "percenturban": df["Percenturban"].astype(float),
+            "popurban": df[urban_col].astype(float) if urban_col in df.columns else np.nan,
+            "poptot": df["Poptot"].astype(float),
+        })
+        frames.append(out)
+        logger.info("URB%d: %d Type-0 Kreise loaded (mean percenturban=%.2f)",
+                    year, len(out), float(out["percenturban"].mean()))
+
+    if not frames:
+        return pd.DataFrame(columns=["Code", "Year", "percenturban", "popurban", "poptot"])
+    return pd.concat(frames, ignore_index=True).sort_values(
+        ["Code", "Year"]).reset_index(drop=True)
+
+
 def load_election_panel(
     years: tuple[int, ...] = ELECTION_YEARS,
     panel_kreise: Optional[pd.DataFrame] = None,

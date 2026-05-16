@@ -24,6 +24,8 @@ from src.data.load_data import (
     load_ele1871,
     load_election_panel,
     ELECTION_YEARS,
+    load_urb_panel,
+    URB_YEARS,
     DATA_RAW,
     DATA_PROCESSED,
 )
@@ -96,6 +98,11 @@ def build_analysis_panel(
                        catholic_party_share_1871, conservative_share_1871,
                        liberal_share_1871, nat_liberal_share_1871,
                        sozialdemokrat_share_1871
+        Election TV:   zentrum_share_current, polen_share_current,
+                       catholic_party_share_current (carry-forward from
+                       Reichstag elections 1871-1890)
+        Urban TV:      urban_share_current (linearly interpolated from
+                       URB1875/80/85/90; NaN pre-1875)
         Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
                       raw Galloway `Poptot` is also retained as a column
                       for users who want to recompute carry-forward rates
@@ -480,6 +487,55 @@ def build_analysis_panel(
             )
     except FileNotFoundError as exc:
         logger.warning("ELE merge skipped (file not found): %s", exc)
+
+    # ------------------------------------------------------------------
+    # 6c-ter. Merge time-varying urban share from URB1875/80/85/90.
+    # Galloway publishes Kreis-level Percenturban at four cross-
+    # sections during the analysis window. We interpolate linearly
+    # between anchors to produce annual urban_share_current values for
+    # panel years 1875-1890. Pre-1875 the variable is NaN (no Galloway
+    # urban measurement is available before 1875; iPEHD's f_urban
+    # remains as a separate static 1871 cross-section). This enables
+    # the Bai/Hsiao time-varying-urbanisation trend spec.
+    # ------------------------------------------------------------------
+    try:
+        urb_long = load_urb_panel()
+        if len(urb_long) > 0:
+            urb_anchors = (
+                urb_long.set_index(["Code", "Year"])["percenturban"]
+                .unstack("Year")
+            )
+
+            def _interp_row(row: pd.Series) -> pd.Series:
+                # Linear interpolation between URB anchors (1875, 1880,
+                # 1885, 1890); endpoints carried forward outside the
+                # observed range, but we only emit for years within the
+                # closed [min, max] anchor span.
+                anchor_years = [y for y in row.index if pd.notna(row[y])]
+                if not anchor_years:
+                    return pd.Series(dtype=float)
+                xs = np.asarray(anchor_years, dtype=float)
+                ys = np.asarray([row[y] for y in anchor_years], dtype=float)
+                target_years = list(range(int(min(anchor_years)), int(max(anchor_years)) + 1))
+                return pd.Series(
+                    np.interp(np.asarray(target_years, dtype=float), xs, ys),
+                    index=target_years,
+                )
+
+            urb_interp = urb_anchors.apply(_interp_row, axis=1)
+            urb_interp.columns.name = "Year"
+            urb_interp_long = (
+                urb_interp.stack().rename("urban_share_current").reset_index()
+            )
+            panel = panel.merge(urb_interp_long, on=["Code", "Year"], how="left")
+            n_matched = panel["urban_share_current"].notna().sum()
+            logger.info(
+                "Time-varying urban share merged: %d obs have a "
+                "URB-interpolated value (1875-1890 only); mean = %.2f%%",
+                n_matched, float(panel["urban_share_current"].mean()),
+            )
+    except FileNotFoundError as exc:
+        logger.warning("URB merge skipped (file not found): %s", exc)
 
     # ------------------------------------------------------------------
     # 6d. Princeton EFP Coale indices (I_f, I_g, I_h) and the Galloway-

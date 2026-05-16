@@ -4,7 +4,7 @@
 
 This appendix documents every variable, data source, sample-construction rule, and estimation specification used in the empirical analysis. It is written so a reader can answer the three transparency questions for any number that appears in the paper: **what is it**, **how is it computed**, and **where does it come from?**
 
-The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **10,783 county-year observations** spanning **392 Prussian counties** over **29 years (1862–1890)**, with **102 columns**.
+The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **10,783 county-year observations** spanning **392 Prussian counties** over **29 years (1862–1890)**, with **103 columns**.
 
 ---
 
@@ -330,6 +330,18 @@ Panel years 1862–1870 inherit the 1871 election share (backfill); 1871–1873 
 
 **Headline analytical use (`political_mobilization.py`).** The seven elections constitute a stacked-cross-section DiD panel with `zentrum_share` as the outcome and `cath_share × Post` as the treatment. The estimated coefficient is $\hat\beta = +0.277$ ($p<0.001$) — for each percentage point of 1871 Catholic share, Zentrum vote share rose by 0.28 pp in post-Kulturkampf elections. A 100% Catholic vs 0% Catholic comparison implies a 27.7 pp *additional* Zentrum mobilisation attributable to the Kulturkampf legislation. Phase-specific estimates show the effect peaks during rollback (enforcement $\hat\beta=+0.236$; rollback $\hat\beta=+0.302$; post-rollback $\hat\beta=+0.284$, all $p<0.001$) — the Kulturkampf *permanently* politicised Catholic identity. See [`fig_zentrum_mobilization.png`](outputs/figures/fig_zentrum_mobilization.png) and notebook 03 §14.
 
+#### 6.5d Time-varying urban share (URB1875–1890)
+
+Galloway publishes Kreis-level urbanisation cross-sections at **1875, 1880, 1885, and 1890** in `URB{year}.XLS`. [`load_urb_panel()`](src/data/load_data.py) loads all four (Type-0 Kreise, Code<900), harmonises a Galloway formatting quirk in URB1885 (urban-population column is `Poptot-1` rather than `Popurban`), and returns a long-format panel of (Code, Year, percenturban, popurban, poptot). The panel is merged into the analysis frame via **linear interpolation between anchors** to produce an annual `urban_share_current` variable for panel years 1875–1890.
+
+| Variable | Definition | Built at |
+|---|---|---|
+| `urban_share_current` | Linearly-interpolated urban population share at panel year $t$, anchored at URB1875/1880/1885/1890 measurements | [`build_dataset.py`](src/data/build_dataset.py) merge step |
+
+**Pre-1875: `urban_share_current` is NaN by construction.** No Galloway URB cross-section exists before 1875; iPEHD's `f_urban` (1871 cross-section, time-invariant) remains the appropriate urbanisation control for the pre-treatment period. The two measures are **not directly comparable in levels**: iPEHD's 1871 `f_urban` averages 22.5% across panel Kreise, while URB1875's `Percenturban` averages 28.6% in 1875. The 6 pp gap reflects different urban-place thresholds (URB uses Galloway's stricter definition; iPEHD harmonises to Becker–Woessmann's Reichstag-1871 base) rather than four years of urbanisation. Keep them separate: `f_urban` for the 1871-static iPEHD heterogeneity slot, `urban_share_current` for the time-varying Bai/Hsiao spec.
+
+**Empirical pattern.** Mean `urban_share_current` rises gently from 22.9% in 1875 to 24.6% in 1890 — a ~1.7 pp increase over the post-Kulturkampf window. By Catholic-share group, high-Catholic counties remain substantially less urban than low-Catholic counties throughout (20.5% vs 26.7% in 1890), and the two trajectories are parallel — urbanisation did not differentially accelerate in either group. Useful as a control variable: lets the Bai/Hsiao specification allow each county to follow its own urbanisation-trajectory-implied trend rather than relying on the 1871-static iPEHD value.
+
 ### 6.6 Coale–Watkins framework (Princeton EFP / Galloway 1994)
 
 The Princeton European Fertility Project's three-index decomposition is the standard demographic framework for studying historical fertility transitions. It separates overall fertility into a **marital-fertility** component (within-marriage childbearing intensity) and a **nuptiality** component (the share of women who are married). For the Kulturkampf paper this is the right framework because the substantive question — *did the legislation operate by suppressing within-marriage childbearing or by disrupting marriage formation?* — is exactly what the decomposition isolates.
@@ -389,7 +401,7 @@ A row is in the final analysis panel iff it survives every rule below, applied i
 |  | |
 |---|---|
 | Observations | **10,783** |
-| Columns | **102** |
+| Columns | **103** |
 | Counties | **392** |
 | Years | **1862–1890 (29)** |
 | High-Catholic counties (`cath_share > 50`) | **130** |
