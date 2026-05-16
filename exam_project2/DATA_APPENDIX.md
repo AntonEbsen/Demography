@@ -4,7 +4,7 @@
 
 This appendix documents every variable, data source, sample-construction rule, and estimation specification used in the empirical analysis. It is written so a reader can answer the three transparency questions for any number that appears in the paper: **what is it**, **how is it computed**, and **where does it come from?**
 
-The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **10,783 county-year observations** spanning **392 Prussian counties** over **29 years (1862–1890)**, with **92 columns**.
+The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **10,783 county-year observations** spanning **392 Prussian counties** over **29 years (1862–1890)**, with **103 columns**.
 
 ---
 
@@ -280,7 +280,7 @@ These are exactly the Galloway-database "out of the box" rates: same numerators 
 
 These are **measured** migration rates from Galloway, distinct from the *implied* migration rate computed inside [`run_emigration_robustness()`](src/analysis/regressions.py:772) as the residual of the demographic accounting identity. Coverage gap: 1868–1871 and 1887–1890 have no migration columns in any VIT file → all three rates are NaN for those years (8 of 29 panel years; ~28% of obs). `Outmigunoff` is recorded only 1875–1886 and is **not** included in the `outmig_rate` numerator — interpret `outmig_rate` as official-permit out-migration only.
 
-### 6.5 Constructed 1871 covariates (time-invariant)
+### 6.5a Constructed 1871 covariates (time-invariant)
 
 | Variable | Definition | Formula | Unit | Built at |
 |---|---|---|---|---|
@@ -289,7 +289,60 @@ These are **measured** migration rates from Galloway, distinct from the *implied
 
 `women_share_15_49_1871` is the demographic-age-structure analogue of the iPEHD socio-economic baselines — used in §8.7 as a Bai/Hsiao pre-treatment-trend test of whether differential *fertility capacity* (rather than religion) drives differential trajectories.
 
-### 6.5 Coale–Watkins framework (Princeton EFP / Galloway 1994)
+### 6.5b Political-economy covariates from the 1871 Reichstag election (ELE1871)
+
+Galloway's ELE1871 reports Reichstag vote totals at the *Wahlkreis* (electoral district) level. Each Wahlkreis is an aggregation of one or more Type-0 Kreise; the constituent Kreis names are encoded in the Wahlkreis label (e.g. "6 BRAUNSBERG–HEILSBERG" pools Kreise 13 and 14). [`load_ele1871()`](src/data/load_data.py:484) parses these labels, matches constituent names to panel Kreise via [`_clean_name()`](src/data/merge_ipehd.py) and a four-step fallback (exact-within-Rb → exact-across-Rbs → contains-within-Rb → contains-across-Rbs), then assigns each Kreis its Wahlkreis vote shares. Coverage: **338 of 392 panel Kreise (86%)**; unmatched are mostly city–rural splits (e.g. "DANZIG STADT" vs "DANZIG LAND") that do not exist as separate Type-0 Kreise.
+
+| Variable | Definition | Built at |
+|---|---|---|
+| `zentrum_share_1871` | Vote share of the Catholic Centre Party (Zentrum), per cent of valid votes | [`load_data.py:484+`](src/data/load_data.py:484) |
+| `polen_share_1871` | Vote share of the Polish-nationalist Catholic party (Polen) | as above |
+| `catholic_party_share_1871` | `zentrum_share_1871 + polen_share_1871` (combined Catholic political mobilisation) | as above |
+| `conservative_share_1871` | Konservativ + Deutsche Reichspartei | as above |
+| `liberal_share_1871` | National-liberal + Liberal Reichspartei + Fortschritt + Volkspartei | as above |
+| `nat_liberal_share_1871` | National-liberal (the dominant Protestant-aligned liberal party in 1871) | as above |
+| `sozialdemokrat_share_1871` | Sozialdemokrat (founded 1875–78; near-zero in 1871) | as above |
+
+**Validation.** All variables are time-invariant 1871 cross-sections and have empirical correlations with `cath_share` consistent with the established political geography of unified Germany:
+
+- $\mathrm{corr}(\texttt{cath\_share}, \texttt{zentrum\_share\_1871}) = +0.66$
+- $\mathrm{corr}(\texttt{cath\_share}, \texttt{catholic\_party\_share\_1871}) = +0.77$
+- $\mathrm{corr}(\texttt{cath\_share}, \texttt{conservative\_share\_1871}) = -0.35$
+- $\mathrm{corr}(\texttt{cath\_share}, \texttt{nat\_liberal\_share\_1871}) = -0.27$
+
+Zentrum was founded in 1870 specifically in response to anti-Catholic legislation, and these correlations confirm it functioned as the political vehicle for Catholic identity in 1871. The Polen vote share is positively but weakly correlated with `cath_share` (r = +0.26): Polish counties were Catholic, but most Catholic counties (especially Rhineland) voted Zentrum rather than Polen.
+
+**Usage in the analysis.** Zentrum and Polen vote shares enter the heterogeneity DiD ([`heterogeneity_table`](src/analysis/latex_tables.py)) as time-invariant moderators of `cath_share × Post`. The interaction with Zentrum is positive (effect *diminishes* with Zentrum mobilisation, $p<0.01$ for CBR, marriage rate, and $I_g$); the interaction with Polen is negative (effect *strengthens* with Polish-nationalist mobilisation, $p<0.05$). The combined pattern indicates the Kulturkampf marriage-rate disruption operated through Polish-Catholic counties rather than through politically-organised German Catholic counties — adding a political-economy mechanism to the established Polish-vs-German Catholic heterogeneity story.
+
+#### 6.5c Time-varying Reichstag vote shares (1871–1890)
+
+Galloway publishes seven Reichstag election cross-sections during the analysis window: 1871 (pre-Kulturkampf), 1874 and 1878 (enforcement), 1881, 1884, 1887 (rollback), and 1890 (post-rollback). [`load_election_panel()`](src/data/load_data.py) loads all seven, applies the same Wahlkreis-to-Kreis crosswalk as `load_ele1871`, and returns a 7 × 338-row long-format panel of `zentrum_share`, `polen_share`, and `catholic_party_share` (Zentrum + Polen) by Kreis × election year.
+
+The annual analysis panel includes three **time-varying** columns built from this election panel via carry-forward of the most-recent-election value:
+
+| Variable | Definition | Built at |
+|---|---|---|
+| `zentrum_share_current` | Most-recent-Reichstag-election Zentrum vote share at panel year $t$ (carry-forward from each election to the next) | [`build_dataset.py`](src/data/build_dataset.py) merge step |
+| `polen_share_current` | Same, Polen vote share | as above |
+| `catholic_party_share_current` | Same, Zentrum + Polen combined | as above |
+
+Panel years 1862–1870 inherit the 1871 election share (backfill); 1871–1873 use 1871; 1874–1877 use 1874; 1878–1880 use 1878; 1881–1883 use 1881; 1884–1886 use 1884; 1887–1889 use 1887; 1890 uses 1890.
+
+**Headline analytical use (`political_mobilization.py`).** The seven elections constitute a stacked-cross-section DiD panel with `zentrum_share` as the outcome and `cath_share × Post` as the treatment. The estimated coefficient is $\hat\beta = +0.277$ ($p<0.001$) — for each percentage point of 1871 Catholic share, Zentrum vote share rose by 0.28 pp in post-Kulturkampf elections. A 100% Catholic vs 0% Catholic comparison implies a 27.7 pp *additional* Zentrum mobilisation attributable to the Kulturkampf legislation. Phase-specific estimates show the effect peaks during rollback (enforcement $\hat\beta=+0.236$; rollback $\hat\beta=+0.302$; post-rollback $\hat\beta=+0.284$, all $p<0.001$) — the Kulturkampf *permanently* politicised Catholic identity. See [`fig_zentrum_mobilization.png`](outputs/figures/fig_zentrum_mobilization.png) and notebook 03 §14.
+
+#### 6.5d Time-varying urban share (URB1875–1890)
+
+Galloway publishes Kreis-level urbanisation cross-sections at **1875, 1880, 1885, and 1890** in `URB{year}.XLS`. [`load_urb_panel()`](src/data/load_data.py) loads all four (Type-0 Kreise, Code<900), harmonises a Galloway formatting quirk in URB1885 (urban-population column is `Poptot-1` rather than `Popurban`), and returns a long-format panel of (Code, Year, percenturban, popurban, poptot). The panel is merged into the analysis frame via **linear interpolation between anchors** to produce an annual `urban_share_current` variable for panel years 1875–1890.
+
+| Variable | Definition | Built at |
+|---|---|---|
+| `urban_share_current` | Linearly-interpolated urban population share at panel year $t$, anchored at URB1875/1880/1885/1890 measurements | [`build_dataset.py`](src/data/build_dataset.py) merge step |
+
+**Pre-1875: `urban_share_current` is NaN by construction.** No Galloway URB cross-section exists before 1875; iPEHD's `f_urban` (1871 cross-section, time-invariant) remains the appropriate urbanisation control for the pre-treatment period. The two measures are **not directly comparable in levels**: iPEHD's 1871 `f_urban` averages 22.5% across panel Kreise, while URB1875's `Percenturban` averages 28.6% in 1875. The 6 pp gap reflects different urban-place thresholds (URB uses Galloway's stricter definition; iPEHD harmonises to Becker–Woessmann's Reichstag-1871 base) rather than four years of urbanisation. Keep them separate: `f_urban` for the 1871-static iPEHD heterogeneity slot, `urban_share_current` for the time-varying Bai/Hsiao spec.
+
+**Empirical pattern.** Mean `urban_share_current` rises gently from 22.9% in 1875 to 24.6% in 1890 — a ~1.7 pp increase over the post-Kulturkampf window. By Catholic-share group, high-Catholic counties remain substantially less urban than low-Catholic counties throughout (20.5% vs 26.7% in 1890), and the two trajectories are parallel — urbanisation did not differentially accelerate in either group. Useful as a control variable: lets the Bai/Hsiao specification allow each county to follow its own urbanisation-trajectory-implied trend rather than relying on the 1871-static iPEHD value.
+
+### 6.6 Coale–Watkins framework (Princeton EFP / Galloway 1994)
 
 The Princeton European Fertility Project's three-index decomposition is the standard demographic framework for studying historical fertility transitions. It separates overall fertility into a **marital-fertility** component (within-marriage childbearing intensity) and a **nuptiality** component (the share of women who are married). For the Kulturkampf paper this is the right framework because the substantive question — *did the legislation operate by suppressing within-marriage childbearing or by disrupting marriage formation?* — is exactly what the decomposition isolates.
 
@@ -316,7 +369,7 @@ These approximations affect the *level* of the indices but **not** the within-co
 
 **Empirical levels** (current build): $I_f = 0.41$, $I_g = 0.61$, $I_h = 0.08$, gmfr = 234. Princeton EFP independent estimates for 1871 Prussia: $I_f \approx 0.40$–$0.42$, $I_g \approx 0.65$–$0.72$, $I_h \approx 0.05$–$0.10$. Levels are within tolerance; the slight $I_g$ underestimate likely reflects our marriage-share schedule erring slightly low.
 
-### 6.6 Other constructed variables
+### 6.7 Other constructed variables
 
 | Variable | Definition | Formula | Unit | Built at |
 |---|---|---|---|---|
@@ -348,7 +401,7 @@ A row is in the final analysis panel iff it survives every rule below, applied i
 |  | |
 |---|---|
 | Observations | **10,783** |
-| Columns | **92** |
+| Columns | **103** |
 | Counties | **392** |
 | Years | **1862–1890 (29)** |
 | High-Catholic counties (`cath_share > 50`) | **130** |

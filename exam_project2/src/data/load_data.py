@@ -477,7 +477,427 @@ def load_pop1871_age_structure(path: Optional[Path] = None) -> pd.DataFrame:
 
 
 # ===================================================================
-# 5.  iPEHD master dataset (reference only)
+# 5.  ELE1871 -- 1871 Reichstag election vote shares
+# ===================================================================
+#
+# Galloway's ELE1871 reports Reichstag-election vote totals at the
+# *Wahlkreis* (electoral district) level, not the *Kreis* (county) level.
+# Wahlkreise are unions of multiple Kreise; the Wahlkreis name encodes
+# the constituent Kreis names, e.g. "6 BRAUNSBERG-HEILSBERG" pools
+# Kreise 13 (Braunsberg) and 14 (Heilsberg).
+#
+# To merge into the analysis panel we (i) parse the constituent Kreis
+# names from each Wahlkreis label, (ii) match each constituent name to a
+# panel Kreis (within the same Rb, then across all Rbs), and (iii)
+# assign each Kreis the vote shares of its Wahlkreis. Counties that fall
+# in unmatched Wahlkreise (city-rural splits like "DANZIG STADT" vs
+# "DANZIG LAND" that do not exist as separate Type-0 Kreise; or spelling
+# variants like "WESTPRIEGNITZ" vs panel's "WESTPRIGNITZ") retain NaN
+# for the election variables.
+#
+# Vote-share variables derived (each is N_party_votes / N_valid_votes x 100):
+#   zentrum_share_1871        -- Catholic Center Party (founded 1870)
+#   polen_share_1871          -- Polish-nationalist Catholic party
+#   catholic_party_share_1871 -- Zentrum + Polen combined
+#   conservative_share_1871   -- Konservativ + Deutsche Reichspartei
+#   liberal_share_1871        -- National-liberal + Liberal Reichspartei
+#                                + Fortschrittspartei + Volkspartei
+#   nat_liberal_share_1871    -- just National-liberal (the dominant
+#                                Protestant-aligned liberal party in 1871)
+#
+# Validation: corr(cath_share, zentrum_share_1871) approx +0.66;
+# corr(cath_share, catholic_party_share_1871) approx +0.77 -- consistent
+# with Zentrum being the political expression of Catholic identity.
+
+
+ELECTION_YEARS = (1871, 1874, 1878, 1881, 1884, 1887, 1890)
+
+
+def _build_wahlkreis_crosswalk(
+    ele: pd.DataFrame,
+    panel_kreise: pd.DataFrame,
+) -> pd.DataFrame:
+    """Build the Wahlkreis -> Kreis crosswalk for a given ELE file.
+
+    Shared by ``load_ele1871`` and ``load_election_panel`` so the same
+    name-parsing logic applies to every election year.
+    """
+    import re
+    from src.data.merge_ipehd import _clean_name
+
+    def _clean_constituent(name: str) -> str:
+        s = _clean_name(name)
+        s = re.sub(
+            r"\s+(STADT|LAND|NORD|SUED|OST|WEST|I|II|III|IV)$", "", s,
+        )
+        s = s.replace("PRIEGNITZ", "PRIGNITZ")
+        return s.replace("  ", " ").strip()
+
+    ele = ele.copy()
+    ele["wahlkreis_name"] = ele["Wahlkreis"].str.replace(r"^\d+\s+", "", regex=True)
+    ele["constituent_names"] = ele["wahlkreis_name"].str.split("-")
+
+    pk = panel_kreise.copy()
+    pk["kreis_clean"] = pk["Kreis"].apply(_clean_name)
+
+    matches: list[tuple[int, str, int]] = []
+    for _, row in ele.iterrows():
+        rb_w = row["Rb"]
+        for name in row["constituent_names"]:
+            if not isinstance(name, str):
+                continue
+            k_clean = _clean_constituent(name.strip())
+            if not k_clean:
+                continue
+            # 1. exact within Rb -> 2. exact across Rbs ->
+            # 3. contains within Rb -> 4. contains across Rbs.
+            for filt in [
+                (pk["Rb"] == rb_w) & (pk["kreis_clean"] == k_clean),
+                pk["kreis_clean"] == k_clean,
+                (pk["Rb"] == rb_w) & pk["kreis_clean"].str.contains(k_clean, regex=False),
+                pk["kreis_clean"].str.contains(k_clean, regex=False),
+            ]:
+                m = pk[filt]
+                if len(m) == 1:
+                    matches.append(
+                        (int(row["Code"]), rb_w, int(m.iloc[0]["Code"]))
+                    )
+                    break
+
+    return pd.DataFrame(
+        matches, columns=["wahlkreis_code", "wahlkreis_rb", "Code"]
+    ).drop_duplicates(subset=["Code"])
+
+
+URB_YEARS = (1875, 1880, 1885, 1890)
+
+
+def load_urb_panel(
+    years: tuple[int, ...] = URB_YEARS,
+    data_dir: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
+    Load Galloway's URB{year}.XLS files (urbanisation cross-sections
+    at 1875, 1880, 1885, 1890) and return a long-format panel of
+    Kreis-level urban share by year.
+
+    Output columns
+    --------------
+      Code, Year, percenturban, popurban, poptot
+
+    Filters to Type=0 (combined Stadt+Land Kreise, matching the main
+    analysis panel) and Code<900. URB1885 stores total population in
+    column ``Poptot`` and urban population in ``Poptot-1`` (a Galloway
+    formatting quirk); we harmonise to ``poptot`` / ``popurban`` so
+    downstream code can treat all four years uniformly.
+
+    Note. Galloway's URB ``Percenturban`` is *not* identical to iPEHD's
+    1871 ``f_urban``: the URB definition has a stricter urban-place
+    threshold and uses Galloway's own population denominator, whereas
+    iPEHD harmonises to Becker-Woessmann's Reichstag-1871 base. Levels
+    differ by ~6 pp on average. Treat them as separate measures: keep
+    ``f_urban`` (1871) for the static iPEHD heterogeneity slot, and
+    use the URB-derived ``urban_share_current`` (time-varying, 1875+
+    only, linearly interpolated between URB anchors) for the
+    Bai/Hsiao time-varying-trend spec.
+    """
+    if data_dir is None:
+        data_dir = DATA_RAW
+
+    frames = []
+    for year in years:
+        path = _find_file(data_dir, f"URB{year}")
+        if path is None:
+            logger.warning("URB%d not found; skipping", year)
+            continue
+        df = pd.read_excel(path)
+        # Type-0 Kreise only.
+        df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+
+        # URB1885 uses 'Poptot-1' for urban-pop (Galloway typo); harmonise.
+        urban_col = "Popurban" if "Popurban" in df.columns else "Poptot-1"
+        out = pd.DataFrame({
+            "Code": df["Code"].astype(int),
+            "Year": int(year),
+            "percenturban": df["Percenturban"].astype(float),
+            "popurban": df[urban_col].astype(float) if urban_col in df.columns else np.nan,
+            "poptot": df["Poptot"].astype(float),
+        })
+        frames.append(out)
+        logger.info("URB%d: %d Type-0 Kreise loaded (mean percenturban=%.2f)",
+                    year, len(out), float(out["percenturban"].mean()))
+
+    if not frames:
+        return pd.DataFrame(columns=["Code", "Year", "percenturban", "popurban", "poptot"])
+    return pd.concat(frames, ignore_index=True).sort_values(
+        ["Code", "Year"]).reset_index(drop=True)
+
+
+def load_election_panel(
+    years: tuple[int, ...] = ELECTION_YEARS,
+    panel_kreise: Optional[pd.DataFrame] = None,
+    data_dir: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
+    Load all 7 Galloway Reichstag-election files (1871, 1874, 1878,
+    1881, 1884, 1887, 1890) and produce a long-format Kreis-by-election
+    panel of vote shares.
+
+    Returns
+    -------
+    pd.DataFrame with columns:
+      - Code (Kreis identifier)
+      - election_year
+      - zentrum_share, polen_share, catholic_party_share (per cent of
+        valid votes)
+
+    Coverage. Same Wahlkreis -> Kreis crosswalk as ``load_ele1871``;
+    typical coverage is ~85-90% of Type-0 Kreise per election year.
+    Unmatched Kreise are omitted from the long panel for that year.
+
+    Notes on column naming. Galloway's German party labels drift over
+    time (e.g. "Konservativ" 1871/1874 vs "Deutsch konservativ" 1878+).
+    Zentrum and Polen are the only two parties with stable names across
+    all seven files, and they are the politically Catholic parties --
+    exactly what we need to study Catholic political mobilisation as a
+    Kulturkampf outcome. Other parties are not extracted in this
+    long-format function; see ``load_ele1871`` for the full per-party
+    breakdown of the 1871 cross-section.
+
+    Use case (political mobilisation as a Kulturkampf outcome): stack
+    the seven election years into a 7x338 = ~2,366-row DiD panel with
+    cath_share x Post as the treatment, Zentrum share as the outcome.
+    This directly measures whether Catholic political support
+    accelerated during enforcement (1874, 1878), persisted during
+    rollback (1881, 1884, 1887), or had decayed by post-rollback
+    (1890).
+    """
+    if data_dir is None:
+        data_dir = DATA_RAW
+
+    # Reference Kreis frame (one row per Kreis).
+    if panel_kreise is None:
+        rel_path = _find_file(data_dir, "REL1871")
+        if rel_path is None:
+            raise FileNotFoundError("REL1871 not found in data/raw/")
+        rel = load_rel1871(path=rel_path)
+        panel_kreise = rel[["Code", "Kreis", "Rb"]].copy()
+
+    all_rows = []
+    for year in years:
+        path = _find_file(data_dir, f"ELE{year}")
+        if path is None:
+            logger.warning("ELE%d not found; skipping", year)
+            continue
+
+        ele = pd.read_excel(path)
+        cw = _build_wahlkreis_crosswalk(ele, panel_kreise)
+        if len(cw) == 0:
+            logger.warning("ELE%d: empty crosswalk; skipping", year)
+            continue
+
+        # Zentrum and Polen are stable column names across all 7 files.
+        valid = ele["Gultige stimmen"].replace(0, np.nan)
+        ele = ele.assign(
+            zentrum_share=ele["Zentrum"] / valid * 100,
+            polen_share=ele["Polen"] / valid * 100,
+        )
+        ele["catholic_party_share"] = (
+            ele["zentrum_share"].fillna(0) + ele["polen_share"].fillna(0)
+        )
+        ele = ele.rename(columns={"Code": "wahlkreis_code", "Rb": "wahlkreis_rb"})
+        merged = cw.merge(
+            ele[
+                ["wahlkreis_code", "wahlkreis_rb",
+                 "zentrum_share", "polen_share", "catholic_party_share"]
+            ],
+            on=["wahlkreis_code", "wahlkreis_rb"], how="inner",
+        )
+        merged["election_year"] = year
+        all_rows.append(
+            merged[["Code", "election_year", "zentrum_share",
+                    "polen_share", "catholic_party_share"]]
+        )
+        logger.info(
+            "ELE%d: %d of %d Kreise matched (%.1f%%)",
+            year, len(merged), len(panel_kreise),
+            100.0 * len(merged) / len(panel_kreise),
+        )
+
+    if not all_rows:
+        return pd.DataFrame(
+            columns=["Code", "election_year", "zentrum_share",
+                     "polen_share", "catholic_party_share"]
+        )
+    return pd.concat(all_rows, ignore_index=True).sort_values(
+        ["Code", "election_year"]
+    ).reset_index(drop=True)
+
+
+def load_ele1871(
+    path: Optional[Path] = None,
+    panel_kreise: Optional[pd.DataFrame] = None,
+) -> pd.DataFrame:
+    """
+    Load ELE1871 and produce a Kreis-level DataFrame of 1871 Reichstag
+    vote shares by party family.
+
+    Parameters
+    ----------
+    path : Path, optional
+        Path to ``ELE1871.XLS``. Defaults to ``DATA_RAW / "ELE1871.XLS"``.
+    panel_kreise : pd.DataFrame, optional
+        Reference frame with columns ``[Code, Kreis, Rb]`` listing every
+        Type-0 Kreis. Used to match Wahlkreis constituent names to panel
+        Kreise. If omitted, it is built from a freshly-loaded REL1871.
+
+    Returns
+    -------
+    pd.DataFrame keyed by ``Code`` (Kreis code) with the columns above
+    suffixed ``_1871``. Counties not matched to any Wahlkreis are
+    omitted from the returned frame; the caller's outer-merge with the
+    panel will yield NaN for those Kreise.
+    """
+    import re
+    from src.data.merge_ipehd import _clean_name
+
+    if path is None:
+        path = _find_file(DATA_RAW, "ELE1871")
+        if path is None:
+            raise FileNotFoundError("ELE1871 not found in data/raw/")
+
+    ele = pd.read_excel(path)
+
+    # Strip leading "{N} " from the Wahlkreis label and split into
+    # constituent Kreis names on the en-dash separator.
+    ele["wahlkreis_name"] = ele["Wahlkreis"].str.replace(r"^\d+\s+", "", regex=True)
+    ele["constituent_names"] = ele["wahlkreis_name"].str.split("-")
+
+    # Reference panel of Kreise.
+    if panel_kreise is None:
+        rel = load_rel1871(path=_find_file(DATA_RAW, "REL1871"))
+        panel_kreise = rel[["Code", "Kreis", "Rb"]].copy()
+    panel_kreise = panel_kreise.copy()
+    panel_kreise["kreis_clean"] = panel_kreise["Kreis"].apply(_clean_name)
+
+    def _clean_constituent(name: str) -> str:
+        """Normalise a constituent Kreis name: strip STADT/LAND/I/II/etc.
+        suffixes that Wahlkreise use but panel Kreise (Type=0) do not."""
+        s = _clean_name(name)
+        s = re.sub(
+            r"\s+(STADT|LAND|NORD|SUED|OST|WEST|I|II|III|IV)$",
+            "", s,
+        )
+        # Handle minor spelling variants Galloway uses inconsistently.
+        s = s.replace("PRIEGNITZ", "PRIGNITZ")
+        return s.replace("  ", " ").strip()
+
+    # Crosswalk: (wahlkreis_code, wahlkreis_rb) -> [kreis_code, ...]
+    matches: list[tuple[int, str, int]] = []
+    for _, row in ele.iterrows():
+        rb_w = row["Rb"]
+        for name in row["constituent_names"]:
+            if not isinstance(name, str):
+                continue
+            k_clean = _clean_constituent(name.strip())
+            if not k_clean:
+                continue
+            # 1. exact within Rb
+            m = panel_kreise[
+                (panel_kreise["Rb"] == rb_w)
+                & (panel_kreise["kreis_clean"] == k_clean)
+            ]
+            if len(m) == 1:
+                matches.append((row["Code"], rb_w, int(m.iloc[0]["Code"])))
+                continue
+            # 2. exact across Rbs (Galloway Rb assignment differs for a few)
+            m = panel_kreise[panel_kreise["kreis_clean"] == k_clean]
+            if len(m) == 1:
+                matches.append((row["Code"], rb_w, int(m.iloc[0]["Code"])))
+                continue
+            # 3. contains within Rb
+            m = panel_kreise[
+                (panel_kreise["Rb"] == rb_w)
+                & panel_kreise["kreis_clean"].str.contains(k_clean, regex=False)
+            ]
+            if len(m) == 1:
+                matches.append((row["Code"], rb_w, int(m.iloc[0]["Code"])))
+                continue
+            # 4. contains across Rbs
+            m = panel_kreise[
+                panel_kreise["kreis_clean"].str.contains(k_clean, regex=False)
+            ]
+            if len(m) == 1:
+                matches.append((row["Code"], rb_w, int(m.iloc[0]["Code"])))
+                continue
+            # unmatched: silently drop -- common cause is city-rural split
+            # where the Wahlkreis names something that is not a Type-0 Kreis.
+
+    crosswalk = pd.DataFrame(
+        matches, columns=["wahlkreis_code", "wahlkreis_rb", "Code"]
+    ).drop_duplicates(subset=["Code"])
+
+    # Compute vote shares (per cent of valid votes) for each Wahlkreis.
+    party_cols = {
+        "Konservativ": "konservativ",
+        "Deutsche reichspartei": "deutsche_reichspartei",
+        "Liberal reichspartei": "liberal_reichspartei",
+        "National-liberal": "national_liberal",
+        "Fortschritts partei": "fortschritts",
+        "Volkspartei": "volkspartei",
+        "Sozialdemokrat": "sozialdemokrat",
+        "Zentrum": "zentrum",
+        "Polen": "polen",
+    }
+    ele_shares = ele[["Code", "Rb", "Gultige stimmen"] + list(party_cols.keys())].copy()
+    ele_shares = ele_shares.rename(
+        columns={"Code": "wahlkreis_code", "Rb": "wahlkreis_rb"}
+    )
+    valid = ele_shares["Gultige stimmen"].replace(0, np.nan)
+    for raw, clean in party_cols.items():
+        ele_shares[f"{clean}_share_1871"] = ele_shares[raw] / valid * 100
+    # Composite party-family shares.
+    ele_shares["catholic_party_share_1871"] = (
+        ele_shares["zentrum_share_1871"].fillna(0)
+        + ele_shares["polen_share_1871"].fillna(0)
+    )
+    ele_shares["conservative_share_1871"] = (
+        ele_shares["konservativ_share_1871"].fillna(0)
+        + ele_shares["deutsche_reichspartei_share_1871"].fillna(0)
+    )
+    ele_shares["liberal_share_1871"] = (
+        ele_shares["liberal_reichspartei_share_1871"].fillna(0)
+        + ele_shares["national_liberal_share_1871"].fillna(0)
+        + ele_shares["fortschritts_share_1871"].fillna(0)
+        + ele_shares["volkspartei_share_1871"].fillna(0)
+    )
+    ele_shares = ele_shares.rename(
+        columns={"national_liberal_share_1871": "nat_liberal_share_1871"}
+    )
+
+    # Final merge to Kreis level.
+    keep_cols = [
+        "zentrum_share_1871", "polen_share_1871",
+        "catholic_party_share_1871", "conservative_share_1871",
+        "liberal_share_1871", "nat_liberal_share_1871",
+        "sozialdemokrat_share_1871",
+    ]
+    out = crosswalk.merge(
+        ele_shares[["wahlkreis_code", "wahlkreis_rb"] + keep_cols],
+        on=["wahlkreis_code", "wahlkreis_rb"],
+        how="inner",
+    )[["Code"] + keep_cols]
+
+    logger.info(
+        "ELE1871: %d Kreise matched to Wahlkreis vote shares "
+        "(coverage %.1f%% of panel Kreise)",
+        len(out), 100.0 * len(out) / len(panel_kreise),
+    )
+    return out
+
+
+# ===================================================================
+# 6.  iPEHD master dataset (reference only)
 # ===================================================================
 
 def load_ipehd_master(path: Optional[Path] = None) -> pd.DataFrame:

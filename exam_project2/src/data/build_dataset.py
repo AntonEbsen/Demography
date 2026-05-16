@@ -21,6 +21,11 @@ from src.data.load_data import (
     interpolate_population,
     compute_midyear_population,
     load_pop1871_age_structure,
+    load_ele1871,
+    load_election_panel,
+    ELECTION_YEARS,
+    load_urb_panel,
+    URB_YEARS,
     DATA_RAW,
     DATA_PROCESSED,
 )
@@ -89,6 +94,15 @@ def build_analysis_panel(
                       net_mig_rate_carryforward
         1871 census:  pop_*_1871, age_*_1871, women_15_49_1871,
                       women_share_15_49_1871
+        1871 election: zentrum_share_1871, polen_share_1871,
+                       catholic_party_share_1871, conservative_share_1871,
+                       liberal_share_1871, nat_liberal_share_1871,
+                       sozialdemokrat_share_1871
+        Election TV:   zentrum_share_current, polen_share_current,
+                       catholic_party_share_current (carry-forward from
+                       Reichstag elections 1871-1890)
+        Urban TV:      urban_share_current (linearly interpolated from
+                       URB1875/80/85/90; NaN pre-1875)
         Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
                       raw Galloway `Poptot` is also retained as a column
                       for users who want to recompute carry-forward rates
@@ -392,6 +406,136 @@ def build_analysis_panel(
             logger.warning("POP1871 age structure merge: expected columns missing -> skipping GFR")
     except FileNotFoundError as exc:
         logger.warning("POP1871 age-structure merge skipped (file not found): %s", exc)
+
+    # ------------------------------------------------------------------
+    # 6c-bis. Merge 1871 Reichstag election vote shares from ELE1871.
+    # Galloway publishes vote totals at the Wahlkreis (electoral
+    # district) level; load_ele1871 parses Wahlkreis names to recover
+    # the constituent Kreise and assigns the Wahlkreis vote shares to
+    # each. Coverage ~85% of Type-0 panel Kreise; unmatched rows
+    # retain NaN. Zentrum (Catholic Centre Party) and Polen (Polish
+    # nationalist Catholic party) shares are the new variables of
+    # interest -- direct political-economy measures of Catholic
+    # affiliation, used as (a) heterogeneity moderators, (b) an
+    # alternative instrument for cath_share, and (c) cross-validation
+    # of the religious-census measure.
+    # ------------------------------------------------------------------
+    try:
+        panel_kreise_ref = panel[["Code", "Kreis", "Rb"]].drop_duplicates(["Code"])
+        ele1871 = load_ele1871(panel_kreise=panel_kreise_ref)
+        panel = panel.merge(ele1871, on="Code", how="left")
+        logger.info(
+            "ELE1871 vote shares merged: %d of %d Kreise have Zentrum-share data",
+            int(panel["zentrum_share_1871"].notna().sum() // (panel["Year"].nunique())),
+            panel["Code"].nunique(),
+        )
+
+        # Time-varying Zentrum / Polen / Catholic-party vote shares.
+        # Galloway publishes Reichstag results in 1871, 1874, 1878,
+        # 1881, 1884, 1887, 1890 -- one pre-treatment election (1871)
+        # and six post-treatment elections covering enforcement
+        # (1874, 1878) and rollback (1881, 1884, 1887, 1890).
+        #
+        # We construct three time-varying columns in the panel:
+        #   zentrum_share_current, polen_share_current,
+        #   catholic_party_share_current
+        # Each takes the most-recent-election vote share at panel year
+        # t (i.e. carry-forward from each election until the next one).
+        # Panel years before 1871 inherit the 1871 result; panel years
+        # 1890 inherit the 1890 result.
+        ele_long = load_election_panel(panel_kreise=panel_kreise_ref)
+        if len(ele_long) > 0:
+            # Pivot to wide: one row per Kreis, columns per election year.
+            ele_wide = ele_long.pivot(
+                index="Code", columns="election_year",
+                values=["zentrum_share", "polen_share", "catholic_party_share"],
+            )
+            ele_wide.columns = [f"{a}__{int(b)}" for a, b in ele_wide.columns]
+            ele_wide = ele_wide.reset_index()
+            panel = panel.merge(ele_wide, on="Code", how="left")
+
+            # Build carry-forward time-varying columns.
+            election_yrs = sorted(ele_long["election_year"].unique())
+            for share_col in ("zentrum_share", "polen_share", "catholic_party_share"):
+                cur = pd.Series(np.nan, index=panel.index, dtype=float)
+                for ey in election_yrs:
+                    src_col = f"{share_col}__{int(ey)}"
+                    if src_col not in panel.columns:
+                        continue
+                    # Apply this election's share to all panel rows whose
+                    # Year >= this election_year (overwrites earlier ones).
+                    mask = panel["Year"] >= ey
+                    cur.loc[mask] = panel.loc[mask, src_col].values
+                # For panel years before the earliest election, use the
+                # earliest election's share as a backfill (1862-1870 -> 1871).
+                first_ey = election_yrs[0]
+                first_src = f"{share_col}__{int(first_ey)}"
+                if first_src in panel.columns:
+                    pre_mask = panel["Year"] < first_ey
+                    cur.loc[pre_mask] = panel.loc[pre_mask, first_src].values
+                panel[f"{share_col}_current"] = cur.values
+
+            # Drop the per-election wide columns -- they were intermediate.
+            panel = panel.drop(
+                columns=[c for c in panel.columns if "__" in c and any(
+                    c.startswith(s) for s in ("zentrum_share", "polen_share",
+                                              "catholic_party_share"))]
+            )
+            logger.info(
+                "Time-varying election shares merged: %d election years (%s)",
+                len(election_yrs), election_yrs,
+            )
+    except FileNotFoundError as exc:
+        logger.warning("ELE merge skipped (file not found): %s", exc)
+
+    # ------------------------------------------------------------------
+    # 6c-ter. Merge time-varying urban share from URB1875/80/85/90.
+    # Galloway publishes Kreis-level Percenturban at four cross-
+    # sections during the analysis window. We interpolate linearly
+    # between anchors to produce annual urban_share_current values for
+    # panel years 1875-1890. Pre-1875 the variable is NaN (no Galloway
+    # urban measurement is available before 1875; iPEHD's f_urban
+    # remains as a separate static 1871 cross-section). This enables
+    # the Bai/Hsiao time-varying-urbanisation trend spec.
+    # ------------------------------------------------------------------
+    try:
+        urb_long = load_urb_panel()
+        if len(urb_long) > 0:
+            urb_anchors = (
+                urb_long.set_index(["Code", "Year"])["percenturban"]
+                .unstack("Year")
+            )
+
+            def _interp_row(row: pd.Series) -> pd.Series:
+                # Linear interpolation between URB anchors (1875, 1880,
+                # 1885, 1890); endpoints carried forward outside the
+                # observed range, but we only emit for years within the
+                # closed [min, max] anchor span.
+                anchor_years = [y for y in row.index if pd.notna(row[y])]
+                if not anchor_years:
+                    return pd.Series(dtype=float)
+                xs = np.asarray(anchor_years, dtype=float)
+                ys = np.asarray([row[y] for y in anchor_years], dtype=float)
+                target_years = list(range(int(min(anchor_years)), int(max(anchor_years)) + 1))
+                return pd.Series(
+                    np.interp(np.asarray(target_years, dtype=float), xs, ys),
+                    index=target_years,
+                )
+
+            urb_interp = urb_anchors.apply(_interp_row, axis=1)
+            urb_interp.columns.name = "Year"
+            urb_interp_long = (
+                urb_interp.stack().rename("urban_share_current").reset_index()
+            )
+            panel = panel.merge(urb_interp_long, on=["Code", "Year"], how="left")
+            n_matched = panel["urban_share_current"].notna().sum()
+            logger.info(
+                "Time-varying urban share merged: %d obs have a "
+                "URB-interpolated value (1875-1890 only); mean = %.2f%%",
+                n_matched, float(panel["urban_share_current"].mean()),
+            )
+    except FileNotFoundError as exc:
+        logger.warning("URB merge skipped (file not found): %s", exc)
 
     # ------------------------------------------------------------------
     # 6d. Princeton EFP Coale indices (I_f, I_g, I_h) and the Galloway-

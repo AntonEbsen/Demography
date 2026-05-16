@@ -57,6 +57,26 @@ PANEL_SCHEMA = DataFrameSchema(
         "infant_mortality_rate_leg": Column(
             float, Check.in_range(0, 600), nullable=True
         ),
+        # 1871 Reichstag election vote shares (Galloway ELE1871). All
+        # per-cent of valid votes; 1871 cross-section, time-invariant
+        # after merge. ~85% Kreis coverage.
+        "zentrum_share_1871": Column(float, Check.in_range(0, 100), nullable=True),
+        "polen_share_1871": Column(float, Check.in_range(0, 100), nullable=True),
+        "catholic_party_share_1871": Column(
+            float, Check.in_range(0, 200), nullable=True,
+        ),
+        # Time-varying election shares: carry-forward of the most
+        # recent Reichstag election (1871, 1874, 1878, 1881, 1884,
+        # 1887, 1890). Used to measure Catholic political mobilisation
+        # as a Kulturkampf outcome.
+        "zentrum_share_current": Column(float, Check.in_range(0, 100), nullable=True),
+        "polen_share_current": Column(float, Check.in_range(0, 100), nullable=True),
+        "catholic_party_share_current": Column(
+            float, Check.in_range(0, 200), nullable=True,
+        ),
+        # Time-varying urban share from Galloway URB1875/80/85/90,
+        # linearly interpolated between anchors. NaN pre-1875.
+        "urban_share_current": Column(float, Check.in_range(0, 100), nullable=True),
     },
     strict=False,
     unique=["Code", "Year"],

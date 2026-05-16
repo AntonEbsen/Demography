@@ -625,6 +625,215 @@ def plot_cbr_war_context(
     return fig, ax
 
 
+def plot_zentrum_event_study(
+    coefs: pd.DataFrame,
+    enforcement_years: tuple[int, int] = (1873, 1878),
+    rollback_years: tuple[int, int] = (1880, 1887),
+    title: str | None = None,
+    ylabel: str | None = None,
+    savepath: str | None = None,
+):
+    """
+    Event-study plot for the political-mobilisation DiD: year-by-year
+    coefficients on ``cath_share x 1{Year = t}`` with 1871 as the
+    omitted reference, plotted across the 7 Reichstag elections
+    1871--1890.
+
+    Each point is the additional Zentrum vote share (in percentage
+    points of valid votes) per percentage point of `cath_share` at
+    that election year, relative to the 1871 baseline. So a coefficient
+    of $+0.24$ at 1874 means: comparing two counties differing by 1pp
+    of `cath_share`, the gap in Zentrum vote share grew by 0.24 pp
+    between 1871 and 1874.
+
+    The Kulturkampf enforcement (1873--78) and rollback (1880--87)
+    windows are shaded distinctly so the reader can see in which
+    policy phase the political-mobilisation response peaked.
+
+    Parameters
+    ----------
+    coefs : pd.DataFrame
+        Output from ``run_political_mobilization_event_study(...)['coefs']``.
+        Must have columns: Year, beta, ci_lo, ci_hi.
+    """
+    fig, ax = plt.subplots(figsize=(11, 6))
+
+    y_max = max(coefs["ci_hi"]) * 1.10
+    y_min = min(min(coefs["ci_lo"]) * 1.10, -0.02)
+
+    # Two-phase Kulturkampf shading.
+    ax.axvspan(
+        enforcement_years[0] - 0.5, enforcement_years[1] + 0.5,
+        alpha=0.15, color="#9B59B6",
+        label=f"Enforcement ({enforcement_years[0]}-{enforcement_years[1]})",
+    )
+    ax.axvspan(
+        rollback_years[0] - 0.5, rollback_years[1] + 0.5,
+        alpha=0.18, color="#7F8C8D",
+        label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
+    )
+
+    # Zero line.
+    ax.axhline(0, color="black", linewidth=0.8, linestyle="-")
+
+    # 95% CI ribbon + point estimates.
+    ax.fill_between(
+        coefs["Year"], coefs["ci_lo"], coefs["ci_hi"],
+        alpha=0.25, color=COLORS["catholic"],
+    )
+    ax.plot(
+        coefs["Year"], coefs["beta"],
+        color=COLORS["catholic"], linewidth=2.2, marker="o", markersize=7,
+        label="Coef. on CathShare $\\times$ 1[Year$=t$] (95\\% CI)",
+    )
+
+    # Annotate each point.
+    for _, row in coefs.iterrows():
+        if abs(row["beta"]) < 1e-9:
+            label = "ref."
+        else:
+            label = f"{row['beta']:+.3f}"
+        ax.annotate(
+            label,
+            (row["Year"], row["beta"]),
+            textcoords="offset points", xytext=(0, 10),
+            ha="center", fontsize=8, fontweight="bold",
+            color=COLORS["catholic"] if abs(row["beta"]) > 1e-9 else "black",
+        )
+
+    # Mark the 1871 reference with a black diamond.
+    if (coefs["beta"].abs() < 1e-9).any():
+        ref_year = int(coefs.loc[coefs["beta"].abs() < 1e-9, "Year"].iloc[0])
+        ax.scatter(
+            [ref_year], [0], color="black", s=80, zorder=5,
+            marker="D", label=f"Reference year ({ref_year})",
+        )
+
+    ax.set_xticks(coefs["Year"].tolist())
+    ax.set_xticklabels(coefs["Year"].astype(int).tolist())
+    ax.set_xlim(coefs["Year"].min() - 1, coefs["Year"].max() + 1)
+    ax.set_ylim(y_min, y_max)
+    ax.set_xlabel("Election year (Reichstag)", fontsize=11)
+    if ylabel is None:
+        ylabel = (
+            "Coefficient on CathShare $\\times$ 1[Year$=t$] "
+            "(Zentrum vote-share units)"
+        )
+    ax.set_ylabel(ylabel, fontsize=11)
+    if title is None:
+        title = (
+            "Event study: Catholic political mobilisation, 1871-1890\n"
+            "(1871 omitted; coefficients show post-Kulturkampf "
+            "Zentrum-share gap per pp of cath\\_share)"
+        )
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.legend(loc="upper left", fontsize=9, frameon=True)
+    ax.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    return fig, ax
+
+
+def plot_zentrum_mobilization(
+    panel: pd.DataFrame,
+    election_years: tuple[int, ...] = (1871, 1874, 1878, 1881, 1884, 1887, 1890),
+    enforcement_years: tuple[int, int] = (1873, 1878),
+    rollback_years: tuple[int, int] = (1880, 1887),
+    savepath: str | None = None,
+):
+    """
+    Time-varying Zentrum (Catholic Centre Party) vote share by
+    Catholic-share group, across the 7 Reichstag elections 1871--1890.
+
+    Galloway's seven election cross-sections span one pre-Kulturkampf
+    election (1871) and six post-Kulturkampf elections covering
+    enforcement (1874, 1878) and rollback (1881, 1884, 1887) plus one
+    post-rollback (1890). Plotting mean Zentrum vote share at each
+    election for High-Catholic vs Low-Catholic counties reveals the
+    Catholic political-mobilisation response: in high-Catholic
+    counties, Zentrum vote share roughly doubles between 1871 and 1874
+    -- the *first* post-Kulturkampf election -- peaks in 1881 (early
+    rollback), and never reverts to its pre-treatment level. This is
+    the textbook backfire-effect of an institutional shock: rather
+    than weakening Catholic identity, the Kulturkampf consolidated it
+    into the Reichstag's most disciplined opposition bloc.
+
+    The figure pairs with the formal political-mobilisation DiD in
+    ``political_mobilization.run_political_mobilization_did``.
+    """
+    df = panel.dropna(subset=["zentrum_share_current"]).copy()
+    df = df[df["Year"].isin(list(election_years))]
+    df["group"] = df["high_cath"].map({0: "Low Catholic", 1: "High Catholic"})
+    annual = (
+        df.groupby(["Year", "group"])["zentrum_share_current"]
+        .mean()
+        .unstack()
+    )
+
+    fig, ax = plt.subplots(figsize=(11, 6))
+    y_min, y_max = 0, max(annual.max()) * 1.10
+
+    # Two-phase Kulturkampf shading.
+    ax.axvspan(
+        enforcement_years[0] - 0.5, enforcement_years[1] + 0.5,
+        alpha=0.15, color="#9B59B6",
+        label=f"Enforcement ({enforcement_years[0]}-{enforcement_years[1]})",
+    )
+    ax.axvspan(
+        rollback_years[0] - 0.5, rollback_years[1] + 0.5,
+        alpha=0.18, color="#7F8C8D",
+        label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
+    )
+
+    # Reference line at the 1871 pre-Kulturkampf level for each group.
+    for grp, color in [("High Catholic", COLORS["catholic"]),
+                       ("Low Catholic", COLORS["protestant"])]:
+        if grp in annual.columns:
+            base = annual.loc[1871, grp] if 1871 in annual.index else annual[grp].iloc[0]
+            ax.axhline(base, color=color, linestyle=":", linewidth=1.0, alpha=0.6)
+
+    # Two group lines.
+    for grp, color, marker in [
+        ("High Catholic", COLORS["catholic"], "o"),
+        ("Low Catholic", COLORS["protestant"], "s"),
+    ]:
+        if grp not in annual.columns:
+            continue
+        ax.plot(
+            annual.index, annual[grp],
+            color=color, linewidth=2.2, marker=marker, markersize=7, label=grp,
+        )
+        # Annotate each point with its value
+        for x, y in zip(annual.index, annual[grp]):
+            if pd.notna(y):
+                ax.annotate(
+                    f"{y:.1f}",
+                    (x, y), textcoords="offset points", xytext=(0, 8),
+                    ha="center", fontsize=8, color=color, fontweight="bold",
+                )
+
+    ax.set_xlim(min(election_years) - 0.5, max(election_years) + 0.5)
+    ax.set_ylim(y_min, y_max)
+    ax.set_xticks(list(election_years))
+    ax.set_xticklabels(list(election_years))
+    ax.set_xlabel("Election year (Reichstag)", fontsize=11)
+    ax.set_ylabel("Mean Zentrum vote share (\\% of valid votes)", fontsize=11)
+    ax.set_title(
+        "Catholic political mobilisation: Zentrum vote share by Catholic-share group, 1871-1890\n"
+        "(dotted lines = 1871 pre-Kulturkampf baseline for each group)",
+        fontsize=12, fontweight="bold",
+    )
+    ax.legend(loc="center right", fontsize=9, frameon=True)
+    ax.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    return fig, ax
+
+
 def plot_imr_break(
     panel: pd.DataFrame,
     break_year: int = 1875,

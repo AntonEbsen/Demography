@@ -1747,18 +1747,28 @@ def falsifications_table(
 def heterogeneity_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = ("cbr", "marriage_rate", "I_g"),
-    moderators: tuple[str, ...] = ("school1517", "f_urban"),
+    moderators: tuple[str, ...] = (
+        "school1517", "f_urban",
+        "zentrum_share_1871", "polen_share_1871",
+    ),
     out_path: Path | None = None,
 ) -> str:
-    """Treatment effect interactions with iPEHD moderators (literacy, urban share).
+    """Treatment effect interactions with iPEHD + political-economy moderators.
 
-    Default outcomes include CBR (overall fertility), marriage rate
-    (nuptiality), and Coale's $I_g$ (marital fertility, Hutterite-
-    normalised; the Galloway-tradition headline measure -- Galloway,
-    Hammel & Lee 1994 use its unnormalised form, the GMFR). The trio
-    spans the full Coale--Watkins decomposition: $I_f \\approx I_g \\cdot
-    I_m + I_h(1-I_m)$, so the reader can see whether heterogeneity
-    operates through *marital* fertility or through *nuptiality*.
+    Default outcomes span the Coale--Watkins decomposition: CBR
+    (overall fertility), marriage rate (nuptiality), and Coale's $I_g$
+    (marital fertility, Hutterite-normalised; the Galloway, Hammel \\&
+    Lee 1994 headline measure).
+
+    Default moderators cover two analytically distinct dimensions:
+      - **Socio-economic** (iPEHD 1871 cross-section): school enrolment
+        15--17 (literacy proxy) and urban population share.
+      - **Political-economy** (Galloway ELE1871 1871 Reichstag
+        election): vote share for the Catholic Centre Party (Zentrum)
+        and the Polish-nationalist Catholic party (Polen). These
+        directly measure Catholic political mobilisation and let us
+        distinguish German-Catholic from Polish-Catholic dynamics
+        more precisely than the geographic Rb classification.
     """
     out_path = out_path or TABLES_DIR / "heterogeneity.tex"
 
@@ -1766,6 +1776,10 @@ def heterogeneity_table(
         "school1517": "School enrolment 15--17",
         "f_urban": "Urban population share",
         "f_litrate": "Literacy rate",
+        "zentrum_share_1871": "Zentrum vote share (1871)",
+        "polen_share_1871": "Polish-party vote share (1871)",
+        "catholic_party_share_1871": "Catholic-party vote share (1871; Zentrum$+$Polen)",
+        "nat_liberal_share_1871": "National-liberal vote share (1871)",
     }
 
     n = len(outcomes)

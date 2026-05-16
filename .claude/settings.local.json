@@ -5,7 +5,12 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Bash(python -m src.data.build_dataset)",
-      "Bash(python -m src.data.audit_schema)"
+      "Bash(python -m src.data.audit_schema)",
+      "Bash(python)",
+      "Bash(gh pr *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git pull *)"
     ]
   }
 }
