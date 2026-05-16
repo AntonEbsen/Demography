@@ -96,6 +96,15 @@ PANEL_SCHEMA = DataFrameSchema(
         "pupils_per_teacher_1886": Column(
             float, Check.in_range(0, 500), nullable=True
         ),
+        # 1849 elementary-school attendance rate (= 1849 students /
+        # 1849 total population, both sexes). Continuous, genuinely
+        # pre-treatment (23 years before the May Laws); the right
+        # moderator for testing whether the Kulturkampf shock
+        # interacted with baseline literacy / human-capital intensity.
+        # ~71% Kreis coverage (constrained by 1849 iPEHD crosswalk).
+        "attend_rate_1849_baseline": Column(
+            float, Check.in_range(0, 0.5), nullable=True
+        ),
     },
     strict=False,
     unique=["Code", "Year"],

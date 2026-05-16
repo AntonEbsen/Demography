@@ -620,6 +620,27 @@ def build_analysis_panel(
                 "%d obs got non-null Catholic-priest count",
                 len(cw_1849), int(n_matched_priest),
             )
+
+            # 1849 elementary-school attendance rate (students / total
+            # population, both sexes), built from EDU1849 + pop1849_tot.
+            # Used as a continuous, truly pre-treatment literacy /
+            # human-capital baseline (23 years before the May Laws) by
+            # `run_pretreatment_trends` and the heterogeneity table.
+            # Mirrors the construction in `channels.schooling_channel`.
+            if {"edu1849_pub_ele_stud_m", "edu1849_pub_ele_stud_f",
+                    "pop1849_tot"}.issubset(panel.columns):
+                students_1849 = (
+                    panel["edu1849_pub_ele_stud_m"].fillna(0)
+                    + panel["edu1849_pub_ele_stud_f"].fillna(0)
+                )
+                panel["attend_rate_1849_baseline"] = (
+                    students_1849 / panel["pop1849_tot"].replace(0, np.nan)
+                )
+                n_kreis = panel.dropna(subset=["attend_rate_1849_baseline"])["Code"].nunique()
+                logger.info(
+                    "attend_rate_1849_baseline materialised: %d Kreise with non-null value",
+                    n_kreis,
+                )
         else:
             logger.warning("1849 iPEHD merge skipped (REL1871 or pop_demo not found)")
     except Exception as exc:

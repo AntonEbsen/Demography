@@ -1882,7 +1882,7 @@ def heterogeneity_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = ("cbr", "marriage_rate", "I_g"),
     moderators: tuple[str, ...] = (
-        "school1517", "f_urban",
+        "school1517", "attend_rate_1849_baseline", "f_urban",
         "zentrum_share_1871", "polen_share_1871",
     ),
     out_path: Path | None = None,
@@ -1908,6 +1908,8 @@ def heterogeneity_table(
 
     moderator_labels = {
         "school1517": "School enrolment 15--17",
+        "attend_rate_1849_baseline":
+            "Elementary attendance rate (1849, pre-treatment baseline)",
         "f_urban": "Urban population share",
         "f_litrate": "Literacy rate",
         "zentrum_share_1871": "Zentrum vote share (1871)",
