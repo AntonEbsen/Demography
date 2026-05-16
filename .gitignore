@@ -121,3 +121,7 @@ scratch/
 # DVC-managed analytical artifacts (regenerate via `dvc repro`)
 exam_project2/data/processed/*.parquet
 exam_project2/data/processed/datapackage.json
+
+# AI-export artifacts produced by scripts/export_notebooks_for_ai.py
+# (regenerate any time with `python scripts/export_notebooks_for_ai.py`)
+exam_project2/outputs/for_ai/
