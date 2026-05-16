@@ -156,8 +156,6 @@ def fertility_convergence(df: pd.DataFrame):
     ax.axhline(0, color="grey", linestyle="--", linewidth=0.8)
     ax.set_xlabel("Catholic share 1871 (%)", fontsize=11)
     ax.set_ylabel("Change in CBR (late 1880s − early 1860s)", fontsize=11)
-    ax.set_title("Fertility convergence: Did Catholic counties decline faster?",
-                 fontsize=12, fontweight="bold")
     ax.text(0.05, 0.95, f"β = {slope:.4f} (p = {p:.3f})",
             transform=ax.transAxes, fontsize=10, va="top")
     
@@ -247,7 +245,6 @@ def dose_response_plot(df: pd.DataFrame, savepath: str = None):
     ax.set_xticks(list(x))
     ax.set_xticklabels(res_df["bin"], rotation=45)
     ax.set_ylabel("Mean CBR (per 1,000)")
-    ax.set_title("Fertility levels by Catholic share bin")
     ax.legend()
     
     # Right panel: changes
@@ -258,7 +255,6 @@ def dose_response_plot(df: pd.DataFrame, savepath: str = None):
     ax.set_xticklabels(res_df["bin"], rotation=45)
     ax.axhline(0, color="black", linewidth=0.8)
     ax.set_ylabel("Change in CBR (post − pre)")
-    ax.set_title("Fertility change by Catholic share bin")
     
     for i, row in enumerate(res_df.itertuples()):
         ax.text(i, row.change + 0.1, f"n={row.n_counties}",

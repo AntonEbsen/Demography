@@ -80,7 +80,6 @@ def plot_population_and_migration(
     ax_l.axhline(100, color="black", linewidth=0.6, linestyle=":")
     ax_l.set_xlabel("Year", fontsize=11)
     ax_l.set_ylabel("Population index (1862 = 100)", fontsize=11)
-    ax_l.set_title("Population trajectory by sub-region", fontsize=12, fontweight="bold")
     ax_l.legend(loc="upper left", fontsize=9)
     ax_l.grid(axis="y", alpha=0.3)
 
@@ -103,8 +102,6 @@ def plot_population_and_migration(
     ax_r.axhline(0, color="black", linewidth=0.6, linestyle="-")
     ax_r.set_xlabel("Year", fontsize=11)
     ax_r.set_ylabel("Implied net migration rate (per 1{,}000 pop)", fontsize=11)
-    ax_r.set_title("Net migration: pop change − natural increase",
-                   fontsize=12, fontweight="bold")
     ax_r.legend(loc="lower left", fontsize=8, ncol=1)
     ax_r.grid(axis="y", alpha=0.3)
 
@@ -203,7 +200,6 @@ def plot_lexis_diagram(
     ax.set_ylim(*age_range)
     ax.set_xlabel("Calendar year", fontsize=11)
     ax.set_ylabel("Age", fontsize=11)
-    ax.set_title(title, fontsize=12, fontweight="bold")
     ax.legend(loc="upper left", frameon=True, fontsize=9)
     ax.grid(axis="both", alpha=0.2)
 
@@ -283,7 +279,6 @@ def plot_counterfactual_paths(
 
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
-    ax.set_title(title, fontsize=12, fontweight="bold")
     ax.legend(loc="best", frameon=True, fontsize=9)
     ax.grid(axis="y", alpha=0.3)
 
@@ -324,7 +319,6 @@ def plot_fertility_trends(
     
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
-    ax.set_title(title, fontsize=13, fontweight="bold")
     ax.legend(loc="best", frameon=True, fontsize=9)
     ax.grid(axis="y", alpha=0.3)
     
@@ -400,7 +394,6 @@ def plot_event_study(
 
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
-    ax.set_title(title, fontsize=13, fontweight="bold")
     ax.legend(loc="best", frameon=True, fontsize=9)
     ax.grid(axis="y", alpha=0.3)
 
@@ -519,15 +512,9 @@ def plot_event_study_cbr_ig(
             )
         ax.set_xlabel("Year", fontsize=11)
         ax.set_ylabel(ylabel, fontsize=10)
-        ax.set_title(title, fontsize=12, fontweight="bold")
         ax.grid(axis="y", alpha=0.3)
         ax.legend(loc="lower left", frameon=True, fontsize=8)
 
-    fig.suptitle(
-        "Event study: CBR vs $I_g$ (Coale marital fertility) "
-        "-- enforcement (1873-78) and rollback (1880-87) shaded",
-        fontsize=13, fontweight="bold", y=1.00,
-    )
     plt.tight_layout()
     if savepath:
         fig.savefig(savepath, dpi=300, bbox_inches="tight")
@@ -615,7 +602,6 @@ def plot_cbr_war_context(
             f"Mean {outcome.upper()} by Catholic-share group, "
             "1862-1890, with Prussian wars shaded"
         )
-    ax.set_title(title, fontsize=12, fontweight="bold")
     ax.legend(loc="lower left", fontsize=9, frameon=True)
     ax.grid(axis="y", alpha=0.3)
 
@@ -824,7 +810,6 @@ def plot_zentrum_event_study(
             "(1871 omitted; coefficients show post-Kulturkampf "
             "Zentrum-share gap per pp of cath\\_share)"
         )
-    ax.set_title(title, fontsize=12, fontweight="bold")
     ax.legend(loc="upper left", fontsize=9, frameon=True)
     ax.grid(axis="y", alpha=0.3)
 
@@ -918,11 +903,6 @@ def plot_zentrum_mobilization(
     ax.set_xticklabels(list(election_years))
     ax.set_xlabel("Election year (Reichstag)", fontsize=11)
     ax.set_ylabel("Mean Zentrum vote share (\\% of valid votes)", fontsize=11)
-    ax.set_title(
-        "Catholic political mobilisation: Zentrum vote share by Catholic-share group, 1871-1890\n"
-        "(dotted lines = 1871 pre-Kulturkampf baseline for each group)",
-        fontsize=12, fontweight="bold",
-    )
     ax.legend(loc="center right", fontsize=9, frameon=True)
     ax.grid(axis="y", alpha=0.3)
 
@@ -995,11 +975,6 @@ def plot_imr_break(
     ax.set_ylabel(
         "Mean infant mortality rate (per 1,000 legitimate live births)",
         fontsize=10,
-    )
-    ax.set_title(
-        "Infant mortality rate, Prussian counties 1862-1890\n"
-        "(Galloway data-definition break at 1875)",
-        fontsize=12, fontweight="bold",
     )
     ax.legend(loc="lower right", fontsize=9, frameon=True)
     ax.grid(axis="y", alpha=0.3)
@@ -1083,11 +1058,6 @@ def plot_imr_by_group(
         "Mean total infant mortality rate (per 1,000 total live births)",
         fontsize=10,
     )
-    ax.set_title(
-        "Total infant mortality rate by Catholic-share group, 1875-1890\n"
-        "(no Catholic-specific IMR response to the Kulturkampf)",
-        fontsize=12, fontweight="bold",
-    )
     ax.legend(loc="lower right", fontsize=9, frameon=True)
     ax.grid(axis="y", alpha=0.3)
 
@@ -1120,8 +1090,6 @@ def plot_cath_distribution(
     
     ax.set_xlabel("Catholic population share (%)", fontsize=11)
     ax.set_ylabel("Number of counties", fontsize=11)
-    ax.set_title("Distribution of Catholic shares across Prussian counties (1871)", 
-                 fontsize=12, fontweight="bold")
     ax.legend(fontsize=9)
     
     # Annotate counts
@@ -1159,7 +1127,6 @@ def plot_robustness_table(
     ax.set_yticks(list(y_pos))
     ax.set_yticklabels(rob_df["Specification"], fontsize=9)
     ax.set_xlabel("Coefficient (95% CI)", fontsize=11)
-    ax.set_title("Robustness checks", fontsize=12, fontweight="bold")
     ax.grid(axis="x", alpha=0.3)
     ax.invert_yaxis()
     

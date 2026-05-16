@@ -79,7 +79,6 @@ def rollback_event_study(
     ax.scatter([ref_year], [0], color="black", s=80, zorder=5, marker="D", label=f"Reference year ({ref_year})")
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel(f"Coefficient on {treatment_var} × Year", fontsize=11)
-    ax.set_title("Event study with Kulturkampf enforcement AND rollback periods", fontsize=13, fontweight="bold")
     ax.legend(loc="best", frameon=True, fontsize=9)
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()

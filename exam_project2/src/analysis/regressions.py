@@ -751,7 +751,39 @@ def run_pretreatment_trends_robustness(
             ("school1517", "f_urban", "f_pruss", "f_jew")),
         ("(6) + lit + urban + pruss + jew + women-15-49-share x trend",
             ("school1517", "f_urban", "f_pruss", "f_jew", "women_share_15_49_1871")),
+        # New (7)-(9) add moderators from the post-May-2026 data merges.
+        # (7) injects pre-treatment mobility (BIR1871's born-in-Kreis
+        # share) as a moderator: addresses the concern that high-Catholic
+        # Polish provinces had distinctively immobile populations whose
+        # demography evolved on its own trajectory. (8) adds the 1849
+        # student share -- a literally pre-treatment human-capital
+        # baseline (`school1517` is 1871, contemporaneous with treatment
+        # start). (9) adds the 1882 farm-size Gini and the 1876 income-
+        # tax-per-capita moderator to allow Catholic-share-relevant
+        # structural-economic gradients to follow their own trends.
+        ("(7) + born-in-Kreis share x trend",
+            ("school1517", "f_urban", "f_pruss", "f_jew",
+             "women_share_15_49_1871", "born_in_kreis_share_1871")),
+        ("(8) + 1849 student share x trend",
+            ("school1517", "f_urban", "f_pruss", "f_jew",
+             "women_share_15_49_1871", "born_in_kreis_share_1871",
+             "attend_rate_1849_baseline")),
+        ("(9) + land Gini 1882 + log income-tax-pc 1876 x trend",
+            ("school1517", "f_urban", "f_pruss", "f_jew",
+             "women_share_15_49_1871", "born_in_kreis_share_1871",
+             "attend_rate_1849_baseline", "land_gini_1882",
+             "ln_income_tax_pc_1876")),
     ]
+
+    # Materialise the 1849 student-share baseline once so it lives on
+    # the working frame for each call below. We use the same
+    # 1849-attendance proxy as ``schooling_channel`` does.
+    df = df.copy()
+    if ("attend_rate_1849_baseline" not in df.columns
+            and "edu1849_pub_ele_stud_m" in df.columns
+            and "pop1849_tot" in df.columns):
+        students = df["edu1849_pub_ele_stud_m"].fillna(0) + df["edu1849_pub_ele_stud_f"].fillna(0)
+        df["attend_rate_1849_baseline"] = students / df["pop1849_tot"].replace(0, np.nan)
 
     rows = []
     for outcome in outcomes:

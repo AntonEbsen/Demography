@@ -112,10 +112,6 @@ def map_catholic_share(
     )
     _base_map(ax, merged)
     
-    ax.set_title(
-        "Catholic population share across Prussian counties, 1871",
-        fontsize=14, fontweight="bold",
-    )
     
     plt.tight_layout()
     if savepath:
@@ -178,11 +174,6 @@ def map_fertility_change(
     )
     _base_map(ax, merged)
     
-    ax.set_title(
-        f"Change in crude birth rate: {pre_years[0]}-{pre_years[1]} "
-        f"vs {post_years[0]}-{post_years[1]}",
-        fontsize=14, fontweight="bold",
-    )
     
     plt.tight_layout()
     if savepath:
@@ -247,11 +238,6 @@ def map_polish_german_provinces(
     ]
     ax.legend(handles=patches, loc="upper left", frameon=True, fontsize=10)
     
-    ax.set_title(
-        "Regional classification: Polish Catholic, German Catholic, "
-        "and Protestant provinces",
-        fontsize=13, fontweight="bold",
-    )
     
     plt.tight_layout()
     if savepath:
@@ -370,13 +356,6 @@ def map_subregion_treatment_effects(
                       edgecolor="#888888", alpha=0.92),
         )
 
-    ax.set_title(
-        title or (
-            f"Sub-region Kulturkampf effect on {outcome_label.lower()}\n"
-            f"(red = negative response; blue = positive response)"
-        ),
-        fontsize=13, fontweight="bold",
-    )
 
     plt.tight_layout()
     if savepath:
@@ -455,15 +434,6 @@ def map_rb_treatment_effects(
     )
     _base_map(ax, merged)
 
-    ax.set_title(
-        title or (
-            f"Regierungsbezirk-specific Kulturkampf effect on "
-            f"{outcome_label.lower()}\n"
-            f"(red = negative effect; blue = null/positive; "
-            f"grey = imprecise)"
-        ),
-        fontsize=13, fontweight="bold",
-    )
 
     plt.tight_layout()
     if savepath:
@@ -530,11 +500,6 @@ def map_kulturkampf_residuals(
     )
     _base_map(ax, merged)
     
-    ax.set_title(
-        f"County-level residuals: fertility change minus aggregate trend\n"
-        f"({pre_years[0]}-{pre_years[1]} vs {post_years[0]}-{post_years[1]})",
-        fontsize=13, fontweight="bold",
-    )
     
     plt.tight_layout()
     if savepath:

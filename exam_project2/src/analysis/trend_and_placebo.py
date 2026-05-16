@@ -97,8 +97,6 @@ def placebo_test(
     ax.axvline(1873, color="#C0392B", linestyle="--", linewidth=0.8, alpha=0.5)
     ax.set_xlabel("Placebo treatment year", fontsize=11)
     ax.set_ylabel("Coefficient (95% CI)", fontsize=11)
-    ax.set_title("Placebo test: coefficients at fake treatment years\n(red diamond = true year)",
-                 fontsize=12, fontweight="bold")
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
     if savepath:

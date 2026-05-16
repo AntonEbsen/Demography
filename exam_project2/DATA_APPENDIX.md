@@ -176,6 +176,21 @@ These columns are the basis for the **General Fertility Rate** in §6.2 and the 
 
 The 16 explicit per-sex age-band columns in `analysis_panel.parquet` are: `age_0_4_m_1871`, `age_0_4_f_1871`, `age_5_14_m_1871`, `age_5_14_f_1871`, `age_15_19_m_1871`, `age_15_19_f_1871`, `age_20_29_m_1871`, `age_20_29_f_1871`, `age_30_39_m_1871`, `age_30_39_f_1871`, `age_40_49_m_1871`, `age_40_49_f_1871`, `age_50_59_m_1871`, `age_50_59_f_1871`, `age_60p_m_1871`, `age_60p_f_1871`.
 
+### 4.5 Additional Galloway cross-sections (BIR, STA, TAX, AGR, GEL, EDU)
+
+Six additional Galloway tables were merged in to widen the covariate base around the Kulturkampf. Each is a single cross-section that enters the panel as a time-invariant row (one value per county, broadcast over all panel years).
+
+| File | Year | Loader | New panel columns | Use |
+|---|---|---|---|---|
+| `BIR1871.XLS` | 1871 | [`load_bir1871()`](src/data/load_data.py:917) | `born_in_locality_share_1871`, `born_in_kreis_share_1871`, `born_in_prussia_share_1871`, `born_outside_prussia_share_1871` | Migration baseline. Galloway's BIR1871 birthplace categories are *nested* (locality ⊂ Kreis ⊂ Provinz ⊂ Prussia); each share is reported separately rather than cumulated. Adds a Bai/Hsiao baseline in §8.7 spec (7). |
+| `STA1871.XLS` | 1871 | [`load_sta1871()`](src/data/load_data.py:1099) | `pct_never_married_m_1871`, `pct_never_married_f_1871`, `pct_widowed_f_1871`, `hh_avg_size_1871` | Marital-status baseline (Hajnal-style nuptiality). Exposed for future nuptiality refinement; not yet wired into a regression. |
+| `TAX1876.XLS` | 1876 | [`load_tax1876()`](src/data/load_data.py:958) | `income_tax_pc_1876`, `ln_income_tax_pc_1876` | County income proxy. **Mid-treatment** (1876 is year 3 of the May Laws) — enters only as a heterogeneity moderator or as a robustness control, never as a pre-period regressor. Added to §8.7 spec (9). |
+| `AGR1882.XLS` | 1882 | [`load_agr1882()`](src/data/load_data.py:982) | `farms_total_1882`, `farms_share_under_2ha_1882`, `farms_share_over_50ha_1882`, `land_gini_1882` | Land-inequality moderator. The Gini is computed over the six farm-size bins (<1, 1–2, 2–10, 10–50, 50–100, >100 ha) using mid-point land area as the welfare measure. AGR1882 is post-treatment but farm-size distribution is approximately structural (slowly evolving). Added to §8.7 spec (9). |
+| `GEL1882.XLS` | 1882 | [`load_gel1882()`](src/data/load_data.py:1015) | `rel_edu_emp_1882`, `transport_emp_1882`, `health_emp_1882`, `finance_emp_1882`, `pop_1880_gel`, plus per-1k versions | Service-sector employment by branch. `rel_edu_emp_1882` (religion + education + instruction occupations) is the **Kulturkampf-channel outcome** in §6.7 (paired with `rel1849_cat_priest`). |
+| `EDU1886.XLS` | 1886 | [`load_edu1886()`](src/data/load_data.py:1058) | `school_age_pop_1886`, `attend_public_1886`, `attend_private_1886`, `attend_rate_1886`, `teachers_1886`, `teacher_income_1886`, `pupils_per_teacher_1886` | Post-Kulturkampf schooling cross-section. **Schooling-channel endpoint** (paired with EDU1849 / iPEHD `school1517`). |
+
+These columns are populated for every Galloway Type-0 county in the source file; merge coverage is 393/393 (BIR1871, STA1871), 404/393 (TAX1876, AGR1882, GEL1882; 11 city-only `Type=1` counties not present in our analysis), 453/393 (EDU1886).
+
 ---
 
 ## 5. Raw variables — iPEHD (Becker–Woessmann 2009)
@@ -204,6 +219,22 @@ Single source: `data/raw/ipehd_data/ipehd_qje2009_master.dta`. Cross-sectional 1
 | `school1517` | School enrollment, ages 15–17 | % | Literacy proxy; moderator (heterogeneity); pre-treatment trend |
 
 **Coverage in `analysis_panel.parquet`:** every iPEHD variable has 1,139 NaN rows (10.6%) on counties not matched by the crosswalk. Specifications using iPEHD variables therefore operate on a smaller sample of ≈ 9,644 obs / 351 counties.
+
+### 5.0 iPEHD 1849 cross-section (merged via separate `kreiskey1849` crosswalk)
+
+In addition to the 1871 master file, the project ingests seven iPEHD CSVs covering 1849 (and one 1816–21 mortality file) located under `data/raw/ipehd_data/`. These files key on **`kreiskey1849`** — a different numbering system from `kreiskey1871` — and require a separate crosswalk because of the 1815/1818 and 1866 Prussian boundary reorganisations. The crosswalk is built by [`build_crosswalk_1849()`](src/data/merge_ipehd.py:316) using a four-stage name match within Regierungsbezirk (exact → across Rb → substring → fuzzy / edit-distance), persisted to [`data/processed/crosswalk_1849.csv`](data/processed/crosswalk_1849.csv), and validated by correlating 1849 Catholic-priest density with 1871 `cath_share` (corr ≈ 0.84, N = 280). Coverage is **280 of 393** Galloway Type-0 counties (71.2%); unmatched counties retain `NaN` for the 1849 variables.
+
+The merge is driven by [`merge_ipehd_1849()`](src/data/merge_ipehd.py:402) and brings in the columns below:
+
+| Source file | Columns merged | Use |
+|---|---|---|
+| `ipehd_1849_rel_church.csv` | `rel1849_cat_priest`, `rel1849_cat_chaplain_vicar`, `rel1849_cat_main_church`, `rel1849_pro_priest`, `rel1849_pro_main_church`, `rel1849_jew_meetplace` | **Religious-infrastructure channel** (§6.7): paired with `rel_edu_emp_1882` from GEL1882 in a long-difference DiD on log religious-sector density. |
+| `ipehd_1849_edu_stud.csv` | `edu1849_pub_ele_stud_m`, `edu1849_pub_ele_stud_f`, `edu1849_pub_mim_stud_m`, `edu1849_pub_mif_stud_f`, `edu1849_pub_high_stud_m`, `edu1849_pub_gym_stud_m` | **Schooling channel** (§6.7): paired with `school1517` (1871) and `attend_rate_1886` in a 3-period schooling DiD. The gender split provides a placebo-style sharpness check (Kulturkampf bit boys' education harder than girls'). |
+| `ipehd_1849_pop_demo.csv` | `pop1849_tot`, `pop1849_m_tot`, `pop1849_f_tot`, `pop1849_f_17to45` | 1849 baseline population; denominator for the religious / schooling intensity measures. Includes women aged 17–45 (a 1849 analogue of `women_15_49_1871`). |
+| `ipehd_1849_pop_mari.csv` | `pop1849_families`, `pop1849_m_wedlock`, `pop1849_f_wedlock` | 1849 marital-status baseline. Source for `avg_household_size_1849` in the §6.7 balance table. |
+| `ipehd_1849_indu_fac.csv` | `ipehd_1849_indu_fac_total` (sum over 100+ industry-specific factory counts) | 1849 industrial-structure baseline. Source for `factories_per_10k_1849` in the §6.7 balance table. |
+
+The 1849 iPEHD CSVs ship in cp1252-encoded format with a small number of replacement characters in place of umlauts; [`_clean_name()`](src/data/merge_ipehd.py:107) strips the orphan character so name matching still succeeds.
 
 ### 5.1 Spatial covariates (built from shapefile, not iPEHD)
 
@@ -377,6 +408,28 @@ These approximations affect the *level* of the indices but **not** the within-co
 | `cbr_flag` | CBR outlier flag (catches extremes under either mid-year or Galloway carry-forward denominator) | $\mathbb{1}[\texttt{cbr}\notin[15,70]\,\text{or}\,\texttt{cbr\_carryforward}\notin[15,70]]$ | bool; **6 obs = TRUE** | [`build_dataset.py:222–230`](src/data/build_dataset.py:222) |
 | `gfr_flag` | GFR outlier flag | $\mathbb{1}[\texttt{gfr\_static\_1871}>400]$ | bool; **10 obs = TRUE** (mostly 1869–1872 boundary-reform artefacts) | [`build_dataset.py:264–266`](src/data/build_dataset.py:264) |
 
+### 6.8 Religious-infrastructure and schooling channels (1849 → 1882/1886)
+
+Two long-difference DiD specifications use the 1849 iPEHD baseline alongside the 1882 Galloway endpoint to measure the Kulturkampf's effect on Catholic religious-sector employment and on schooling participation. Both are implemented in [`channels.py`](src/analysis/channels.py).
+
+| Function | Outcome | Period structure | Specification |
+|---|---|---|---|
+| [`religious_infrastructure_channel()`](src/analysis/channels.py:147) | $\log$(religious workers per 1,000 Catholics): 1849 measure = `rel1849_cat_priest`; 1882 measure = `rel_edu_emp_1882` | 2-period stacked panel | $\log(y_{it}) = \alpha + \beta_1 \texttt{cath\_share}_i + \beta_2 \texttt{post1882}_t + \beta_3 (\texttt{cath\_share}_i \times \texttt{post1882}_t) + \delta_{Rb_i} + \varepsilon_{it}$. SE clustered at county level. Predicted sign on $\beta_3$ is **negative** (Anzeigegesetz, clerical exile). On the current snapshot $\hat\beta_3 \approx -0.036$ (SE 0.002, $p < 0.001$, $N=577$). |
+| [`schooling_channel()`](src/analysis/channels.py:265) | Elementary attendance rate: 1849 = $\frac{\texttt{edu1849\_pub\_ele\_stud\_m+f}}{\texttt{pop1849\_tot}}$; 1886 = $\frac{\texttt{attend\_public\_1886+private}}{\texttt{school\_age\_pop\_1886}}$. Reports `school1517` (1871) as a midpoint diagnostic. | 2-period stacked panel (1849, 1886) | Same DiD structure as above with year/Rb FE. On the current snapshot $\hat\beta_3 \approx -0.00022$ (SE $5 \times 10^{-5}$, $p < 0.001$). Catholic counties saw a slightly smaller expansion of compulsory schooling between 1849 and 1886. |
+
+**Caveats.** The two measures in the religious-infrastructure long-difference are not identical concepts: 1849 measures clerical positions narrowly, 1882 measures religion + education + instruction occupations broadly (the GEL1882 occupational category does not separate clergy from teachers). The two-period DiD identifies the *change* in the Catholic-share gradient between baseline and endpoint, which is the parameter of interest; the levels are not directly comparable.
+
+### 6.9 1849 pretreatment balance table
+
+[`pretreatment_balance_1849_table()`](src/analysis/latex_tables.py:399) groups counties by 1871 Catholic-share quartile and reports means of:
+- `attend_rate_1849` (elementary attendance rate, students / total pop)
+- `cat_priest_per_1k_1849` (mechanical validation row)
+- `factories_per_10k_1849` (industrial-structure baseline)
+- `avg_household_size_1849`
+- `born_in_kreis_share_1871` (mobility baseline)
+
+with Welch t-tests of the Q4 − Q1 difference. The table goes into [`outputs/tables/pretreatment_balance_1849.tex`](outputs/tables/pretreatment_balance_1849.tex). It is the strongest balance evidence in the paper: in 1849, 23 years before the May Laws, the would-be high- and low-Catholic groups did not differ on industrial structure (∼50 factories per 10k in both), and schooling was if anything *higher* in Catholic counties (+0.9 pp). The differences that do exist (∼0.14-person household-size gap, ∼5-pp mobility gap) move in directions that are not confounders for the fertility result.
+
 When `cbr_flag` is TRUE the *rate* columns (`cbr`, `legitimate_br`, `illegitimate_br`, `illegitimacy_ratio`, `marriage_rate`) are set to `NaN` ([`build_dataset.py:206–208`](src/data/build_dataset.py:206)) and `gfr_static_1871` is also nulled ([`build_dataset.py:256–257`](src/data/build_dataset.py:256)). When `gfr_flag` is TRUE only `gfr_static_1871` is set to `NaN` ([`build_dataset.py:271–273`](src/data/build_dataset.py:271)). The row is preserved so entity FE are not perturbed.
 
 ---
@@ -518,9 +571,16 @@ Function: [`run_triple_difference_polish()`](src/analysis/regressions.py:945) �
 
 Function: [`run_pretreatment_trends_robustness()`](src/analysis/regressions.py:711). Wraps `run_baseline_did` with progressively richer baseline-trend interactions:
 $$
-\text{pretreatment\_trends} \in \{\,\texttt{school1517},\;\texttt{f\_urban},\;\texttt{f\_pruss},\;\texttt{f\_jew},\;\texttt{women\_share\_15\_49\_1871}\,\}
+\text{pretreatment\_trends} \in \{\,\texttt{school1517},\;\texttt{f\_urban},\;\texttt{f\_pruss},\;\texttt{f\_jew},\;\texttt{women\_share\_15\_49\_1871},\;\texttt{born\_in\_kreis\_share\_1871},\;\texttt{attend\_rate\_1849\_baseline},\;\texttt{land\_gini\_1882},\;\texttt{ln\_income\_tax\_pc\_1876}\,\}
 $$
 and `pretreatment_trends_form` ∈ {`"linear"`, `"year_dummies"`}. The `f_jew × year` augmentation is the test that attenuates the marriage-rate coefficient by roughly half — a finding to highlight in the paper. Spec (6) adds the **share of women aged 15–49 in 1871** (`women_share_15_49_1871`, from POP1871, see §4.4 and §6.4) as an additional baseline. This is the demographic-age-structure analogue of the iPEHD socio-economic baselines and tests whether differential *fertility capacity* drives differential trends. On the current build, adding the female-share trend leaves the marriage-rate coefficient essentially unchanged ($-0.0021$ vs $-0.0020$ in spec (5)), indicating differential age-structure trends do not explain the result.
+
+Specs (7)–(9) layer on moderators from the new Galloway / iPEHD merges:
+- **(7) `born_in_kreis_share_1871` × trend.** Addresses the concern that high-Catholic Polish provinces had a distinctively immobile pre-treatment population whose demography evolved on its own trajectory. The marriage-rate coefficient is *strengthened* by this control ($-0.00267$, $p=0.004$).
+- **(8) `attend_rate_1849_baseline` × trend.** A literally pre-treatment human-capital baseline (23 years before the May Laws), constructed from `edu1849_pub_ele_stud_{m,f}` and `pop1849_tot`. Available for only ~280 counties (the 1849 crosswalk coverage), shrinking $N$ to 7,143. Marriage-rate coefficient $-0.00220$ ($p=0.030$) — still significant.
+- **(9) `land_gini_1882 × trend` + `ln_income_tax_pc_1876 × trend`.** Land-inequality and income gradients added on top of (8). Both controls are post-treatment in date (1882, 1876) but are approximately structural; their inclusion is a stress test, not a clean identification claim. Marriage-rate coefficient $-0.00259$ ($p=0.017$).
+
+The point of the (7)–(9) ladder is to test that the marriage-rate effect survives nine progressively more demanding pretreatment-trajectory controls, including ones built on entirely pre-Kulturkampf 1849 data. It does.
 
 ### 8.8 Falsifications and placebos
 
