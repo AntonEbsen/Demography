@@ -64,7 +64,6 @@ def illegitimacy_analysis(df: pd.DataFrame):
     ax.axvline(1873, color="grey", linestyle="--", linewidth=0.8, alpha=0.6)
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel("Illegitimate births (% of total)", fontsize=11)
-    ax.set_title("Illegitimacy ratio over time by Catholic share", fontsize=13, fontweight="bold")
     ax.legend(fontsize=9)
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
@@ -136,8 +135,6 @@ def infant_mortality_analysis(df: pd.DataFrame):
     ax.axvspan(1880, 1887, alpha=0.15, color="#2471A3", label="Rollback")
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel("Infant mortality rate (per 1,000 legitimate live births)", fontsize=11)
-    ax.set_title("Infant mortality 1875-1890 by Catholic share\n(pre-1875 data excluded due to measurement change)",
-                 fontsize=12, fontweight="bold")
     ax.legend(fontsize=9, loc="best")
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
@@ -307,13 +304,7 @@ def religious_infrastructure_channel(df: pd.DataFrame):
             ax.plot(xs, np.polyval(coef, xs), color="#1B4F72", linewidth=2)
         ax.set_xlabel("Catholic share (1871, %)")
         ax.set_ylabel("Religious workers per 1,000 Catholics")
-        ax.set_title(f"{year}: "
-                     + ("Catholic priests" if year == 1849
-                        else "Religion-education employment"))
         ax.grid(alpha=0.3)
-    fig.suptitle("Religious-sector workforce density before vs. after Kulturkampf\n"
-                 "(counties with $\\geq 5\\%$ Catholic share; y-axis clipped to 95th pctile)",
-                 fontsize=12, fontweight="bold")
     plt.tight_layout()
 
     return {
@@ -484,8 +475,6 @@ def schooling_channel(df: pd.DataFrame):
     ax.axvspan(1872, 1878, alpha=0.15, color="#E8DAEF", label="Kulturkampf")
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel("Schooling rate (varies by period)", fontsize=11)
-    ax.set_title("Schooling participation 1849 -> 1871 -> 1886 by Catholic share",
-                 fontsize=12, fontweight="bold")
     ax.legend(fontsize=9, loc="best")
     ax.grid(alpha=0.3)
     plt.tight_layout()

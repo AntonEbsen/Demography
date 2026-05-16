@@ -70,7 +70,6 @@ def polish_german_rollback(
     ax.set_xticks(list(x))
     ax.set_xticklabels(period_labels)
     ax.set_ylabel("Coefficient on cath_share x period", fontsize=11)
-    ax.set_title("Kulturkampf effects by sub-region and period (95% CI)", fontsize=13, fontweight="bold")
     ax.legend(loc="best", frameon=True, fontsize=9)
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
