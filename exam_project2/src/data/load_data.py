@@ -569,6 +569,11 @@ def _build_wahlkreis_crosswalk(
     ).drop_duplicates(subset=["Code"])
 
 
+# NOTE: an earlier `load_edu1886` lived here. The richer version (raw
+# counts + attendance rate + pupils-per-teacher, used by
+# `channels.schooling_channel`) is defined further down in this module.
+
+
 URB_YEARS = (1875, 1880, 1885, 1890)
 
 

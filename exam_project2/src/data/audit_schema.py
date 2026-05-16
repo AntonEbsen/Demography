@@ -77,6 +77,34 @@ PANEL_SCHEMA = DataFrameSchema(
         # Time-varying urban share from Galloway URB1875/80/85/90,
         # linearly interpolated between anchors. NaN pre-1875.
         "urban_share_current": Column(float, Check.in_range(0, 100), nullable=True),
+        # 1886 schooling cross-section (EDU1886). Time-invariant after
+        # merge. ~96% Kreis coverage (453 of 392 by Code; some duplicates
+        # in source). Used by channels.schooling_channel() for the
+        # 1849->1886 long-difference DiD on attendance rates.
+        # `school_age_pop_1886`, `attend_public_1886`, `attend_private_1886`,
+        # `teachers_1886` are raw counts; `attend_rate_1886` is a fraction
+        # in [0, 1.1] (slightly >1 in a few Kreise because attendance is
+        # measured across all schools, including out-of-Kreis pupils);
+        # `teacher_income_1886` is *total* annual Volksschule-teacher
+        # income in Marks (not per teacher).
+        "school_age_pop_1886": Column(float, Check.ge(0), nullable=True),
+        "attend_public_1886": Column(float, Check.ge(0), nullable=True),
+        "attend_private_1886": Column(float, Check.ge(0), nullable=True),
+        "attend_rate_1886": Column(float, Check.in_range(0, 2), nullable=True),
+        "teachers_1886": Column(float, Check.ge(0), nullable=True),
+        "teacher_income_1886": Column(float, Check.gt(0), nullable=True),
+        "pupils_per_teacher_1886": Column(
+            float, Check.in_range(0, 500), nullable=True
+        ),
+        # 1849 elementary-school attendance rate (= 1849 students /
+        # 1849 total population, both sexes). Continuous, genuinely
+        # pre-treatment (23 years before the May Laws); the right
+        # moderator for testing whether the Kulturkampf shock
+        # interacted with baseline literacy / human-capital intensity.
+        # ~71% Kreis coverage (constrained by 1849 iPEHD crosswalk).
+        "attend_rate_1849_baseline": Column(
+            float, Check.in_range(0, 0.5), nullable=True
+        ),
     },
     strict=False,
     unique=["Code", "Year"],

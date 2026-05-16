@@ -114,6 +114,13 @@ def build_analysis_panel(
                        Reichstag elections 1871-1890)
         Urban TV:      urban_share_current (linearly interpolated from
                        URB1875/80/85/90; NaN pre-1875)
+        1886 schooling: school_age_pop_1886, attend_public_1886,
+                        attend_private_1886, attend_rate_1886,
+                        teachers_1886, teacher_income_1886,
+                        pupils_per_teacher_1886 (EDU1886 cross-section,
+                        used by channels.schooling_channel() for the
+                        1849->1886 long-difference DiD on attendance
+                        rates; time-invariant after merge)
         Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
                       raw Galloway `Poptot` is also retained as a column
                       for users who want to recompute carry-forward rates
@@ -613,6 +620,27 @@ def build_analysis_panel(
                 "%d obs got non-null Catholic-priest count",
                 len(cw_1849), int(n_matched_priest),
             )
+
+            # 1849 elementary-school attendance rate (students / total
+            # population, both sexes), built from EDU1849 + pop1849_tot.
+            # Used as a continuous, truly pre-treatment literacy /
+            # human-capital baseline (23 years before the May Laws) by
+            # `run_pretreatment_trends` and the heterogeneity table.
+            # Mirrors the construction in `channels.schooling_channel`.
+            if {"edu1849_pub_ele_stud_m", "edu1849_pub_ele_stud_f",
+                    "pop1849_tot"}.issubset(panel.columns):
+                students_1849 = (
+                    panel["edu1849_pub_ele_stud_m"].fillna(0)
+                    + panel["edu1849_pub_ele_stud_f"].fillna(0)
+                )
+                panel["attend_rate_1849_baseline"] = (
+                    students_1849 / panel["pop1849_tot"].replace(0, np.nan)
+                )
+                n_kreis = panel.dropna(subset=["attend_rate_1849_baseline"])["Code"].nunique()
+                logger.info(
+                    "attend_rate_1849_baseline materialised: %d Kreise with non-null value",
+                    n_kreis,
+                )
         else:
             logger.warning("1849 iPEHD merge skipped (REL1871 or pop_demo not found)")
     except Exception as exc:
