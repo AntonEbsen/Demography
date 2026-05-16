@@ -908,3 +908,256 @@ def load_ipehd_master(path: Optional[Path] = None) -> pd.DataFrame:
     if path is None:
         path = DATA_RAW / "ipehd_qje2009_master.dta"
     return pd.read_stata(path)
+
+
+# ===================================================================
+# 7.  Additional Galloway cross-sections — STA / BIR / TAX / AGR / GEL / EDU
+# ===================================================================
+#
+# These files were uploaded after the initial pipeline was built and
+# round out the Kulturkampf-era picture: STA1871 gives marital status,
+# BIR1871 birthplace, TAX1876 income tax revenue, AGR1882 farm-size
+# distribution, GEL1882 service-sector employment, EDU1886 post-
+# Kulturkampf school attendance. Each file is one cross-section; the
+# loaders return a county-level frame keyed by Code that the build_dataset
+# pipeline merges as time-invariant rows.
+
+
+def load_bir1871(path: Optional[Path] = None) -> pd.DataFrame:
+    """
+    Load Galloway BIR1871 and compute migration / origin shares.
+
+    BIR1871 records, for each Kreis, how many residents were born
+    inside the locality, inside the Kreis, inside the Provinz, in
+    Prussia, in Germany, or outside Germany. Provides a Galloway-
+    native mobility proxy that complements iPEHD's ``f_ortsgeb``.
+
+    Returns columns:
+        Code, born_in_locality_share_1871, born_in_kreis_share_1871,
+        born_in_prussia_share_1871, born_outside_prussia_share_1871
+    """
+    if path is None:
+        path = _find_file(DATA_RAW, "BIR1871")
+        if path is None:
+            raise FileNotFoundError("BIR1871 not found in data/raw/")
+    df = pd.read_excel(path)
+    df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+
+    # Galloway BIR1871 categories are *nested*, not disjoint: each
+    # successive category is a superset of the previous one (locality
+    # subset of Kreis subset of Provinz subset of Prussia). We therefore
+    # use each column directly as its own population share rather than
+    # cumulating.
+    pop = (df["Popm"].astype(float) + df["Popf"].astype(float)).replace(0, np.nan)
+    loc = df["Borninlocalitym"].astype(float) + df["Borninlocalityf"].astype(float)
+    kr = df["Borninkreism"].astype(float) + df["Borninkreisf"].astype(float)
+    pruss = df["Borninprussiam"].astype(float) + df["Borninprussiaf"].astype(float)
+    outside = df["Bornoutofgermanyandunk"].astype(float)
+
+    out = pd.DataFrame({
+        "Code": df["Code"].astype(int),
+        "born_in_locality_share_1871": loc / pop,
+        "born_in_kreis_share_1871": kr / pop,
+        "born_in_prussia_share_1871": pruss / pop,
+        "born_outside_prussia_share_1871": outside / pop,
+    })
+    return out.reset_index(drop=True)
+
+
+def load_tax1876(path: Optional[Path] = None) -> pd.DataFrame:
+    """
+    Load TAX1876 income-tax revenue per Kreis and produce a per-capita
+    log measure. Note TAX1876 is mid-treatment (1876 is year 3 of the
+    May Laws), so this enters as a heterogeneity moderator, not a
+    pre-period control.
+    """
+    if path is None:
+        path = _find_file(DATA_RAW, "TAX1876")
+        if path is None:
+            raise FileNotFoundError("TAX1876 not found in data/raw/")
+    df = pd.read_excel(path)
+    df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+
+    pop = df["Pop1875"].astype(float).replace(0, np.nan)
+    tax = df["Income tax"].astype(float)
+    out = pd.DataFrame({
+        "Code": df["Code"].astype(int),
+        "income_tax_pc_1876": tax / pop,
+        "ln_income_tax_pc_1876": np.log((tax / pop).where(tax > 0)),
+    })
+    return out.reset_index(drop=True)
+
+
+def load_agr1882(path: Optional[Path] = None) -> pd.DataFrame:
+    """
+    Load AGR1882 farm-holdings count by size bin and compute a Gini
+    coefficient over the bins as a land-inequality moderator. AGR1882
+    is 1882, i.e. post-treatment, but farm-size distribution evolves
+    slowly enough that it is approximately structural.
+
+    Size bins (hectares): <1, 1-2, 2-10, 10-50, 50-100, >100.
+    """
+    if path is None:
+        path = _find_file(DATA_RAW, "AGR1882")
+        if path is None:
+            raise FileNotFoundError("AGR1882 not found in data/raw/")
+    df = pd.read_excel(path)
+    df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+
+    bins = ["Landwirt uber <1", "Landwirt uber 1-2", "Landwirt uber 2-10",
+            "Landwirt uber 10-50", "Landwirt uber 50-100",
+            "Landwirt uber >100"]
+    # Midpoint of each size bin (hectares); >100 capped at 200 (rough mean).
+    midpoints = np.array([0.5, 1.5, 6.0, 30.0, 75.0, 200.0])
+
+    arr = df[bins].astype(float).fillna(0).to_numpy()
+    totals = arr.sum(axis=1)
+    safe_totals = np.where(totals > 0, totals, np.nan)[:, None]
+    shares = arr / safe_totals
+
+    # Land share = bin_count * bin_midpoint / total_land.
+    land = arr * midpoints
+    land_sum = land.sum(axis=1, keepdims=True)
+    safe_land_sum = np.where(land_sum > 0, land_sum, np.nan)
+    land_share = land / safe_land_sum
+
+    # Gini over farm-size distribution via cumulative Lorenz.
+    # Sort by midpoint ascending (already in order); compute area
+    # between Lorenz curve and the 45-degree line.
+    cum_count = np.cumsum(shares, axis=1)
+    cum_land = np.cumsum(land_share, axis=1)
+    # Gini = 1 - 2*area_under_Lorenz; trapezoid rule between bins.
+    # Padded with zero at the origin.
+    cum_count_pad = np.concatenate([np.zeros((len(arr), 1)), cum_count], axis=1)
+    cum_land_pad = np.concatenate([np.zeros((len(arr), 1)), cum_land], axis=1)
+    width = np.diff(cum_count_pad, axis=1)
+    height = (cum_land_pad[:, 1:] + cum_land_pad[:, :-1]) / 2
+    area = (width * height).sum(axis=1)
+    gini = 1 - 2 * area
+    # Zero out rows with no holdings reported.
+    gini = np.where(totals > 0, gini, np.nan)
+
+    out = pd.DataFrame({
+        "Code": df["Code"].astype(int),
+        "farms_total_1882": totals,
+        "farms_share_under_2ha_1882": shares[:, :2].sum(axis=1),
+        "farms_share_over_50ha_1882": shares[:, 4:].sum(axis=1),
+        "land_gini_1882": gini,
+    })
+    return out.reset_index(drop=True)
+
+
+def load_gel1882(path: Optional[Path] = None) -> pd.DataFrame:
+    """
+    Load GEL1882 service-sector employment. Columns include
+    ``Xxiii.3.rel-erz-unterr`` (religion-education-instruction
+    occupations) which is the most Kulturkampf-relevant — direct
+    measurement of clerical and educational employment after the
+    May Laws. Columns suffixed "a" are self-employed, "b" are
+    employees; we sum them.
+    """
+    if path is None:
+        path = _find_file(DATA_RAW, "GEL1882")
+        if path is None:
+            raise FileNotFoundError("GEL1882 not found in data/raw/")
+    df = pd.read_excel(path)
+    df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+
+    pop = df["Pop1880"].astype(float).replace(0, np.nan)
+
+    def _ab(col_a: str, col_b: str) -> pd.Series:
+        a = df[col_a].astype(float) if col_a in df.columns else 0.0
+        b = df[col_b].astype(float) if col_b in df.columns else 0.0
+        return a + b
+
+    out = pd.DataFrame({
+        "Code": df["Code"].astype(int),
+        "rel_edu_emp_1882": _ab("Xxiii.3.rel-erz-unterr a",
+                                "Xxiii.3.rel-erz-unterr b"),
+        "transport_emp_1882": _ab("Xx.1. post-tele-eisen a",
+                                  "Xx.1. post-tele-eisen b")
+                              + _ab("Xx.2.fuhr-frachtwesen a.",
+                                    "Xx.2.fuhr-frachtwesen b.")
+                              + _ab("Xx.3.wasserverkehr a.",
+                                    "Xx.3.wasserverkehr b."),
+        "health_emp_1882": _ab("Xxiii.4.gesund-krank a.",
+                               "Xxiii.4.gesund-krank b."),
+        "finance_emp_1882": _ab("Xviii.2. geld-kredit a",
+                                "Xviii.2. geld-kredit b"),
+        "pop_1880_gel": df["Pop1880"].astype(float),
+    })
+    # Per-1k normalisations
+    out["rel_edu_emp_per_1k_1882"] = out["rel_edu_emp_1882"] / pop * 1000
+    out["transport_emp_per_1k_1882"] = out["transport_emp_1882"] / pop * 1000
+    out["health_emp_per_1k_1882"] = out["health_emp_1882"] / pop * 1000
+    out["finance_emp_per_1k_1882"] = out["finance_emp_1882"] / pop * 1000
+    return out.reset_index(drop=True)
+
+
+def load_edu1886(path: Optional[Path] = None) -> pd.DataFrame:
+    """
+    Load EDU1886 schooling cross-section. Provides post-Kulturkampf
+    schooling endpoints to pair with EDU1849 / iPEHD school1517 (1871).
+
+    Returns columns:
+        Code, school_age_pop_1886 (= compulsory-school-age 6-14),
+        attend_public_1886, attend_private_1886, attend_rate_1886,
+        teachers_1886, teacher_income_1886.
+    """
+    if path is None:
+        path = _find_file(DATA_RAW, "EDU1886")
+        if path is None:
+            raise FileNotFoundError("EDU1886 not found in data/raw/")
+    df = pd.read_excel(path)
+    df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+
+    school_age = df["I.22. schulpfl 6 to 14"].astype(float).replace(0, np.nan)
+    attend_public = df["I.29. besuchen volksschu"].astype(float)
+    attend_private = df["I.23. besuchen privat"].astype(float).fillna(0)
+
+    out = pd.DataFrame({
+        "Code": df["Code"].astype(int),
+        "school_age_pop_1886": df["I.22. schulpfl 6 to 14"].astype(float),
+        "attend_public_1886": attend_public,
+        "attend_private_1886": attend_private,
+        "attend_rate_1886": (attend_public + attend_private) / school_age,
+        "teachers_1886": df["V.9. vollb lehrer"].astype(float),
+        "teacher_income_1886": df["X.2. einkom vollb lehrer"].astype(float),
+    })
+    out["pupils_per_teacher_1886"] = (
+        (attend_public + attend_private) / out["teachers_1886"].replace(0, np.nan)
+    )
+    return out.reset_index(drop=True)
+
+
+def load_sta1871(path: Optional[Path] = None) -> pd.DataFrame:
+    """
+    Load STA1871 marital-status cross-section. Although the user did
+    not select the nuptiality refinement as a focus, we still expose
+    the file so DATA_APPENDIX can register it and future work can
+    reach for it without re-doing the loader.
+
+    Returns columns:
+        Code, pct_never_married_m_1871, pct_never_married_f_1871,
+        pct_widowed_f_1871, hh_avg_size_1871.
+    """
+    if path is None:
+        path = _find_file(DATA_RAW, "STA1871")
+        if path is None:
+            raise FileNotFoundError("STA1871 not found in data/raw/")
+    df = pd.read_excel(path)
+    df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
+
+    pop_m = df["Popover15m"].astype(float).replace(0, np.nan)
+    pop_f = df["Popover15f"].astype(float).replace(0, np.nan)
+
+    out = pd.DataFrame({
+        "Code": df["Code"].astype(int),
+        "pct_never_married_m_1871": df["Singleover15m"].astype(float) / pop_m,
+        "pct_never_married_f_1871": df["Singleover15f"].astype(float) / pop_f,
+        "pct_widowed_f_1871": df["Widowover15f"].astype(float) / pop_f,
+        "hh_avg_size_1871": df["Hhfamily"].astype(float) / (
+            (pop_m + pop_f).replace(0, np.nan)
+        ),
+    })
+    return out.reset_index(drop=True)
