@@ -114,11 +114,13 @@ def build_analysis_panel(
                        Reichstag elections 1871-1890)
         Urban TV:      urban_share_current (linearly interpolated from
                        URB1875/80/85/90; NaN pre-1875)
-        1886 schooling: volksschule_share_1886, private_school_share_1886,
-                        schooling_gap_1886, teachers_per_1000_pupils_1886,
-                        teacher_income_1886 (EDU1886 cross-section,
-                        mechanism evidence for the 1873 Schulaufsichts-
-                        gesetz; time-invariant after merge)
+        1886 schooling: school_age_pop_1886, attend_public_1886,
+                        attend_private_1886, attend_rate_1886,
+                        teachers_1886, teacher_income_1886,
+                        pupils_per_teacher_1886 (EDU1886 cross-section,
+                        used by channels.schooling_channel() for the
+                        1849->1886 long-difference DiD on attendance
+                        rates; time-invariant after merge)
         Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
                       raw Galloway `Poptot` is also retained as a column
                       for users who want to recompute carry-forward rates

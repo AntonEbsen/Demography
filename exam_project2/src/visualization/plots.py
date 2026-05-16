@@ -611,102 +611,11 @@ def plot_cbr_war_context(
     return fig, ax
 
 
-def plot_schooling_mechanism_1886(
-    panel: pd.DataFrame,
-    savepath: str | None = None,
-):
-    """
-    Cross-sectional scatter of 1886 schooling outcomes against
-    Catholic share, illustrating the Kulturkampf's intended
-    school-policy channel (the 1873 *Schulaufsichtsgesetz*).
-
-    Four panels:
-      A: Private-school share (% of compulsory-age children)
-      B: Schooling gap (% of compulsory-age children NOT in any
-         reported school)
-      C: Teachers per 1,000 Volksschule pupils
-      D: State Volksschule share (% of compulsory-age children)
-
-    Each panel is a Kreis-level scatter colour-coded by Catholic-share
-    group (High Catholic in red, Low Catholic in blue) with an OLS
-    regression line and the cath_share-coefficient annotation. The
-    panels jointly tell the mechanism story: by 1886, 13 years after
-    the May Laws, Catholic counties had (A) substantially less private
-    schooling, (B) more "missing" schooling, and (C) worse teacher
-    provision -- evidence that the Kulturkampf achieved its stated
-    policy goal of reducing Catholic-confessional private schooling
-    but did not fully replace the lost Catholic-school infrastructure.
-    """
-    import numpy as np
-    import statsmodels.api as sm
-
-    xs = (
-        panel.drop_duplicates("Code")[
-            ["Code", "high_cath", "cath_share", "f_urban",
-             "volksschule_share_1886", "private_school_share_1886",
-             "schooling_gap_1886", "teachers_per_1000_pupils_1886"]
-        ]
-        .dropna(subset=["cath_share", "volksschule_share_1886"])
-        .copy()
-    )
-
-    fig, axes = plt.subplots(2, 2, figsize=(13, 10))
-
-    panels = [
-        (axes[0, 0], "private_school_share_1886",
-         "A. Private-school share, 1886 (\\%)",
-         "Private (\\% of children 6-14)"),
-        (axes[0, 1], "schooling_gap_1886",
-         "B. Schooling gap, 1886 (\\%)",
-         "Not in any reported school (\\%)"),
-        (axes[1, 0], "teachers_per_1000_pupils_1886",
-         "C. Teachers per 1{,}000 Volksschule pupils, 1886",
-         "Teachers per 1{,}000 pupils"),
-        (axes[1, 1], "volksschule_share_1886",
-         "D. State Volksschule share, 1886 (\\%)",
-         "Volksschule (\\% of children 6-14)"),
-    ]
-    for ax, col, title, ylabel in panels:
-        sub = xs.dropna(subset=[col]).copy()
-        if len(sub) < 5:
-            continue
-        # Scatter, coloured by group.
-        for grp, color, label in [
-            (1, COLORS["catholic"], "High Catholic"),
-            (0, COLORS["protestant"], "Low Catholic"),
-        ]:
-            g = sub[sub["high_cath"] == grp]
-            ax.scatter(
-                g["cath_share"], g[col],
-                alpha=0.55, s=22, color=color, label=label,
-            )
-        # OLS regression line of col on cath_share alone (visual aid).
-        X = sm.add_constant(sub["cath_share"])
-        res = sm.OLS(sub[col], X).fit(cov_type="HC1")
-        xline = np.linspace(0, 100, 100)
-        yline = res.params["const"] + res.params["cath_share"] * xline
-        ax.plot(
-            xline, yline, color="black", linewidth=1.4, linestyle="--",
-            label=(
-                f"OLS slope: {res.params['cath_share']:+.4f} "
-                f"(p={res.pvalues['cath_share']:.3f})"
-            ),
-        )
-        ax.set_xlabel("Catholic share, 1871 (\\%)", fontsize=10)
-        ax.set_ylabel(ylabel, fontsize=10)
-        ax.set_title(title, fontsize=11, fontweight="bold")
-        ax.legend(loc="best", fontsize=8, frameon=True)
-        ax.grid(axis="both", alpha=0.3)
-
-    fig.suptitle(
-        "Mechanism evidence: schooling outcomes in 1886 by Catholic share\n"
-        "(13 years post the 1873 Schulaufsichtsgesetz)",
-        fontsize=13, fontweight="bold", y=1.00,
-    )
-    plt.tight_layout()
-    if savepath:
-        fig.savefig(savepath, dpi=300, bbox_inches="tight")
-    return fig, axes
+# NOTE: An earlier `plot_schooling_mechanism_1886` lived here. The
+# schooling-channel evidence is now produced by
+# `channels.schooling_channel` (1849->1886 long-difference DiD,
+# rendered as fig11c_schooling_channel.png), which uses the
+# raw-count EDU1886 variables rather than derived shares.
 
 
 def plot_zentrum_event_study(

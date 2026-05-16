@@ -569,83 +569,9 @@ def _build_wahlkreis_crosswalk(
     ).drop_duplicates(subset=["Code"])
 
 
-def load_edu1886(
-    path: Optional[Path] = None,
-) -> pd.DataFrame:
-    """
-    Load Galloway's EDU1886.XLS (Prussian schooling statistics, 1886)
-    and return a Kreis-level DataFrame of derived schooling rate
-    variables.
-
-    Why this matters. The Kulturkampf's headline education policy was
-    the *Schulaufsichtsgesetz* of 1873, which placed all primary
-    schools under state inspection, weakening Catholic-church
-    oversight of confessional schools. EDU1886 is the closest
-    available Galloway cross-section to the policy's stated channel
-    -- 13 years post-treatment -- and lets us test whether schooling
-    outcomes in 1886 differ systematically across Catholic-share
-    intensity, holding everything else fixed by entity comparison.
-
-    Raw columns (Galloway native labels)
-    ------------------------------------
-      I.22. schulpfl 6 to 14   -- compulsory-school-age children (6-14)
-      I.23. besuchen privat    -- attending private schools
-      I.29. besuchen volksschu -- attending state Volksschule
-      V.9. vollb lehrer        -- full-time teachers (Volksschule)
-      X.2. einkom vollb lehrer -- total full-time-teacher income (Marks)
-      Viii.33. anom mit schule -- (Galloway label unclear; not used)
-
-    Derived rate variables (all suffixed ``_1886``)
-    -----------------------------------------------
-      volksschule_share_1886  -- besuchen_volksschu / schulpfl x 100
-      private_school_share_1886
-                              -- besuchen_privat / schulpfl x 100
-      schooling_gap_1886      -- 100 - (volksschule + private), i.e.
-                                 share of compulsory-age children NOT
-                                 attending any reported school
-      teachers_per_1000_pupils_1886
-                              -- vollb_lehrer / besuchen_volksschu x 1000
-      teacher_income_1886     -- einkom_vollb_lehrer / vollb_lehrer
-                                 (Marks per teacher per year)
-    """
-    if path is None:
-        path = _find_file(DATA_RAW, "EDU1886")
-        if path is None:
-            raise FileNotFoundError("EDU1886 not found in data/raw/")
-
-    df = pd.read_excel(path)
-    df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
-
-    # Rename the awkward Galloway labels.
-    df = df.rename(columns={
-        "I.22. schulpfl 6 to 14":   "schulpfl_6_14",
-        "I.23. besuchen privat":    "besuchen_privat",
-        "I.29. besuchen volksschu": "besuchen_volksschu",
-        "V.9. vollb lehrer":        "vollb_lehrer",
-        "X.2. einkom vollb lehrer": "einkom_vollb_lehrer",
-    })
-
-    # Derived rates.
-    denom = df["schulpfl_6_14"].replace(0, np.nan)
-    df["volksschule_share_1886"] = df["besuchen_volksschu"] / denom * 100
-    df["private_school_share_1886"] = df["besuchen_privat"] / denom * 100
-    df["schooling_gap_1886"] = (
-        100.0 - df["volksschule_share_1886"] - df["private_school_share_1886"]
-    )
-    pupil_denom = df["besuchen_volksschu"].replace(0, np.nan)
-    df["teachers_per_1000_pupils_1886"] = df["vollb_lehrer"] / pupil_denom * 1000
-    teacher_denom = df["vollb_lehrer"].replace(0, np.nan)
-    df["teacher_income_1886"] = df["einkom_vollb_lehrer"] / teacher_denom
-
-    out_cols = [
-        "Code",
-        "volksschule_share_1886",
-        "private_school_share_1886",
-        "schooling_gap_1886",
-        "teachers_per_1000_pupils_1886",
-        "teacher_income_1886",
-    ]
-    return df[out_cols].reset_index(drop=True)
+# NOTE: an earlier `load_edu1886` lived here. The richer version (raw
+# counts + attendance rate + pupils-per-teacher, used by
+# `channels.schooling_channel`) is defined further down in this module.
 
 
 URB_YEARS = (1875, 1880, 1885, 1890)
