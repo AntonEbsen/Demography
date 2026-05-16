@@ -26,10 +26,21 @@ from src.data.load_data import (
     ELECTION_YEARS,
     load_urb_panel,
     URB_YEARS,
+    load_bir1871,
+    load_tax1876,
+    load_agr1882,
+    load_gel1882,
+    load_edu1886,
+    load_sta1871,
+    _find_file,
     DATA_RAW,
     DATA_PROCESSED,
 )
-from src.data.merge_ipehd import merge_ipehd_controls
+from src.data.merge_ipehd import (
+    merge_ipehd_controls,
+    build_crosswalk_1849,
+    merge_ipehd_1849,
+)
 
 
 def build_analysis_panel(
@@ -536,6 +547,76 @@ def build_analysis_panel(
             )
     except FileNotFoundError as exc:
         logger.warning("URB merge skipped (file not found): %s", exc)
+
+    # ------------------------------------------------------------------
+    # 6c-quater. Additional Galloway cross-sections.
+    # BIR1871: birthplace shares -> migration controls.
+    # TAX1876: county income tax -> income proxy (mid-treatment).
+    # AGR1882: farm-size Gini -> land-inequality moderator.
+    # GEL1882: religion-education employment -> Kulturkampf-channel
+    #          outcome / endpoint (paired with rel1849_cat_priest).
+    # EDU1886: post-Kulturkampf school attendance -> schooling channel
+    #          endpoint (paired with EDU1849).
+    # STA1871: marital status -> available for future nuptiality work.
+    # Each is a single cross-section that enters the panel as a time-
+    # invariant row (one value per county, repeated across panel years).
+    # ------------------------------------------------------------------
+    for loader, label in [
+        (load_bir1871, "BIR1871"),
+        (load_tax1876, "TAX1876"),
+        (load_agr1882, "AGR1882"),
+        (load_gel1882, "GEL1882"),
+        (load_edu1886, "EDU1886"),
+        (load_sta1871, "STA1871"),
+    ]:
+        try:
+            cs = loader()
+            n_overlap = panel["Code"].isin(cs["Code"]).any()
+            panel = panel.merge(cs, on="Code", how="left")
+            logger.info(
+                "%s merged: %d new columns, %d Kreise matched",
+                label, cs.shape[1] - 1, cs["Code"].nunique(),
+            )
+        except FileNotFoundError as exc:
+            logger.warning("%s merge skipped (file not found): %s", label, exc)
+        except Exception as exc:
+            logger.warning("%s merge failed: %s", label, exc)
+
+    # ------------------------------------------------------------------
+    # 6c-quinquies. iPEHD 1849 covariates via kreiskey1849 crosswalk.
+    # Brings in pre-Kulturkampf religious infrastructure (Catholic /
+    # Protestant priests, churches), schooling (students by gender and
+    # school type), 1849 population age/sex/marital structure, and a
+    # 1849 factory-total aggregate. Crosswalk is name-based within Rb
+    # with edit-distance backup; expect ~70% coverage of the analysis
+    # Type-0 Kreise (boundary churn 1849 -> 1871 caps the upper bound).
+    # ------------------------------------------------------------------
+    try:
+        ipehd_dir = DATA_RAW.parent / "ipehd_data"
+        rel1871_path = _find_file(DATA_RAW, "REL1871")
+        pop1849_path = ipehd_dir / "ipehd_1849_pop_demo.csv"
+        if rel1871_path is not None and pop1849_path.exists():
+            cw_1849 = build_crosswalk_1849(
+                ipehd_1849_path=pop1849_path,
+                rel1871_path=rel1871_path,
+                verbose=False,
+            )
+            # Persist the crosswalk for downstream reuse (channels and
+            # balance tables read it via DATA_PROCESSED / 'crosswalk_1849.csv').
+            DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
+            cw_1849.to_csv(DATA_PROCESSED / "crosswalk_1849.csv", index=False)
+
+            panel = merge_ipehd_1849(panel, cw_1849)
+            n_matched_priest = panel["rel1849_cat_priest"].notna().sum() if "rel1849_cat_priest" in panel.columns else 0
+            logger.info(
+                "1849 iPEHD merged: crosswalk has %d county mappings; "
+                "%d obs got non-null Catholic-priest count",
+                len(cw_1849), int(n_matched_priest),
+            )
+        else:
+            logger.warning("1849 iPEHD merge skipped (REL1871 or pop_demo not found)")
+    except Exception as exc:
+        logger.warning("1849 iPEHD merge failed: %s", exc)
 
     # ------------------------------------------------------------------
     # 6d. Princeton EFP Coale indices (I_f, I_g, I_h) and the Galloway-
