@@ -26,6 +26,7 @@ from src.data.load_data import (
     ELECTION_YEARS,
     load_urb_panel,
     URB_YEARS,
+    load_edu1886,
     DATA_RAW,
     DATA_PROCESSED,
 )
@@ -103,6 +104,11 @@ def build_analysis_panel(
                        Reichstag elections 1871-1890)
         Urban TV:      urban_share_current (linearly interpolated from
                        URB1875/80/85/90; NaN pre-1875)
+        1886 schooling: volksschule_share_1886, private_school_share_1886,
+                        schooling_gap_1886, teachers_per_1000_pupils_1886,
+                        teacher_income_1886 (EDU1886 cross-section,
+                        mechanism evidence for the 1873 Schulaufsichts-
+                        gesetz; time-invariant after merge)
         Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
                       raw Galloway `Poptot` is also retained as a column
                       for users who want to recompute carry-forward rates
@@ -536,6 +542,30 @@ def build_analysis_panel(
             )
     except FileNotFoundError as exc:
         logger.warning("URB merge skipped (file not found): %s", exc)
+
+    # ------------------------------------------------------------------
+    # 6c-quater. Merge 1886 schooling statistics (EDU1886). Single
+    # cross-section, 13 years post-Kulturkampf. Used as mechanism
+    # evidence for the 1873 Schulaufsichtsgesetz (state-inspection
+    # law): if the Kulturkampf successfully shifted Catholic children
+    # from confessional/private schools into state Volksschule, we
+    # expect a positive coefficient of cath_share on volksschule_share
+    # and a negative coefficient on private_school_share by 1886.
+    # See political_mobilization / channels for the analytical
+    # exploitation.
+    # ------------------------------------------------------------------
+    try:
+        edu1886 = load_edu1886()
+        panel = panel.merge(edu1886, on="Code", how="left")
+        n_matched_kreise = panel.dropna(subset=["volksschule_share_1886"])[
+            "Code"
+        ].nunique()
+        logger.info(
+            "EDU1886 schooling stats merged: %d of %d Kreise have data",
+            n_matched_kreise, panel["Code"].nunique(),
+        )
+    except FileNotFoundError as exc:
+        logger.warning("EDU1886 merge skipped (file not found): %s", exc)
 
     # ------------------------------------------------------------------
     # 6d. Princeton EFP Coale indices (I_f, I_g, I_h) and the Galloway-

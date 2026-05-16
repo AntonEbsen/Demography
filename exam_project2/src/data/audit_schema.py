@@ -77,6 +77,15 @@ PANEL_SCHEMA = DataFrameSchema(
         # Time-varying urban share from Galloway URB1875/80/85/90,
         # linearly interpolated between anchors. NaN pre-1875.
         "urban_share_current": Column(float, Check.in_range(0, 100), nullable=True),
+        # 1886 schooling cross-section (EDU1886). All derived rates;
+        # time-invariant after merge. ~85% Kreis coverage.
+        "volksschule_share_1886": Column(float, Check.in_range(0, 150), nullable=True),
+        "private_school_share_1886": Column(float, Check.in_range(0, 100), nullable=True),
+        "schooling_gap_1886": Column(float, Check.in_range(-50, 100), nullable=True),
+        "teachers_per_1000_pupils_1886": Column(
+            float, Check.in_range(0, 200), nullable=True
+        ),
+        "teacher_income_1886": Column(float, Check.gt(0), nullable=True),
     },
     strict=False,
     unique=["Code", "Year"],
