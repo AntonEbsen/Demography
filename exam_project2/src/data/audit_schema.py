@@ -105,6 +105,23 @@ PANEL_SCHEMA = DataFrameSchema(
         "attend_rate_1849_baseline": Column(
             float, Check.in_range(0, 0.5), nullable=True
         ),
+        # STA1871 marriage prevalence (= Marriedover15f / Popover15f).
+        # Feeds the proper Coale I_g recalibration in
+        # compute_coale_indices(use_sta1871=True): the Princeton EFP
+        # framework otherwise applies a Prussia-wide constant married-
+        # share schedule, which kills cross-county variation in the
+        # marital-fertility denominator.
+        "married_share_over15_f_1871": Column(
+            float, Check.in_range(0, 1), nullable=True
+        ),
+        # Implied count of married women aged 15-49, used as the GMFR
+        # denominator and exposed for downstream rate-recomputation.
+        # Under the STA1871 recalibration this varies across counties;
+        # under the constant-schedule fallback it equals
+        # W_15_49 * Prussia-wide married-share overall (~0.62).
+        "married_women_15_49": Column(
+            float, Check.gt(0), nullable=True
+        ),
     },
     strict=False,
     unique=["Code", "Year"],
