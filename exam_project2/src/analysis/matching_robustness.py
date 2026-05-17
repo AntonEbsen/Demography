@@ -287,7 +287,7 @@ def matched_sample_did(
         panel, outcome=outcome, treatment="continuous", controls=[],
     )
     print(full_result["summary"])
-    
+
     if verbose:
         print("\n" + "=" * 70)
         print("DiD ON MATCHED SAMPLE")

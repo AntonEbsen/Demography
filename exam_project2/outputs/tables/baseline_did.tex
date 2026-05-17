@@ -4,32 +4,29 @@
 \small
 \caption{Baseline difference-in-differences: Kulturkampf and demographic outcomes}
 \label{tab:baseline_did}
-\begin{tabular}{l*{8}{c}}
+\begin{tabular}{l*{10}{c}}
 \toprule
- & \multicolumn{4}{c}{Panel A: County + Year FE} & \multicolumn{4}{c}{Panel B: County + (Year $\times$ Rb) FE} \\
-\cmidrule(lr){2-5}\cmidrule(lr){6-9}
- & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate \\
- & (1) & (2) & (3) & (4) & (5) & (6) & (7) & (8) \\
+ & \multicolumn{5}{c}{Panel A: County + Year FE} & \multicolumn{5}{c}{Panel B: County + (Year $\times$ Rb) FE} \\
+\cmidrule(lr){2-6}\cmidrule(lr){7-11}
+ & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate & $I_g$ (marital fertility) & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate & $I_g$ (marital fertility) \\
+ & (1) & (2) & (3) & (4) & (5) & (6) & (7) & (8) & (9) & (10) \\
 \midrule
-CathShare $\times$ Post & -0.004 & -0.002 & -0.003 & -0.004$^{***}$ & 0.001 & 0.002 & 0.000 & -0.000 \\
- & (0.003) & (0.003) & (0.002) & (0.001) & (0.005) & (0.005) & (0.003) & (0.001) \\
+CathShare $\times$ Post & -0.004 & -0.002 & -0.003 & -0.004$^{***}$ & -0.000 & 0.000 & 0.001 & 0.000 & -0.000 & 0.000 \\
+ & (0.003) & (0.003) & (0.002) & (0.001) & (0.000) & (0.005) & (0.005) & (0.003) & (0.001) & (0.000) \\
+\midrule
+County FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
+Year FE & Yes & Yes & Yes & Yes & Yes & -- & -- & -- & -- & -- \\
+Year $\times$ Rb FE & -- & -- & -- & -- & -- & Yes & Yes & Yes & Yes & Yes \\
+Observations & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 \\
+Within $R^{2}$ & -0.002 & -0.001 & 0.010 & 0.028 & -0.000 & 0.000 & 0.000 & -0.002 & 0.002 & 0.001 \\
+\midrule
+\multicolumn{11}{l}{\textit{Galloway carry-forward robustness} (rate $=$ count $/$ raw Galloway \texttt{Poptot}; previous Dec.\ census carried forward in inter-census years)} \\
+\quad CathShare $\times$ Post (Galloway carry-forward) & -0.000 & 0.002 & -- & -0.004$^{***}$ & -- & -0.000 & 0.000 & -- & -0.000 & -- \\
+ & (0.003) & (0.003) &  & (0.001) &  & (0.005) & (0.005) &  & (0.001) &  \\
+\midrule
+Pre-trends $\chi^{2}$ $p$ & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\
 \addlinespace
-$\ln(\text{Population})$ & 1.973$^{**}$ & 1.723$^{**}$ & 0.272 & 0.247$^{*}$ & 2.516$^{***}$ & 2.441$^{***}$ & -0.278 & 0.014 \\
- & (0.818) & (0.791) & (0.256) & (0.149) & (0.814) & (0.763) & (0.295) & (0.159) \\
-\midrule
-County FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
-Year FE & Yes & Yes & Yes & Yes & -- & -- & -- & -- \\
-Year $\times$ Rb FE & -- & -- & -- & -- & Yes & Yes & Yes & Yes \\
-Observations & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 \\
-Within $R^{2}$ & 0.002 & 0.002 & 0.010 & 0.026 & 0.002 & 0.002 & -0.002 & 0.002 \\
-\midrule
-\multicolumn{9}{l}{\textit{Galloway carry-forward robustness} (rate $=$ count $/$ raw Galloway \texttt{Poptot}; previous Dec.\ census carried forward in inter-census years)} \\
-\quad CathShare $\times$ Post (Galloway carry-forward) & -0.001 & 0.001 & -0.003 & -0.004$^{***}$ & 0.001 & 0.002 & 0.000 & -0.000 \\
- & (0.003) & (0.003) & (0.002) & (0.001) & (0.005) & (0.005) & (0.003) & (0.001) \\
-\midrule
-Pre-trends $\chi^{2}$ $p$ & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\
-\addlinespace
-\multicolumn{9}{l}{\textit{Pre-trends Wald $\chi^{2}$ on $I_g$ (Coale marital fertility, Galloway-tradition headline)}: $\chi^{2} = 68.98$, df $= 10$, $p = 0.000$} \\
+\multicolumn{11}{l}{\textit{Pre-trends Wald $\chi^{2}$ on $I_g$ (Coale marital fertility, Galloway-tradition headline)}: $\chi^{2} = 70.50$, df $= 10$, $p = 0.000$} \\
 \bottomrule
 \end{tabular}
 \begin{minipage}{\linewidth}

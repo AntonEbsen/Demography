@@ -83,28 +83,24 @@ def run_baseline_did(
         'continuous' → uses cath_share_x_post (Catholic share × Post)
         'binary' → uses treat_x_post (HighCath × Post)
     controls : list, optional
-        Additional time-varying controls. Default: ``[]`` (no
-        time-varying controls beyond the entity + year FE). The
-        previous default ``["ln_pop"]`` is no longer used because
-        log-population is itself responsive to the Kulturkampf
-        (fertility, mortality, and migration shocks all show up
-        in the denominator), making it a "bad control" in the
-        Pearlian sense.
+        Additional time-varying controls. Default: ``[]`` (no controls).
+        ``ln_pop`` was previously the default but is now opt-in: since
+        every rate outcome (CBR, marriage rate, IMR, etc.) uses
+        mid-year population as its denominator, adding $\\ln(\\text{Pop})$
+        as a control on the right-hand side is mechanically correlated
+        with the LHS and risks "bad-control" bias. Pass
+        ``controls=["ln_pop"]`` explicitly to recover the old behaviour
+        for sensitivity checks. See ``run_emigration_robustness`` (§8.10
+        of DATA_APPENDIX) for a six-spec population/migration-control
+        ladder.
     cluster : str
         Cluster variable for standard errors. Default: 'Code' (county).
-    
+
     Returns
     -------
     dict with keys: 'result' (PanelOLS result), 'summary' (string)
     """
     if controls is None:
-        # Headline DiD runs WITHOUT a time-varying log-population
-        # control. Entity fixed effects already absorb time-invariant
-        # county-size differences, and adding ln_pop on top would
-        # condition on a post-treatment variable (the Kulturkampf
-        # itself plausibly affected population growth via fertility
-        # and net migration). Callers can re-introduce it by passing
-        # controls=["ln_pop"] explicitly.
         controls = []
 
     panel = _prepare_panel(df)
@@ -628,7 +624,7 @@ def run_rb_specific_did(
         )
         treat_cols.append(col)
 
-    exog_vars = list(treat_cols)
+    exog_vars = treat_cols
     y = panel[outcome]
     X = panel[exog_vars]
     valid = y.notna() & X.notna().all(axis=1)
@@ -1162,10 +1158,6 @@ def run_event_study(
                     (for plotting)
     """
     if controls is None:
-        # See run_baseline_did: ln_pop is intentionally not the default
-        # control. Entity FE absorb time-invariant size differences;
-        # adding log-pop on top would condition on a post-treatment
-        # variable.
         controls = []
 
     panel = _prepare_panel(df)
@@ -1273,16 +1265,12 @@ def run_robustness(
     5. Alternative Catholic threshold: 75% instead of 50%
     6. Excluding Polish-majority counties (Posen, Bromberg provinces)
     7. Only rural counties (excluding Berlin and very large cities)
-    
+
     Returns
     -------
     pd.DataFrame with columns: Specification, Coefficient, SE, p_value, N, N_counties
     """
     if controls is None:
-        # See run_baseline_did: ln_pop is intentionally not the default
-        # control. Entity FE absorb time-invariant size differences;
-        # adding log-pop on top would condition on a post-treatment
-        # variable.
         controls = []
 
     results = []

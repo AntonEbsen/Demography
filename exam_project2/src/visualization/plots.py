@@ -611,6 +611,13 @@ def plot_cbr_war_context(
     return fig, ax
 
 
+# NOTE: An earlier `plot_schooling_mechanism_1886` lived here. The
+# schooling-channel evidence is now produced by
+# `channels.schooling_channel` (1849->1886 long-difference DiD,
+# rendered as fig11c_schooling_channel.png), which uses the
+# raw-count EDU1886 variables rather than derived shares.
+
+
 def plot_zentrum_event_study(
     coefs: pd.DataFrame,
     enforcement_years: tuple[int, int] = (1873, 1878),

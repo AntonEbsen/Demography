@@ -24,7 +24,7 @@ therefore directly comparable to the entity-clustered SEs reported as the
 default — pick the larger of the two for inference.
 
 Public API:
-    spatial_did_se(panel, outcome="cbr", cutoff_km=200, controls=())
+    spatial_did_se(panel, outcome="cbr", cutoff_km=200)
         -> dict with coef, conley_se, cluster_se, n
 """
 

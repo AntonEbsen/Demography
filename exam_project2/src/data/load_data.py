@@ -569,6 +569,11 @@ def _build_wahlkreis_crosswalk(
     ).drop_duplicates(subset=["Code"])
 
 
+# NOTE: an earlier `load_edu1886` lived here. The richer version (raw
+# counts + attendance rate + pupils-per-teacher, used by
+# `channels.schooling_channel`) is defined further down in this module.
+
+
 URB_YEARS = (1875, 1880, 1885, 1890)
 
 
@@ -1132,14 +1137,20 @@ def load_edu1886(path: Optional[Path] = None) -> pd.DataFrame:
 
 def load_sta1871(path: Optional[Path] = None) -> pd.DataFrame:
     """
-    Load STA1871 marital-status cross-section. Although the user did
-    not select the nuptiality refinement as a focus, we still expose
-    the file so DATA_APPENDIX can register it and future work can
-    reach for it without re-doing the loader.
+    Load STA1871 marital-status cross-section.
 
     Returns columns:
         Code, pct_never_married_m_1871, pct_never_married_f_1871,
-        pct_widowed_f_1871, hh_avg_size_1871.
+        pct_widowed_f_1871, married_share_over15_f_1871,
+        hh_avg_size_1871.
+
+    ``married_share_over15_f_1871`` (= Marriedover15f / Popover15f) is
+    the county-specific marriage-prevalence among women aged 15+. It
+    feeds the proper Coale $I_g$ recalibration in
+    ``coale_indices.compute_coale_indices(use_sta1871=True)`` -- the
+    Princeton EFP framework normally assumes a Prussia-wide constant
+    married-share schedule; with STA1871 we let each county's actual
+    marriage prevalence shift the marital-fertility denominator.
     """
     if path is None:
         path = _find_file(DATA_RAW, "STA1871")
@@ -1156,6 +1167,8 @@ def load_sta1871(path: Optional[Path] = None) -> pd.DataFrame:
         "pct_never_married_m_1871": df["Singleover15m"].astype(float) / pop_m,
         "pct_never_married_f_1871": df["Singleover15f"].astype(float) / pop_f,
         "pct_widowed_f_1871": df["Widowover15f"].astype(float) / pop_f,
+        "married_share_over15_f_1871":
+            df["Marriedover15f"].astype(float) / pop_f,
         "hh_avg_size_1871": df["Hhfamily"].astype(float) / (
             (pop_m + pop_f).replace(0, np.nan)
         ),
