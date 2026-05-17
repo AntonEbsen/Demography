@@ -33,6 +33,7 @@ from src.data.load_data import (
     load_edu1886,
     load_sta1871,
     compute_galloway_gmfr_1871,
+    compute_galloway_gmfr,
     _find_file,
     DATA_RAW,
     DATA_PROCESSED,
@@ -595,6 +596,32 @@ def build_analysis_panel(
             logger.warning("%s merge skipped (file not found): %s", label, exc)
         except Exception as exc:
             logger.warning("%s merge failed: %s", label, exc)
+
+    # Galloway GMFR for any census year with a non-empty transcribed
+    # marital-status template. Each call adds 4 columns (births_avg_*,
+    # married_women_15_49_*, gmfr_galloway_*, gmfr_galloway_*_flag) only
+    # if at least one Kreis has been transcribed -- otherwise the merge
+    # is silently skipped so the template can sit empty until the user
+    # starts filling it.
+    for year in (1880, 1885, 1890, 1895, 1900):
+        try:
+            cs = compute_galloway_gmfr(year)
+            n_filled = int(cs[f"gmfr_galloway_{year}"].notna().sum())
+            if n_filled == 0:
+                logger.info(
+                    "Galloway-1994 GMFR(%d): template empty, skipping merge", year,
+                )
+                continue
+            panel = panel.merge(cs, on="Code", how="left")
+            logger.info(
+                "Galloway-1994 GMFR(%d) merged: %d Kreise with non-null GMFR",
+                year, n_filled,
+            )
+        except FileNotFoundError as exc:
+            logger.info("Galloway-1994 GMFR(%d) skipped (template missing): %s",
+                        year, exc)
+        except Exception as exc:
+            logger.warning("Galloway-1994 GMFR(%d) merge failed: %s", year, exc)
 
     # ------------------------------------------------------------------
     # 6c-quinquies. iPEHD 1849 covariates via kreiskey1849 crosswalk.

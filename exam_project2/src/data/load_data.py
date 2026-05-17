@@ -1326,3 +1326,176 @@ def compute_galloway_gmfr_1871(
         "gmfr_galloway_1871_flag",
     ]
     return out[keep].reset_index(drop=True)
+
+
+# -------------------------------------------------------------------
+# Transcribed marital-status-by-age tables (1880, 1885, 1890, ...)
+# -------------------------------------------------------------------
+#
+# Galloway 1994 uses married women aged 15-49 *as published in the
+# Prussian census volumes* (Preußische Statistik). Those tables are
+# NOT in his electronic database (only STA1871 is), so to extend the
+# Galloway-style GMFR beyond 1871 we transcribe the relevant cells
+# from the source volumes into a per-census-year CSV template under
+# ``data/raw/transcribed_marital_status/``. This loader ingests one
+# such CSV, sanity-checks it against the published Galloway POP{year}
+# total, and returns a county-level frame keyed by Code.
+#
+# Workflow
+# --------
+# 1. Open ``data/raw/transcribed_marital_status/MAR{year}_transcription_template.csv``.
+# 2. For each Kreis row, transcribe the seven 5-year-band counts of
+#    married women (mwf_15_19 ... mwf_45_49) plus the 50+ aggregate
+#    (mwf_50p) from the appropriate Preußische Statistik volume.
+# 3. Optionally also transcribe total-women-by-age (twf_*) for
+#    validation. Note the source page number.
+# 4. ``load_marital_status_transcribed(year)`` reads the CSV, sums
+#    the 15-49 bands, validates, and produces ``married_women_15_49_{year}``.
+# 5. ``compute_galloway_gmfr({year})`` combines this with the
+#    5-year-centred legitimate-birth average around year ``{year}``
+#    to produce the literal Galloway 1994 measure.
+
+
+def _transcription_path(year: int) -> Path:
+    return (
+        Path(__file__).resolve().parent.parent.parent
+        / "data" / "raw" / "transcribed_marital_status"
+        / f"MAR{year}_transcription_template.csv"
+    )
+
+
+def load_marital_status_transcribed(
+    year: int,
+    require_complete: bool = False,
+) -> pd.DataFrame:
+    """Load a transcribed marital-status table for a Prussian census year.
+
+    Parameters
+    ----------
+    year : int
+        Census year (1880, 1885, 1890, ...). The corresponding
+        transcription template must exist under
+        ``data/raw/transcribed_marital_status/MAR{year}_transcription_template.csv``.
+    require_complete : bool, default False
+        If True, raise if any Type-0 Kreis is missing all 15-49 bands.
+        If False, partially-transcribed CSVs are accepted and rows with
+        any missing band have ``married_women_15_49_{year}`` set to NaN.
+
+    Returns
+    -------
+    pd.DataFrame keyed by Code with columns:
+        married_women_15_49_{year}    sum of mwf_15_19 ... mwf_45_49
+        married_women_50plus_{year}   = mwf_50p
+        total_women_15_49_{year}      = sum of twf_15_19 ... twf_45_49 (NaN
+                                        if optional total cells not filled)
+        n_kreise_transcribed_{year}   diagnostic: count of fully-transcribed
+                                        rows (constant across rows, for
+                                        easy joining/inspection)
+    """
+    path = _transcription_path(year)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Transcription template for {year} not found at {path}. "
+            f"Run the template builder in load_data.py to generate it."
+        )
+    df = pd.read_csv(path)
+    age_bands = ["15_19", "20_24", "25_29", "30_34", "35_39", "40_44", "45_49"]
+    mwf_cols = [f"mwf_{b}" for b in age_bands]
+    twf_cols = [f"twf_{b}" for b in age_bands]
+
+    # Coerce to numeric (CSV cells may be blank or non-numeric notes).
+    for c in mwf_cols + twf_cols + ["mwf_50p", "twf_50p"]:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    # Sum 15-49 only where all 7 bands are present; else NaN.
+    band_present = df[mwf_cols].notna().all(axis=1)
+    mw15_49 = df[mwf_cols].sum(axis=1, min_count=len(mwf_cols))
+    out = pd.DataFrame({"Code": df["Code"]})
+    out[f"married_women_15_49_{year}"] = mw15_49.where(band_present)
+    if "mwf_50p" in df.columns:
+        out[f"married_women_50plus_{year}"] = df["mwf_50p"]
+    out[f"total_women_15_49_{year}"] = df[twf_cols].sum(
+        axis=1, min_count=len(twf_cols)
+    )
+    n_transcribed = int(band_present.sum())
+    out[f"n_kreise_transcribed_{year}"] = n_transcribed
+
+    if require_complete and n_transcribed < len(df):
+        missing = df.loc[~band_present, ["Code", "Kreis"]].head(10)
+        raise ValueError(
+            f"Transcription incomplete: {n_transcribed} of {len(df)} Kreise "
+            f"have all 7 age bands filled. Missing examples:\n{missing.to_string()}"
+        )
+
+    if n_transcribed == 0:
+        logger.warning(
+            "No transcribed marital-status data for %d (template is empty).",
+            year,
+        )
+    else:
+        logger.info(
+            "Loaded marital-status transcription for %d: %d / %d Kreise filled",
+            year, n_transcribed, len(df),
+        )
+    return out
+
+
+def compute_galloway_gmfr(
+    year: int,
+    data_dir: Optional[Path] = None,
+    gmfr_max: float = 600.0,
+    gmfr_min: float = 50.0,
+) -> pd.DataFrame:
+    """Galloway 1994 GMFR for any census year with transcribed marital data.
+
+    Generalises ``compute_galloway_gmfr_1871`` to use a directly-
+    transcribed married-women-15-49 count for the denominator. Numerator
+    is the same 5-year-centred average of legitimate births around the
+    census year.
+
+    Parameters
+    ----------
+    year : int
+        Census year. Must have a (filled-in) transcription template
+        at ``data/raw/transcribed_marital_status/MAR{year}_transcription_template.csv``
+        AND VIT files covering years ``year-2`` through ``year+2``.
+    data_dir, gmfr_max, gmfr_min : see ``compute_galloway_gmfr_1871``.
+
+    Returns
+    -------
+    pd.DataFrame keyed by Code with columns:
+        births_avg_{year-2}_{year+2}    5-yr-centred legitimate-birth mean
+        married_women_15_49_{year}      directly transcribed
+        gmfr_galloway_{year}            births / married_women * 1000,
+                                          NaN if outlier-flagged
+        gmfr_galloway_{year}_flag       True if censored
+    """
+    if data_dir is None:
+        data_dir = DATA_RAW
+
+    # Numerator: 5-year-centred Birlegtot average.
+    yr_lo, yr_hi = year - 2, year + 2
+    vit = load_vit_panel(data_dir=data_dir, year_start=yr_lo, year_end=yr_hi)
+    vit_t0 = vit[vit["Type"] == 0]
+    births_col = f"births_avg_{yr_lo}_{yr_hi}"
+    births_avg = (
+        vit_t0.groupby("Code")["Birlegtot"]
+              .mean()
+              .rename(births_col)
+              .reset_index()
+    )
+
+    # Denominator: transcribed married women 15-49.
+    mar = load_marital_status_transcribed(year)
+    denom_col = f"married_women_15_49_{year}"
+
+    out = mar.merge(births_avg, on="Code", how="left")
+    gmfr_col = f"gmfr_galloway_{year}"
+    flag_col = f"{gmfr_col}_flag"
+    raw = out[births_col] / out[denom_col].replace(0, np.nan) * 1000
+    out[flag_col] = (raw > gmfr_max) | (raw < gmfr_min) | raw.isna()
+    out[gmfr_col] = raw
+    out.loc[out[flag_col], gmfr_col] = np.nan
+
+    return out[["Code", births_col, denom_col, gmfr_col, flag_col]]
