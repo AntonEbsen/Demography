@@ -649,30 +649,61 @@ def baseline_did_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
         "cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate",
-        "I_g", "gmfr", "I_m",
     ),
     out_path: Path | None = None,
+    *,
+    show_carryforward: bool = True,
+    show_ig_pretrends_line: bool = True,
+    digits_coef: int = 3,
+    digits_se: int = 3,
+    caption: str = (
+        "Baseline difference-in-differences: Kulturkampf and "
+        "conventional demographic rates"
+    ),
+    label: str = "tab:baseline_did",
+    extra_note: str = (
+        "Crude rates use mid-year total population in the denominator "
+        "and therefore conflate age structure, marital structure, and "
+        "within-marriage fertility. The Coale--Watkins decomposition in "
+        "Table~\\ref{tab:baseline_did_indices} addresses this directly."
+    ),
 ) -> str:
     """Multi-outcome baseline DiD with TWFE and stricter Year x Rb FE columns.
 
-    Headline rates (`cbr`, `legitimate_br`, `illegitimate_br`,
-    `marriage_rate`) use the standard demographic CBR convention: the
+    Default outcomes are the four conventional rates (CBR, legitimate
+    birth rate, illegitimacy ratio, marriage rate). The companion
+    ``baseline_did_indices_table`` reports the Coale--Watkins indices
+    ($I_f$, $I_g$, $I_m$, $I_h$) that decompose the rates by age
+    structure and nuptiality. Rates and indices live in separate tables
+    because (i) they are on very different scales (~0--50 vs.~0--1),
+    (ii) the Coale identity $I_f \\approx I_g\\cdot I_m + I_h(1-I_m)$
+    lives in the indices table and is easier to read uncluttered, and
+    (iii) the two tables answer sequential questions in the narrative.
+
+    Headline rates use the standard demographic convention: the
     population denominator is linearly interpolated between consecutive
-    December census anchors and evaluated at July 1 of each calendar year.
-    The ``Galloway carry-forward robustness'' row reports the same
+    December census anchors and evaluated at July 1 of each calendar
+    year. The ``Galloway carry-forward robustness'' row reports the same
     coefficients using the raw Galloway `Poptot` (previous December
-    census carried forward in inter-census years), so a reader can see
+    census carried forward in inter-census years) so a reader can see
     how using the database "out of the box" differs from the proper
     mid-year convention.
 
-    Includes a pre-trends Wald-$\\chi^2$ $p$-value row for each outcome,
-    plus a one-line ``GFR comparison'' showing the same test on
-    ``gfr_static_1871`` (births per 1{,}000 women aged 15--49 using the
-    1871 census denominator). The GFR line addresses the standard
-    demographic critique that CBR is mechanically affected by age
-    structure -- a reader can see directly that the pre-trends
-    conclusion is not driven by age-composition contamination of the
-    headline outcome.
+    Parameters
+    ----------
+    show_carryforward : bool
+        Include the Galloway carry-forward robustness row. Only meaningful
+        for outcomes that have a ``_carryforward`` variant in the panel;
+        for the Coale-index table this is False.
+    show_ig_pretrends_line : bool
+        Append a one-line `\\multicolumn` showing the joint Wald
+        $\\chi^2$ test for pre-1872 event-study coefficients on $I_g$.
+        Useful as a Galloway-tradition headline footer in the rates table;
+        the indices table already includes $I_g$ as a column so the line
+        is suppressed there.
+    caption, label, extra_note : str
+        Overrides for the LaTeX caption, table label, and an additional
+        sentence appended to the standard notes block.
     """
     out_path = out_path or TABLES_DIR / "baseline_did.tex"
 
@@ -685,43 +716,39 @@ def baseline_did_table(
     # Carry-forward (Galloway raw) robustness: rerun TWFE and Year x Rb
     # on the `_carryforward` rate variants -- denominator is the previous
     # December census carried forward unchanged in inter-census years
-    # (i.e. raw Galloway `Poptot`). This is what one gets by using the
-    # database "out of the box". Reported here so a reader can see how
-    # the headline (proper-mid-year) coefficients differ from the raw
-    # Galloway-tradition number; the headline rows themselves use the
-    # mid-year convention (standard demographic CBR), not this one.
+    # (i.e. raw Galloway `Poptot`). Only meaningful for outcomes with a
+    # _carryforward column; the Coale indices use mid-year pop only and
+    # have no carry-forward variant, so the indices-table call suppresses
+    # this block via show_carryforward=False.
     _carryforward_map = {
         "cbr": "cbr_carryforward",
         "legitimate_br": "legitimate_br_carryforward",
         "illegitimate_br": "illegitimate_br_carryforward",
         "marriage_rate": "marriage_rate_carryforward",
     }
-    # Coale indices (e.g. I_g) and any other outcome without a
-    # carry-forward variant get a "--" cell in the carry-forward row
-    # since their denominators are constructed from mid-year population
-    # only.
-    cf_outcomes = [_carryforward_map.get(o) for o in outcomes]
-    def _did_col_or_none(o):
-        return _did_column(panel, o, "twfe") if o else None
-    cols_cf_twfe = [
-        _did_column(panel, o, "twfe") if o else None for o in cf_outcomes
-    ]
-    cols_cf_strict = [
-        _did_column(panel, o, "year_x_rb") if o else None for o in cf_outcomes
-    ]
-    cols_cf = cols_cf_twfe + cols_cf_strict
+    if show_carryforward:
+        cf_outcomes = [_carryforward_map.get(o) for o in outcomes]
+        cols_cf_twfe = [
+            _did_column(panel, o, "twfe") if o else None for o in cf_outcomes
+        ]
+        cols_cf_strict = [
+            _did_column(panel, o, "year_x_rb") if o else None for o in cf_outcomes
+        ]
+        cols_cf = cols_cf_twfe + cols_cf_strict
+        # If no outcome in this call actually has a carryforward variant,
+        # suppress the row entirely.
+        if not any(c is not None for c in cols_cf):
+            show_carryforward = False
 
-    # Pre-trends Wald chi-squared per outcome (TWFE event study), and a
-    # marital-fertility (I_g) comparison reported on a single auxiliary
-    # line. I_g is the Galloway, Hammel & Lee (1994) headline outcome --
-    # a Hutterite-normalised marital fertility rate that nets out
-    # nuptiality. Reporting its pre-trends chi-squared here lets a
-    # demography-aware reader confirm the pre-trends conclusion holds
-    # under the Princeton EFP framework.
+    # Pre-trends Wald chi-squared per outcome (TWFE event study).
     pretrends_per_outcome = [
         pretrends_wald_test(panel, outcome=o) for o in outcomes
     ]
-    pretrends_ig = pretrends_wald_test(panel, outcome="I_g")
+    # Optional I_g pre-trends footer line: useful as a Galloway-tradition
+    # headline footnote on the rates table; suppressed on the indices
+    # table because I_g is already a column there.
+    if show_ig_pretrends_line:
+        pretrends_ig = pretrends_wald_test(panel, outcome="I_g")
 
     # Header: Panel A (TWFE) and Panel B (Year x Rb FE) spanning the columns
     cmidrules = (
@@ -753,12 +780,12 @@ def baseline_did_table(
     coef_row = (
         _label("cath_share_x_post")
         + " & "
-        + " & ".join(_fmt_coef(c["coef"], c["p"]) for c in cols)
+        + " & ".join(_fmt_coef(c["coef"], c["p"], digits=digits_coef) for c in cols)
         + r" \\"
     )
     se_row = (
         " & "
-        + " & ".join(_fmt_se(c["se"]) for c in cols)
+        + " & ".join(_fmt_se(c["se"], digits=digits_se) for c in cols)
         + r" \\"
     )
     yes_twfe = " & ".join("Yes" for _ in cols_twfe)
@@ -781,31 +808,60 @@ def baseline_did_table(
     # Galloway `Poptot` denominator (previous December census carried
     # forward in inter-census years). Two rows (coef + SE) so the table
     # stays compact rather than adding a third panel.
-    carryforward_coef_row = (
-        "\\quad CathShare $\\times$ Post (Galloway carry-forward) & "
-        + " & ".join(
-            "--" if c is None else _fmt_coef(c["coef"], c["p"])
-            for c in cols_cf
+    if show_carryforward:
+        carryforward_coef_row = (
+            "\\quad CathShare $\\times$ Post (Galloway carry-forward) & "
+            + " & ".join(
+                "--" if c is None else _fmt_coef(c["coef"], c["p"], digits=digits_coef)
+                for c in cols_cf
+            )
+            + r" \\"
         )
-        + r" \\"
-    )
-    carryforward_se_row = (
-        " & "
-        + " & ".join(
-            "" if c is None else _fmt_se(c["se"])
-            for c in cols_cf
+        carryforward_se_row = (
+            " & "
+            + " & ".join(
+                "" if c is None else _fmt_se(c["se"], digits=digits_se)
+                for c in cols_cf
+            )
+            + r" \\"
         )
-        + r" \\"
-    )
     # One-line I_g pre-trends Wald comparison (spans full table width).
-    pretrends_ig_row = (
-        f"\\multicolumn{{{n + 1}}}{{l}}{{"
-        f"\\textit{{Pre-trends Wald $\\chi^{{2}}$ on $I_g$ "
-        f"(Coale marital fertility, Galloway-tradition headline)}}: "
-        f"$\\chi^{{2}} = {pretrends_ig['wald_chi2']:.2f}$, "
-        f"df $= {pretrends_ig['df']}$, "
-        f"$p = {pretrends_ig['p_value']:.3f}$"
-        f"}} \\\\"
+    if show_ig_pretrends_line:
+        pretrends_ig_row = (
+            f"\\multicolumn{{{n + 1}}}{{l}}{{"
+            f"\\textit{{Pre-trends Wald $\\chi^{{2}}$ on $I_g$ "
+            f"(Coale marital fertility, Galloway-tradition headline)}}: "
+            f"$\\chi^{{2}} = {pretrends_ig['wald_chi2']:.2f}$, "
+            f"df $= {pretrends_ig['df']}$, "
+            f"$p = {pretrends_ig['p_value']:.3f}$"
+            f"}} \\\\"
+        )
+
+    # Build the FE-block and downstream rows. Carry-forward + I_g
+    # pre-trends are conditional on the table type (rates vs indices).
+    fe_block = (
+        f"County FE & {yes_twfe} & {yes_strict} \\\\\n"
+        + f"Year FE & {yes_twfe} & {no_strict} \\\\\n"
+        + f"Year $\\times$ Rb FE & {' & '.join('--' for _ in cols_twfe)} & {yes_strict} \\\\\n"
+        + "Observations & "
+        + " & ".join(f"{c['n']:,}" for c in cols)
+        + " \\\\\n"
+        + "Within $R^{2}$ & "
+        + " & ".join(f"{c['r2']:.3f}" for c in cols)
+        + " \\\\\n"
+    )
+    carryforward_block = (
+        "\\midrule\n"
+        + f"\\multicolumn{{{n + 1}}}{{l}}{{\\textit{{Galloway carry-forward robustness}} "
+        f"(rate $=$ count $/$ raw Galloway \\texttt{{Poptot}}; previous Dec.\\ census "
+        f"carried forward in inter-census years)}} \\\\\n"
+        + carryforward_coef_row + "\n"
+        + carryforward_se_row + "\n"
+    ) if show_carryforward else ""
+    pretrends_block = (
+        "\\midrule\n"
+        + pretrends_p_row + "\n"
+        + ("\\addlinespace\n" + pretrends_ig_row + "\n" if show_ig_pretrends_line else "")
     )
 
     tabular = (
@@ -818,63 +874,126 @@ def baseline_did_table(
         + coef_row + "\n"
         + se_row + "\n"
         "\\midrule\n"
-        + f"County FE & {yes_twfe} & {yes_strict} \\\\\n"
-        + f"Year FE & {yes_twfe} & {no_strict} \\\\\n"
-        + f"Year $\\times$ Rb FE & {' & '.join('--' for _ in cols_twfe)} & {yes_strict} \\\\\n"
-        + "Observations & "
-        + " & ".join(f"{c['n']:,}" for c in cols)
-        + " \\\\\n"
-        + "Within $R^{2}$ & "
-        + " & ".join(f"{c['r2']:.3f}" for c in cols)
-        + " \\\\\n"
-        + "\\midrule\n"
-        + f"\\multicolumn{{{n + 1}}}{{l}}{{\\textit{{Galloway carry-forward robustness}} "
-        f"(rate $=$ count $/$ raw Galloway \\texttt{{Poptot}}; previous Dec.\\ census "
-        f"carried forward in inter-census years)}} \\\\\n"
-        + carryforward_coef_row + "\n"
-        + carryforward_se_row + "\n"
-        + "\\midrule\n"
-        + pretrends_p_row + "\n"
-        + "\\addlinespace\n"
-        + pretrends_ig_row + "\n"
+        + fe_block
+        + carryforward_block
+        + pretrends_block
         + "\\bottomrule\n"
         "\\end{tabular}\n"
     )
 
+    notes_core = (
+        "Two-way fixed-effects estimates of equation "
+        "$Y_{it} = \\beta\\,(\\mathrm{CathShare}_i \\times \\mathrm{Post}_t) + "
+        "\\alpha_i + \\delta_t + \\gamma X_{it} + \\varepsilon_{it}$, with "
+        "$\\delta_t$ replaced by year~$\\times$~Regierungsbezirk fixed effects "
+        "in Panel~B. Post is an indicator for $t \\geq 1873$. Standard errors "
+        "clustered at the county level in parentheses. "
+    )
+    notes_rates = (
+        "Birth and marriage rates "
+        "per 1{,}000 \\emph{mid-year} population; illegitimacy ratio in percent. "
+        "Mid-year population is constructed by linearly interpolating between "
+        "consecutive December census anchors and evaluating at July 1 of each "
+        "calendar year (standard demographic convention). "
+    )
+    notes_carryforward = (
+        "The ``Galloway "
+        "carry-forward robustness'' row reports the same coefficients using "
+        "the raw Galloway \\texttt{Poptot}, which carries the previous "
+        "December census forward unchanged in inter-census years and biases "
+        "CBR upward by 1--3\\% in growing populations. "
+    ) if show_carryforward else ""
+    notes_pretrends_main = (
+        "The "
+        "``Pre-trends $\\chi^{2}$ $p$'' row reports the joint Wald test that "
+        "all event-study coefficients in the pre-1872 period equal zero "
+        "(estimated separately on the TWFE event-study; identical $p$-value "
+        "applies under both FE designs). "
+    )
+    notes_pretrends_ig = (
+        "The single-line ``$I_g$ comparison'' "
+        "reports the same test on Coale's marital-fertility index "
+        "(Hutterite-normalised legitimate births per married woman 15--49) -- "
+        "the headline outcome in Galloway, Hammel \\& Lee (1994). The "
+        "companion event-study figure \\texttt{fig5\\_event\\_study\\_cbr\\_ig.png} "
+        "plots the CBR and $I_g$ event studies side by side. "
+    ) if show_ig_pretrends_line else ""
+    notes_extra = (extra_note + " ") if extra_note else ""
+    notes_stars = "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+
     out = _wrap_table(
         tabular,
-        caption="Baseline difference-in-differences: Kulturkampf and demographic outcomes",
-        label="tab:baseline_did",
+        caption=caption,
+        label=label,
         n_cols=n + 1,
         notes=(
-            "Two-way fixed-effects estimates of equation "
-            "$Y_{it} = \\beta\\,(\\mathrm{CathShare}_i \\times \\mathrm{Post}_t) + "
-            "\\alpha_i + \\delta_t + \\gamma X_{it} + \\varepsilon_{it}$, with "
-            "$\\delta_t$ replaced by year~$\\times$~Regierungsbezirk fixed effects "
-            "in Panel~B. Post is an indicator for $t \\geq 1873$. Standard errors "
-            "clustered at the county level in parentheses. Birth and marriage rates "
-            "per 1{,}000 \\emph{mid-year} population; illegitimacy ratio in percent. "
-            "Mid-year population is constructed by linearly interpolating between "
-            "consecutive December census anchors and evaluating at July 1 of each "
-            "calendar year (standard demographic convention). The ``Galloway "
-            "carry-forward robustness'' row reports the same coefficients using "
-            "the raw Galloway \\texttt{Poptot}, which carries the previous "
-            "December census forward unchanged in inter-census years and biases "
-            "CBR upward by 1--3\\% in growing populations. The "
-            "``Pre-trends $\\chi^{2}$ $p$'' row reports the joint Wald test that "
-            "all event-study coefficients in the pre-1872 period equal zero "
-            "(estimated separately on the TWFE event-study; identical $p$-value "
-            "applies under both FE designs). The single-line ``$I_g$ comparison'' "
-            "reports the same test on Coale's marital-fertility index "
-            "(Hutterite-normalised legitimate births per married woman 15--49) -- "
-            "the headline outcome in Galloway, Hammel \\& Lee (1994). The "
-            "companion event-study figure \\texttt{fig5\\_event\\_study\\_cbr\\_ig.png} "
-            "plots the CBR and $I_g$ event studies side by side. "
-            "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+            notes_core
+            + notes_rates
+            + notes_carryforward
+            + notes_pretrends_main
+            + notes_pretrends_ig
+            + notes_extra
+            + notes_stars
         ),
     )
     _write(out_path, out)
     return out
+
+
+def baseline_did_indices_table(
+    panel: pd.DataFrame,
+    outcomes: Sequence[str] = ("I_f", "I_g", "I_m", "I_h"),
+    out_path: Path | None = None,
+) -> str:
+    """Baseline DiD on the four Princeton EFP / Coale-Watkins indices.
+
+    Reports the same TWFE / Year x Rb FE specification as
+    :func:`baseline_did_table` but with the Hutterite-normalised
+    fertility indices ($I_f$, $I_g$, $I_m$, $I_h$) as outcomes. These
+    indices satisfy the Coale identity
+
+        I_f \\approx I_g * I_m + I_h * (1 - I_m)
+
+    so reporting all four lets the reader read off the within-marriage
+    vs. nuptiality decomposition directly. The conventional rates
+    (CBR, legitimate BR, illegitimacy ratio, marriage rate) live in
+    :func:`baseline_did_table`; that table's notes point readers here
+    for the rigorous decomposition.
+
+    Carry-forward robustness and the standalone $I_g$ pre-trends footer
+    are both suppressed -- carry-forward because the indices use the
+    interpolated mid-year denominators throughout, and the $I_g$ line
+    because $I_g$ is now one of the columns.
+    """
+    return baseline_did_table(
+        panel,
+        outcomes=outcomes,
+        out_path=out_path or TABLES_DIR / "baseline_did_indices.tex",
+        show_carryforward=False,
+        show_ig_pretrends_line=False,
+        digits_coef=5,
+        digits_se=5,
+        caption=(
+            "Baseline difference-in-differences: Coale--Watkins "
+            "fertility and nuptiality indices"
+        ),
+        label="tab:baseline_did_indices",
+        extra_note=(
+            "$I_f$, $I_g$, $I_m$, $I_h$ are the four Princeton EFP / "
+            "Coale--Watkins indices. They satisfy the identity "
+            "$I_f \\approx I_g \\cdot I_m + I_h \\cdot (1 - I_m)$: a "
+            "fall in overall fertility ($I_f$) can be decomposed into a "
+            "fall in within-marriage fertility ($I_g$), a fall in the "
+            "Hutterite-weighted proportion married ($I_m$), or a fall "
+            "in illegitimate fertility ($I_h$). The denominators of "
+            "$I_g$ and $I_m$ -- count of women aged 15--49 and count of "
+            "married women aged 15--49 -- are piecewise-linearly "
+            "interpolated between Galloway's STA1871 (1871), AGE1882 "
+            "(1882), and AGE1890 (1890) Kreis-level anchors. The "
+            "companion crude-rates table is "
+            "Table~\\ref{tab:baseline_did}."
+        ),
+    )
 
 
 def robustness_table(robustness_df: pd.DataFrame, out_path: Path | None = None) -> str:
@@ -2656,6 +2775,9 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "baseline_did.tex")
     baseline_did_table(panel, out_path=written[-1])
+
+    written.append(out_dir / "baseline_did_indices.tex")
+    baseline_did_indices_table(panel, out_path=written[-1])
 
     written.append(out_dir / "robustness.tex")
     robustness_table(run_robustness(panel), out_path=written[-1])

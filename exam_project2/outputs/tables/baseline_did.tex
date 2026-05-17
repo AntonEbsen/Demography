@@ -2,35 +2,35 @@
 \begin{table}[htbp]
 \centering
 \small
-\caption{Baseline difference-in-differences: Kulturkampf and demographic outcomes}
+\caption{Baseline difference-in-differences: Kulturkampf and conventional demographic rates}
 \label{tab:baseline_did}
-\begin{tabular}{l*{14}{c}}
+\begin{tabular}{l*{8}{c}}
 \toprule
- & \multicolumn{7}{c}{Panel A: County + Year FE} & \multicolumn{7}{c}{Panel B: County + (Year $\times$ Rb) FE} \\
-\cmidrule(lr){2-8}\cmidrule(lr){9-15}
- & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate & $I_g$ (marital fertility) & GMFR (per 1k married women) & $I_m$ (nuptiality) & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate & $I_g$ (marital fertility) & GMFR (per 1k married women) & $I_m$ (nuptiality) \\
- & (1) & (2) & (3) & (4) & (5) & (6) & (7) & (8) & (9) & (10) & (11) & (12) & (13) & (14) \\
+ & \multicolumn{4}{c}{Panel A: County + Year FE} & \multicolumn{4}{c}{Panel B: County + (Year $\times$ Rb) FE} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+ & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate & Crude birth rate & Legit.\ birth rate & Illegitimacy ratio & Marriage rate \\
+ & (1) & (2) & (3) & (4) & (5) & (6) & (7) & (8) \\
 \midrule
-CathShare $\times$ Post & -0.004 & -0.002 & -0.003 & -0.004$^{***}$ & 0.000$^{***}$ & 0.141$^{***}$ & -0.000$^{***}$ & 0.000 & 0.001 & 0.000 & -0.000 & 0.000$^{***}$ & 0.115$^{***}$ & -0.000$^{***}$ \\
- & (0.003) & (0.003) & (0.002) & (0.001) & (0.000) & (0.021) & (0.000) & (0.005) & (0.005) & (0.003) & (0.001) & (0.000) & (0.033) & (0.000) \\
+CathShare $\times$ Post & -0.004 & -0.002 & -0.003 & -0.004$^{***}$ & 0.000 & 0.001 & 0.000 & -0.000 \\
+ & (0.003) & (0.003) & (0.002) & (0.001) & (0.005) & (0.005) & (0.003) & (0.001) \\
 \midrule
-County FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
-Year FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & -- & -- & -- & -- & -- & -- & -- \\
-Year $\times$ Rb FE & -- & -- & -- & -- & -- & -- & -- & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
-Observations & 10,777 & 10,777 & 10,777 & 10,777 & 10,776 & 10,776 & 10,783 & 10,777 & 10,777 & 10,777 & 10,777 & 10,776 & 10,776 & 10,783 \\
-Within $R^{2}$ & -0.002 & -0.001 & 0.010 & 0.028 & 0.046 & 0.046 & -0.188 & 0.000 & 0.000 & -0.002 & 0.002 & 0.042 & 0.042 & -0.072 \\
+County FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
+Year FE & Yes & Yes & Yes & Yes & -- & -- & -- & -- \\
+Year $\times$ Rb FE & -- & -- & -- & -- & Yes & Yes & Yes & Yes \\
+Observations & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 \\
+Within $R^{2}$ & -0.002 & -0.001 & 0.010 & 0.028 & 0.000 & 0.000 & -0.002 & 0.002 \\
 \midrule
-\multicolumn{15}{l}{\textit{Galloway carry-forward robustness} (rate $=$ count $/$ raw Galloway \texttt{Poptot}; previous Dec.\ census carried forward in inter-census years)} \\
-\quad CathShare $\times$ Post (Galloway carry-forward) & -0.000 & 0.002 & -- & -0.004$^{***}$ & -- & -- & -- & -0.000 & 0.000 & -- & -0.000 & -- & -- & -- \\
- & (0.003) & (0.003) &  & (0.001) &  &  &  & (0.005) & (0.005) &  & (0.001) &  &  &  \\
+\multicolumn{9}{l}{\textit{Galloway carry-forward robustness} (rate $=$ count $/$ raw Galloway \texttt{Poptot}; previous Dec.\ census carried forward in inter-census years)} \\
+\quad CathShare $\times$ Post (Galloway carry-forward) & -0.000 & 0.002 & -- & -0.004$^{***}$ & -0.000 & 0.000 & -- & -0.000 \\
+ & (0.003) & (0.003) &  & (0.001) & (0.005) & (0.005) &  & (0.001) \\
 \midrule
-Pre-trends $\chi^{2}$ $p$ & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\
+Pre-trends $\chi^{2}$ $p$ & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\
 \addlinespace
-\multicolumn{15}{l}{\textit{Pre-trends Wald $\chi^{2}$ on $I_g$ (Coale marital fertility, Galloway-tradition headline)}: $\chi^{2} = 72.74$, df $= 10$, $p = 0.000$} \\
+\multicolumn{9}{l}{\textit{Pre-trends Wald $\chi^{2}$ on $I_g$ (Coale marital fertility, Galloway-tradition headline)}: $\chi^{2} = 72.74$, df $= 10$, $p = 0.000$} \\
 \bottomrule
 \end{tabular}
 \begin{minipage}{\linewidth}
 \vspace{0.5em}
-\footnotesize \textit{Notes:} Two-way fixed-effects estimates of equation $Y_{it} = \beta\,(\mathrm{CathShare}_i \times \mathrm{Post}_t) + \alpha_i + \delta_t + \gamma X_{it} + \varepsilon_{it}$, with $\delta_t$ replaced by year~$\times$~Regierungsbezirk fixed effects in Panel~B. Post is an indicator for $t \geq 1873$. Standard errors clustered at the county level in parentheses. Birth and marriage rates per 1{,}000 \emph{mid-year} population; illegitimacy ratio in percent. Mid-year population is constructed by linearly interpolating between consecutive December census anchors and evaluating at July 1 of each calendar year (standard demographic convention). The ``Galloway carry-forward robustness'' row reports the same coefficients using the raw Galloway \texttt{Poptot}, which carries the previous December census forward unchanged in inter-census years and biases CBR upward by 1--3\% in growing populations. The ``Pre-trends $\chi^{2}$ $p$'' row reports the joint Wald test that all event-study coefficients in the pre-1872 period equal zero (estimated separately on the TWFE event-study; identical $p$-value applies under both FE designs). The single-line ``$I_g$ comparison'' reports the same test on Coale's marital-fertility index (Hutterite-normalised legitimate births per married woman 15--49) -- the headline outcome in Galloway, Hammel \& Lee (1994). The companion event-study figure \texttt{fig5\_event\_study\_cbr\_ig.png} plots the CBR and $I_g$ event studies side by side. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
+\footnotesize \textit{Notes:} Two-way fixed-effects estimates of equation $Y_{it} = \beta\,(\mathrm{CathShare}_i \times \mathrm{Post}_t) + \alpha_i + \delta_t + \gamma X_{it} + \varepsilon_{it}$, with $\delta_t$ replaced by year~$\times$~Regierungsbezirk fixed effects in Panel~B. Post is an indicator for $t \geq 1873$. Standard errors clustered at the county level in parentheses. Birth and marriage rates per 1{,}000 \emph{mid-year} population; illegitimacy ratio in percent. Mid-year population is constructed by linearly interpolating between consecutive December census anchors and evaluating at July 1 of each calendar year (standard demographic convention). The ``Galloway carry-forward robustness'' row reports the same coefficients using the raw Galloway \texttt{Poptot}, which carries the previous December census forward unchanged in inter-census years and biases CBR upward by 1--3\% in growing populations. The ``Pre-trends $\chi^{2}$ $p$'' row reports the joint Wald test that all event-study coefficients in the pre-1872 period equal zero (estimated separately on the TWFE event-study; identical $p$-value applies under both FE designs). The single-line ``$I_g$ comparison'' reports the same test on Coale's marital-fertility index (Hutterite-normalised legitimate births per married woman 15--49) -- the headline outcome in Galloway, Hammel \& Lee (1994). The companion event-study figure \texttt{fig5\_event\_study\_cbr\_ig.png} plots the CBR and $I_g$ event studies side by side. Crude rates use mid-year total population in the denominator and therefore conflate age structure, marital structure, and within-marriage fertility. The Coale--Watkins decomposition in Table~\ref{tab:baseline_did_indices} addresses this directly. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
 \end{minipage}
 \end{table}
