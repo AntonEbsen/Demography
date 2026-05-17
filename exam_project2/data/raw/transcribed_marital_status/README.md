@@ -13,11 +13,23 @@ marital-status table only for 1871 (`STA1871.XLS`).
 | 1871 | Heft 30  | Married Female **≥15** only (no 15–49 cap; we use the Princeton schedule, see §6.6b of DATA_APPENDIX) |
 | 1880 | Heft 66 | **No marital-status × age data at Kreis level.** Skip or use Rb proxy. |
 | 1885 | Heft 96 | **Totals only, no age breakdown.** Skip or use Rb proxy. |
-| 1890 | Heft **121:1** | **Married Female 15–49 direct cell** |
-| 1895 | Heft **148:1** | **Married Female 15–49 direct cell** |
-| 1900 | Heft **177** | **Married Female 15–49 direct cell** |
-| 1905 | Heft **206:1** | **Married Female 15–49 direct cell** |
-| 1910 | Heft **234:1** | Married Female **15–44** direct cell (1-yr truncation) |
+| 1890 | Heft **121:2** (Zweiter Theil) | **Married Female 15–49 direct cell** |
+| 1895 | Heft **148:2** (Zweiter Theil) | **Married Female 15–49 direct cell** |
+| 1900 | Heft **177:2** (probable Zweiter Theil) | **Married Female 15–49 direct cell** |
+| 1905 | Heft **206:2** (probable Zweiter Theil) | **Married Female 15–49 direct cell** |
+| 1910 | Heft **234:2** (probable Zweiter Theil) | Married Female **15–44** direct cell (1-yr truncation) |
+
+**Note on Galloway's "121:1" citation.** Galloway's 2007 inventory document lists the
+marital-status table under "Preussische Statistik 30, 76:2, 96, 121:1, 148:1, 177,
+206:1, 234:1." However, the Vorwort of *Heft 121, Erster Theil* (Berlin 1893, p. 9)
+explicitly states that the marital-status (Familienstand) data appears in the
+*Zweiter Theil*, not the *Erster Theil*. Galloway's `:1` is most likely a shorthand
+for the bibliographic Heft number rather than a literal part designation — the actual
+data lives in the **second** part of each two-part Heft. Confirmed by direct
+inspection of v.121:1 on HathiTrust (uc1.c100401730), which contains general
+population, households, birthplace, citizenship, religion, and mixed-marriages tables
+but **no Familienstand × Alter table**. Inspect v.121:2, v.148:2, etc., for the
+target cells.
 
 For the four golden years (1890, 1895, 1900, 1905) the source publishes
 **one number per Kreis**: total married women aged 15–49. That's the

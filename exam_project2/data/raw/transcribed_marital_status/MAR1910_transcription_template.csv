@@ -1,7 +1,8 @@
 # Galloway 1994 GMFR replication, census year 1910
-# Source: PS Heft 234:1
+# Source: PS Heft 234:2 (likely Zweiter Theil)
 # Note: Direct cell: Married Female 15-44 (1-yr truncation).
-# Primary cell: mwf_15_49_direct = Married Female 15-49 (or 15_44 where noted), as published per Kreis.
+# Primary cell: mwf_15_49_direct = Married Female 15-49,
+#               as published per Kreis.
 # Fallback cells (if direct not given): mwf_15_19 + mwf_20_24 + ... + mwf_45_49.
 #
 Code,Rb,Kreis,pop_total_1910_galloway,mwf_15_49_direct,mwf_15_19,mwf_20_24,mwf_25_29,mwf_30_34,mwf_35_39,mwf_40_44,mwf_45_49,mwf_50p,twf_15_19,twf_20_24,twf_25_29,twf_30_34,twf_35_39,twf_40_44,twf_45_49,twf_50p,source_page,notes
