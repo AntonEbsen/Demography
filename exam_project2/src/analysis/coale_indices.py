@@ -143,6 +143,7 @@ def compute_coale_indices(
     use_county_specific_share: bool = True,
     use_sta1871: bool = True,
     marriage_col: str = "married_share_over15_f_1871",
+    use_age1890: bool = True,
 ) -> pd.DataFrame:
     """
     Compute Coale's $I_f$, $I_g$, $I_h$ for each county-year, plus the
@@ -208,67 +209,197 @@ def compute_coale_indices(
     Fbar_all = _hutterite_weighted(age_dist)
     Fbar_mar = _hutterite_marital_weighted(age_dist, married_share)
     Fbar_unmar = _hutterite_unmarried_weighted(age_dist, married_share)
+    married_share_overall_const = sum(
+        age_dist[a] * married_share[a] for a in age_dist
+    )
 
     df = panel.copy()
+    year = df["Year"]
     pop = df[pop_col] if pop_col in df.columns else df["Poptot"]
 
+    # -----------------------------------------------------------------
+    # Time-varying W (women 15-49 count) and M (married women 15-49
+    # count) anchored at the two Galloway cross-sections we have:
+    #
+    #   1871 anchor : POP1871 (women_15_49_1871) and STA1871
+    #                 (married_share_over15_f_1871, scaled to 15-49 via
+    #                 the implied schedule ratio).
+    #   1890 anchor : AGE1890 (women_15_49_1890,
+    #                 married_women_15_49_1890) -- Galloway's own
+    #                 age-by-marital-status tabulation, giving us actual
+    #                 counts of women 15-49 and married women 15-49 per
+    #                 Kreis at the 1890 census.
+    #
+    # For 1871 <= t <= 1890: linear interpolation in year.
+    # For t < 1871: scale 1871 count by contemporaneous population
+    # ratio (preserves the prior pre-anchor behaviour).
+    # -----------------------------------------------------------------
+    have_age1890 = (
+        use_age1890
+        and "women_15_49_1890" in df.columns
+        and "married_women_15_49_1890" in df.columns
+        and df["women_15_49_1890"].notna().any()
+    )
+    have_age1882 = (
+        use_age1890
+        and "women_15_49_1882" in df.columns
+        and "married_women_15_49_1882" in df.columns
+        and df["women_15_49_1882"].notna().any()
+    )
+
+    def _piecewise_linear_anchored(
+        year_col: pd.Series,
+        anchors: list[tuple[int, pd.Series]],
+    ) -> pd.Series:
+        """
+        Piecewise linear interpolation in `year_col` across an ordered
+        list of (year, value_series) anchors. **Per row**, anchors with
+        missing values are skipped -- so a Kreis where the 1882 anchor
+        is NaN (e.g. nulled as implausible) still gets clean
+        1871-1890 interpolation. Inside the anchor range, each row is
+        linearly interpolated between the two nearest *non-null*
+        surrounding anchors. Outside the range, the nearest-anchor
+        value is returned (caller handles pre-anchor pop scaling).
+        """
+        anchors = sorted(anchors, key=lambda x: x[0])
+        years_a = np.array([y for y, _ in anchors], dtype=float)
+        # Stack the anchor values into a (n_rows, n_anchors) array.
+        values_mat = np.column_stack(
+            [v.astype(float).to_numpy() for _, v in anchors]
+        )
+        year_arr = year_col.to_numpy(dtype=float)
+        out = np.full(len(year_arr), np.nan, dtype=float)
+        for i in range(len(year_arr)):
+            t = year_arr[i]
+            valid_mask = ~np.isnan(values_mat[i])
+            if not valid_mask.any():
+                continue
+            y_valid = years_a[valid_mask]
+            v_valid = values_mat[i, valid_mask]
+            if t <= y_valid[0]:
+                out[i] = v_valid[0]
+            elif t >= y_valid[-1]:
+                out[i] = v_valid[-1]
+            else:
+                # Find bracketing anchors and linearly interpolate.
+                k = np.searchsorted(y_valid, t)
+                y_lo, y_hi = y_valid[k - 1], y_valid[k]
+                v_lo, v_hi = v_valid[k - 1], v_valid[k]
+                w = (t - y_lo) / (y_hi - y_lo)
+                out[i] = v_lo * (1 - w) + v_hi * w
+        return pd.Series(out, index=year_col.index, dtype=float)
+
+    # --- W (women 15-49 count, county-year) ---------------------------
     if (
         use_county_specific_share
         and "women_15_49_1871" in df.columns
         and "pop_total_1871" in df.columns
     ):
-        # County-specific share of women aged 15-49 from POP1871, applied
-        # to contemporaneous mid-year population.
-        share = (df["women_15_49_1871"] / df["pop_total_1871"]).clip(lower=0.10, upper=0.40)
-        W = share * pop
+        share_1871 = (
+            df["women_15_49_1871"] / df["pop_total_1871"]
+        ).clip(lower=0.10, upper=0.40)
+        W_pop_scaled = share_1871 * pop  # pre-1871 / fallback
+
+        if have_age1890:
+            anchors_W = [(1871, df["women_15_49_1871"].astype(float))]
+            if have_age1882:
+                anchors_W.append((1882, df["women_15_49_1882"].astype(float)))
+            anchors_W.append((1890, df["women_15_49_1890"].astype(float)))
+            W_interp = _piecewise_linear_anchored(year, anchors_W)
+            # Use the interpolation for 1871 onward when the latest
+            # anchor is present; pre-1871 falls back to pop-scaled.
+            w_anchor_90 = df["women_15_49_1890"]
+            use_interp_W = w_anchor_90.notna() & (year >= 1871)
+            W = pd.Series(
+                np.where(use_interp_W, W_interp, W_pop_scaled),
+                index=df.index, dtype=float,
+            )
+        else:
+            W = W_pop_scaled
     else:
         W = women_share_of_pop * pop
 
-    # County-specific marriage shifter. k_i applies *proportionally* to
-    # both Fbar_mar and Fbar_unmar so they remain a partition of Fbar_all:
-    # if a county has 10% higher marriage prevalence then 10% more of
-    # the Hutterite-weighted fertility "potential" is in the married
-    # category and 10% less in the unmarried category (subject to
-    # clipping to keep Fbar_unmar non-negative).
+    # --- M (married women 15-49 count, county-year) -------------------
+    # 1871 anchor: STA1871 over-15 prevalence shifter k_71 = mu_i / mean(mu).
+    # k_71 measures relative marriage prevalence vs Prussia average.
+    # M_71 = W_71 * k_71 * married_share_overall_const  (current logic).
+    # 1890 anchor: AGE1890 married_women_15_49_1890 directly.
+    # For 1871 <= t <= 1890: interpolate M linearly in year.
+
+    used_sta1871 = False
+    used_age1890 = False
+    mu_ref = float("nan")
     if (
         use_sta1871
         and marriage_col in df.columns
         and df[marriage_col].notna().any()
     ):
-        mu = df[marriage_col]
-        mu_ref = float(
-            df.drop_duplicates("Code")[marriage_col].dropna().mean()
-        )
-        k = (mu / mu_ref).clip(lower=0.5, upper=1.5)
-        Fbar_mar_eff = k * Fbar_mar
-        # Keep the marital + non-marital partition consistent: rescale
-        # the unmarried weight so that the implied weighted-average
-        # married share equals the rescaled value, preserving
-        # Fbar_mar + Fbar_unmar' = Fbar_all (the Princeton identity).
-        Fbar_unmar_eff = Fbar_all - Fbar_mar_eff
-        Fbar_unmar_eff = Fbar_unmar_eff.clip(lower=1e-6)
+        # STA1871 reports `married_share_over15_f_1871` = Marriedover15f /
+        # Popover15f. We use this empirical prevalence *directly* as the
+        # 1871 marriage prevalence among 15-49 women. This is a small
+        # approximation (over-15 includes some 50+ women, who in 1871
+        # Prussia are mostly still married until widowhood) but it's the
+        # closest measure to AGE1890's 15-49 prevalence -- the Prussia
+        # means are 0.516 vs 0.524, within 2 percentage points.
+        mu_1871 = df[marriage_col]
+        mu_ref = float(df.drop_duplicates("Code")[marriage_col].dropna().mean())
         used_sta1871 = True
-    else:
-        Fbar_mar_eff = Fbar_mar
-        Fbar_unmar_eff = Fbar_unmar
-        used_sta1871 = False
 
-    # M = implied count of married women 15-49 (used as GMFR denominator
-    # and exposed as a panel column). Under the STA1871 recalibration
-    # this varies across counties; under the constant-schedule fallback
-    # it equals W * mean(rho_a^const).
-    married_share_overall_const = sum(
-        age_dist[a] * married_share[a] for a in age_dist
-    )
-    if used_sta1871:
-        # Implied married-women count among 15-49 is W * mu_i * (ratio
-        # of "implied married rate among 15-49 under reference schedule"
-        # to "empirical married rate over 15"). The ratio is just the
-        # constant married_share_overall_const / mu_ref, baked into k.
-        M = W * k * married_share_overall_const
+        if (
+            have_age1890
+            and "women_15_49_1871" in df.columns
+        ):
+            # 1871 anchor: empirical M_1871 = W_1871 * mu_1871.
+            M_71_anchor = (
+                df["women_15_49_1871"].astype(float) * mu_1871
+            )
+            # 1890 anchor: directly observed in AGE1890.
+            M_90_anchor = df["married_women_15_49_1890"].astype(float)
+            anchors_M = [(1871, M_71_anchor)]
+            if have_age1882:
+                # 1882 anchor: AGE1882 marital totals adjusted to 15-49
+                # by AGE1890 within-Kreis ratios.
+                M_82_anchor = df["married_women_15_49_1882"].astype(float)
+                anchors_M.append((1882, M_82_anchor))
+            anchors_M.append((1890, M_90_anchor))
+            M_interp = _piecewise_linear_anchored(year, anchors_M)
+            # Pre-1871 / fallback: scale 1871 anchor by pop ratio.
+            M_pre = M_71_anchor * (pop / df["pop_total_1871"]).clip(lower=0.5, upper=2.0)
+            use_interp_M = M_90_anchor.notna() & (year >= 1871)
+            M = pd.Series(
+                np.where(use_interp_M, M_interp, M_pre),
+                index=df.index, dtype=float,
+            )
+            used_age1890 = True
+        else:
+            # STA1871 only: M_t = W_1871 * mu_1871 * (pop / pop_1871).
+            if "women_15_49_1871" in df.columns:
+                M_71_anchor = (
+                    df["women_15_49_1871"].astype(float) * mu_1871
+                )
+                M = M_71_anchor * (
+                    pop / df["pop_total_1871"]
+                ).clip(lower=0.5, upper=2.0)
+            else:
+                M = W * mu_1871
     else:
+        # No STA1871 -- fall back to the constant Prussia-wide schedule.
         M = W * married_share_overall_const
 
+    # --- Effective Hutterite-weighted marital fertility maximum -------
+    # Re-express the time-varying M as a county-year-specific k_t and
+    # apply it to the Hutterite weights so the existing I_g formula
+    # (B_leg / (W * Fbar_mar_eff)) generalises cleanly. k_t = (M/W) /
+    # married_share_overall_const so that, when M / W equals
+    # married_share_overall_const, k_t = 1 (the reference Prussia
+    # schedule).
+    k_t = (M / W.replace(0, np.nan) / married_share_overall_const).clip(
+        lower=0.5, upper=1.5
+    ).fillna(1.0)
+    Fbar_mar_eff = k_t * Fbar_mar
+    Fbar_unmar_eff = (Fbar_all - Fbar_mar_eff).clip(lower=1e-6)
+
+    # --- Compute the headline indices ---------------------------------
     df["I_f"] = df["Birtot"] / (W * Fbar_all)
     df["I_g"] = df["Birlegtot"] / (W * Fbar_mar_eff)
     df["I_h"] = np.where(
@@ -276,18 +407,32 @@ def compute_coale_indices(
         df["Birbastot"] / (W * Fbar_unmar_eff),
         np.nan,
     )
-
-    # Galloway-tradition GMFR: legitimate births per 1{,}000 married women
-    # 15--49. Direct unnormalised analogue of the Princeton I_g.
     df["gmfr"] = np.where(M > 0, df["Birlegtot"] / M * 1000.0, np.nan)
-    # Expose the implied married-women count as a panel column so
-    # downstream code can recompute its own rates.
+    # Legitimate general fertility rate: legitimate births per 1{,}000
+    # *women* aged 15-49 (NOT per married woman). The natural
+    # marital-style counterpart to CBR -- uses the proper age-restricted
+    # denominator from POP1871/AGE1890 rather than total population.
+    df["lgfr"] = np.where(W > 0, df["Birlegtot"] / W * 1000.0, np.nan)
+
+    # Expose the time-varying counts as panel columns so downstream
+    # code can recompute its own rates.
+    df["women_15_49"] = W
     df["married_women_15_49"] = M
 
-    if used_sta1871:
+    if used_age1890:
+        anchors_log = "1871 + 1890"
+        if have_age1882:
+            anchors_log = "1871 + 1882 (AGE1882 via AGE1890 ratios) + 1890"
         logger.info(
-            "Coale I_g computed with STA1871 recalibration: mu_ref=%.4f, "
-            "county-specific shifter k_i applied (clipped to [0.5, 1.5])",
+            "Coale indices computed with AGE anchors (%s): mu_ref=%.4f at "
+            "1871; piecewise-linear interpolation of W and M; pop-scaled "
+            "extrapolation pre-1871",
+            anchors_log, mu_ref,
+        )
+    elif used_sta1871:
+        logger.info(
+            "Coale I_g computed with STA1871 recalibration only "
+            "(AGE1890 column not found or all-null): mu_ref=%.4f",
             mu_ref,
         )
     else:

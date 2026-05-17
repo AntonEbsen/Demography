@@ -115,13 +115,56 @@ PANEL_SCHEMA = DataFrameSchema(
             float, Check.in_range(0, 1), nullable=True
         ),
         # Implied count of married women aged 15-49, used as the GMFR
-        # denominator and exposed for downstream rate-recomputation.
-        # Under the STA1871 recalibration this varies across counties;
-        # under the constant-schedule fallback it equals
-        # W_15_49 * Prussia-wide married-share overall (~0.62).
+        # denominator. Time-varying via linear interpolation between
+        # the 1871 anchor (STA1871-derived) and the 1890 anchor
+        # (AGE1890's `Age15-49marriedf`); pop-scaled extrapolation for
+        # pre-1871 years.
         "married_women_15_49": Column(
             float, Check.gt(0), nullable=True
         ),
+        # Companion to `married_women_15_49`: time-varying count of all
+        # women 15-49, anchored at POP1871 (1871) and AGE1890 (1890)
+        # with linear interpolation in between.
+        "women_15_49": Column(float, Check.gt(0), nullable=True),
+        # AGE1890 cross-section direct columns (Galloway's own age-by-
+        # marital tabulation). Time-invariant after merge (one value
+        # per Kreis); used as the 1890 anchor for `women_15_49` and
+        # `married_women_15_49` interpolation.
+        "women_15_49_1890": Column(float, Check.gt(0), nullable=True),
+        "married_women_15_49_1890": Column(
+            float, Check.gt(0), nullable=True
+        ),
+        "married_share_15_49_f_1890": Column(
+            float, Check.in_range(0, 1), nullable=True
+        ),
+        # AGE1890 internal calibration ratios (used to extract 15-49
+        # counts from AGE1882's coarse 0-19 / 20-69 / 70+ bins).
+        "r_w_15_49_in_popf_1890": Column(
+            float, Check.in_range(0, 1), nullable=True
+        ),
+        "r_m_15_49_in_marriedf_1890": Column(
+            float, Check.in_range(0, 1), nullable=True
+        ),
+        # AGE1882 cross-section (raw coarse totals + the derived 15-49
+        # anchors). The 15-49 anchors are estimates: pop_1882f and
+        # marriedf_1882 multiplied by the AGE1890 within-Kreis ratios
+        # r_w_15_49_in_popf_1890 and r_m_15_49_in_marriedf_1890. This
+        # is the second anchor in the 1871-1882-1890 piecewise linear
+        # interpolation of women_15_49 and married_women_15_49 in
+        # compute_coale_indices.
+        "pop_1882f": Column(float, Check.gt(0), nullable=True),
+        "marriedf_1882": Column(float, Check.gt(0), nullable=True),
+        "women_15_49_1882": Column(float, Check.gt(0), nullable=True),
+        "married_women_15_49_1882": Column(
+            float, Check.gt(0), nullable=True
+        ),
+        "married_share_15_49_f_1882": Column(
+            float, Check.in_range(0, 1), nullable=True
+        ),
+        # Legitimate general fertility rate (legitimate births per
+        # 1,000 women 15-49). Marital-style headline rate using the
+        # proper age-restricted denominator; complements CBR.
+        "lgfr": Column(float, Check.in_range(0, 600), nullable=True),
     },
     strict=False,
     unique=["Code", "Year"],
