@@ -92,7 +92,9 @@ OUTCOME_LABELS: dict[str, str] = {
     "I_f": "$I_f$ (overall fertility)",
     "I_g": "$I_g$ (marital fertility)",
     "I_h": "$I_h$ (illegitimate fertility)",
+    "I_m": "$I_m$ (nuptiality)",
     "gmfr": "GMFR (per 1k married women)",
+    "prop_married_15_49": "Prop.\\ married 15--49",
     # Deprecated -- kept for back-compat. Static-1871 GFR is superseded
     # by I_g for marital-fertility analysis.
     "gfr_static_1871": "GFR (1871 base, deprecated)",
@@ -636,7 +638,7 @@ def baseline_did_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
         "cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate",
-        "I_g", "gmfr",
+        "I_g", "gmfr", "I_m",
     ),
     out_path: Path | None = None,
 ) -> str:

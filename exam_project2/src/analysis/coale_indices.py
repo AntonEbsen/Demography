@@ -414,10 +414,32 @@ def compute_coale_indices(
     # denominator from POP1871/AGE1890 rather than total population.
     df["lgfr"] = np.where(W > 0, df["Birlegtot"] / W * 1000.0, np.nan)
 
-    # Expose the time-varying counts as panel columns so downstream
-    # code can recompute its own rates.
-    df["women_15_49"] = W
-    df["married_women_15_49"] = M
+    # Coale's nuptiality index I_m: the Hutterite-weighted proportion of
+    # women 15-49 who are married. Formally
+    #
+    #   I_m = sum_a (m_a * F_a^H) / sum_a (w_a * F_a^H)
+    #
+    # where m_a / w_a is the age-specific married share. We approximate
+    # the age structure of m_a and w_a within 15-49 by holding the
+    # Princeton DEFAULT_MARRIED_SHARE schedule's age profile fixed and
+    # rescaling its level by the time-varying county-year shifter k_t =
+    # (M/W) / married_share_overall_const (the same shifter used above
+    # to make I_g county-year-specific). This yields
+    #
+    #   I_m_it = k_t_it * (Fbar_mar / Fbar_all),
+    #
+    # so I_m inherits the AGE1890 + AGE1882 + STA1871 anchored time
+    # variation in M/W. The Coale identity
+    #
+    #   I_f = I_g * I_m + I_h * (1 - I_m)
+    #
+    # is approximately satisfied by these series (exactly satisfied if
+    # the marital-fertility/non-marital-fertility partition uses the
+    # same k_t shifter, which it does here -- Fbar_unmar_eff = Fbar_all
+    # - Fbar_mar_eff). For descriptive use the index makes the nuptiality
+    # channel directly observable as a DiD outcome.
+    Im_ref = Fbar_mar / Fbar_all
+    df["I_m"] = (k_t * Im_ref).clip(lower=0.05, upper=0.95)
 
     if used_age1890:
         anchors_log = "1871 + 1890"
@@ -476,12 +498,15 @@ def aggregate_by_group_period(
 
 def did_on_indices(
     panel_with_indices: pd.DataFrame,
-    indices: Sequence[str] = ("I_f", "I_g", "I_h", "marriage_rate"),
+    indices: Sequence[str] = ("I_f", "I_g", "I_h", "I_m", "marriage_rate"),
 ) -> pd.DataFrame:
     """
     DiD coefficient on cath_share x post for each Coale index. Reports the
     decomposition: the same shock affects I_f, I_g, I_m differently,
-    revealing whether the channel is marital-fertility or nuptiality.
+    revealing whether the channel is marital-fertility (I_g) or nuptiality
+    (I_m). The Coale identity I_f = I_g * I_m + I_h * (1 - I_m) means the
+    I_f coefficient should approximately equal a weighted average of the
+    I_g and I_m coefficients.
     """
     from src.analysis.regressions import run_baseline_did
 

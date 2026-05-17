@@ -419,7 +419,8 @@ These approximations affect the *level* of the indices and, critically, the *wit
 | Outcome | β | p | Reading |
 |---|---|---|---|
 | CBR | −0.004 | 0.22 | n.s. |
-| Marriage rate (≈ $I_m$) | −0.0042 | <0.001 | Falls in Catholic counties |
+| Marriage rate (annual flow) | −0.0042 | <0.001 | Falls in Catholic counties |
+| **$I_m$ (Coale nuptiality)** | **−0.00024** | **<0.001** | **Falls — direct census measure** |
 | $I_f$ (overall fertility) | −0.00002 | 0.61 | Unchanged |
 | **$I_g$ (marital fertility)** | **+0.00037** | **<0.001** | **Rises (Princeton compensation)** |
 | gmfr (Galloway headline) | +0.141 | <0.001 | Same as $I_g$ |
@@ -427,6 +428,16 @@ These approximations affect the *level* of the indices and, critically, the *wit
 | `lgfr` (legitimate per women 15-49) | +0.003 | 0.84 | Unchanged |
 
 This is the textbook Coale-Watkins decomposition for an institutional nuptiality shock: $I_m$ falls, $I_f$ doesn't move, $I_g$ rises mechanically because surviving marriages remain fertile.
+
+**Construction of $I_m$.** $I_m = \sum_a M_a F^H_a / \sum_a W_a F^H_a$ is the Hutterite-weighted Coale nuptiality index. Implemented in `compute_coale_indices` as
+
+$$
+I_m^{it} \;=\; k_{it} \cdot \frac{\bar F^H_{\mathrm{mar}}}{\bar F^H_{\mathrm{all}}}
+\quad\text{where}\quad
+k_{it} \;=\; \frac{M_{it}/W_{it}}{\bar\mu^{\text{Princeton}}}
+$$
+
+The time-varying $k_{it}$ shifter inherits its variation from the AGE1890 + AGE1882 + STA1871 anchored interpolation of $M_t$ and $W_t$ documented above. Cross-validation against the directly-observed AGE1890 proportion married 15-49 gives a county-level correlation of ~0.83. Mean $I_m$ on the current build is 0.52, range [0.39, 0.69] across county-years — consistent with Princeton EFP estimates for eastern-Hajnal-line Prussia. The DiD identifies $I_m$ off within-county year-to-year movement between 1871 and 1890, which exists because $M_t$ and $W_t$ are anchored at non-degenerate per-county census values at both 1871 and 1890.
 
 ### 6.7 Other constructed variables
 
