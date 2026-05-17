@@ -4,33 +4,33 @@
 \small
 \caption{Pretreatment-characteristic time-trend robustness (Bai 2009; Hsiao 2014)}
 \label{tab:pretreatment_trends}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccccc}
 \toprule
- & CBR & Marriage rate & $I_g$ & $N$ \\
- & (1) & (2) & (3) & \\
+ & CBR & Marriage rate & $I_g$ & GMFR & $N$ \\
+ & (1) & (2) & (3) & (4) & \\
 \midrule
-(1) Baseline (no pretreatment trends) & -0.0040 & -0.0042$^{***}$ & 0.00037$^{***}$ & 10,777 \\
- & (0.0032) & (0.0009) & (0.00006) & \\
-(2) + literacy x trend & -0.0053 & -0.0043$^{***}$ & 0.00039$^{***}$ & 9,638 \\
- & (0.0034) & (0.0010) & (0.00006) & \\
-(3) + lit + urban x trend & -0.0054 & -0.0043$^{***}$ & 0.00037$^{***}$ & 9,638 \\
- & (0.0034) & (0.0010) & (0.00006) & \\
-(4) + lit + urban + pruss x trend & -0.0054 & -0.0043$^{***}$ & 0.00038$^{***}$ & 9,638 \\
- & (0.0034) & (0.0010) & (0.00006) & \\
-(5) + lit + urban + pruss + jew x trend & 0.0002 & -0.0022$^{**}$ & 0.00042$^{***}$ & 9,638 \\
- & (0.0035) & (0.0009) & (0.00006) & \\
-(6) + lit + urban + pruss + jew + women-15-49-share x trend & -0.0001 & -0.0022$^{**}$ & 0.00042$^{***}$ & 9,638 \\
- & (0.0034) & (0.0009) & (0.00006) & \\
-(7) + born-in-Kreis share x trend & 0.0010 & -0.0023$^{***}$ & 0.00044$^{***}$ & 9,638 \\
- & (0.0034) & (0.0009) & (0.00006) & \\
-(8) + 1849 student share x trend & 0.0021 & -0.0015 & 0.00039$^{***}$ & 7,143 \\
- & (0.0039) & (0.0010) & (0.00007) & \\
-(9) + land Gini 1882 + log income-tax-pc 1876 x trend & 0.0002 & -0.0021$^{**}$ & 0.00035$^{***}$ & 7,143 \\
- & (0.0040) & (0.0011) & (0.00007) & \\
+(1) Baseline (no pretreatment trends) & -0.0040 & -0.0042$^{***}$ & 0.00037$^{***}$ & 0.141$^{***}$ & 10,777 \\
+ & (0.0032) & (0.0009) & (0.00006) & (0.021) & \\
+(2) + literacy x trend & -0.0053 & -0.0043$^{***}$ & 0.00039$^{***}$ & 0.147$^{***}$ & 9,638 \\
+ & (0.0034) & (0.0010) & (0.00006) & (0.022) & \\
+(3) + lit + urban x trend & -0.0054 & -0.0043$^{***}$ & 0.00037$^{***}$ & 0.142$^{***}$ & 9,638 \\
+ & (0.0034) & (0.0010) & (0.00006) & (0.022) & \\
+(4) + lit + urban + pruss x trend & -0.0054 & -0.0043$^{***}$ & 0.00038$^{***}$ & 0.144$^{***}$ & 9,638 \\
+ & (0.0034) & (0.0010) & (0.00006) & (0.022) & \\
+(5) + lit + urban + pruss + jew x trend & 0.0002 & -0.0022$^{**}$ & 0.00042$^{***}$ & 0.159$^{***}$ & 9,638 \\
+ & (0.0035) & (0.0009) & (0.00006) & (0.023) & \\
+(6) + lit + urban + pruss + jew + women-15-49-share x trend & -0.0001 & -0.0022$^{**}$ & 0.00042$^{***}$ & 0.160$^{***}$ & 9,638 \\
+ & (0.0034) & (0.0009) & (0.00006) & (0.023) & \\
+(7) + born-in-Kreis share x trend & 0.0010 & -0.0023$^{***}$ & 0.00044$^{***}$ & 0.166$^{***}$ & 9,638 \\
+ & (0.0034) & (0.0009) & (0.00006) & (0.024) & \\
+(8) + 1849 student share x trend & 0.0021 & -0.0015 & 0.00039$^{***}$ & 0.148$^{***}$ & 7,143 \\
+ & (0.0039) & (0.0010) & (0.00007) & (0.026) & \\
+(9) + land Gini 1882 + log income-tax-pc 1876 x trend & 0.0002 & -0.0021$^{**}$ & 0.00035$^{***}$ & 0.135$^{***}$ & 7,143 \\
+ & (0.0040) & (0.0011) & (0.00007) & (0.026) & \\
 \bottomrule
 \end{tabular}
 \begin{minipage}{\linewidth}
 \vspace{0.5em}
-\footnotesize \textit{Notes:} Each row is a separate two-way fixed-effects regression of the outcome on $\mathrm{CathShare} \times \mathrm{Post}$ and the listed baseline iPEHD-1871 characteristics interacted with a centred linear time trend. The marital-fertility column reports the recalibrated Coale $I_g$ (Hutterite-normalised legitimate births per married woman 15--49, with the STA1871 marriage-prevalence shifter); see \S6.5 of the data appendix. The interactions allow counties with different pre-treatment literacy ($\mathrm{school1517}$), urbanisation ($f_{\mathrm{urban}}$), Prussian-citizenship share ($f_{\mathrm{pruss}}$), and Jewish-population share ($f_{\mathrm{jew}}$) to follow different trajectories. The Kulturkampf coefficient is then identified from deviations from those trajectories at 1873. The marriage-rate coefficient is essentially unchanged when literacy, urbanisation, and Prussian citizenship are added (rows 2--4) but attenuates by ~50\% when Jewish share is added (row 5), which absorbs differential dynamics in eastern provinces with high Jewish settlement and thus partially captures the same Polish-province channel documented in Tables~\ref{tab:falsifications} and \ref{tab:emigration_robustness}. Sample shrinks slightly because the iPEHD merge covers $\sim$90\% of Galloway counties. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
+\footnotesize \textit{Notes:} Each row is a separate two-way fixed-effects regression of the outcome on $\mathrm{CathShare} \times \mathrm{Post}$ and the listed baseline iPEHD-1871 characteristics interacted with a centred linear time trend. The marital-fertility columns report Coale's $I_g$ (Hutterite-normalised) and the Galloway, Hammel \& Lee (1994) headline GMFR (legitimate births per 1{,}000 married women 15--49, the unnormalised analogue of $I_g$). Both use the AGE1890 / STA1871 time-varying marital denominator (see \S6.5 of the data appendix). The interactions allow counties with different pre-treatment literacy ($\mathrm{school1517}$), urbanisation ($f_{\mathrm{urban}}$), Prussian-citizenship share ($f_{\mathrm{pruss}}$), and Jewish-population share ($f_{\mathrm{jew}}$) to follow different trajectories. The Kulturkampf coefficient is then identified from deviations from those trajectories at 1873. The marriage-rate coefficient is essentially unchanged when literacy, urbanisation, and Prussian citizenship are added (rows 2--4) but attenuates by ~50\% when Jewish share is added (row 5), which absorbs differential dynamics in eastern provinces with high Jewish settlement and thus partially captures the same Polish-province channel documented in Tables~\ref{tab:falsifications} and \ref{tab:emigration_robustness}. Sample shrinks slightly because the iPEHD merge covers $\sim$90\% of Galloway counties. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
 \end{minipage}
 \end{table}
