@@ -17,7 +17,10 @@
 Crude Birth Rate (CBR)   & 38.96 & 38.94 & & 38.52 & 39.77 \\
 Legitimate Birth Rate   & 35.87 & 36.02 & & 35.07 & 37.69 \\
 Marriage Rate   & 8.30 & 7.85 & & 8.16 & 7.71 \\
+Overall Fertility ($I_f$)   & 0.41 & 0.43 & & 0.42 & 0.43 \\
 Marital Fertility ($I_g$)   & 0.73 & 0.75 & & 0.71 & 0.81 \\
+Nuptiality ($I_m$)   & 0.52 & 0.53 & & 0.53 & 0.50 \\
+Illegitimate Fertility ($I_h$)   & 0.07 & 0.07 & & 0.08 & 0.05 \\
 Share Catholic (\%)   & {-} & {-} & & 9.30 & 84.02 \\
 \midrule
 Counties (N) & {390} & {392} & & {262} & {130} \\
@@ -26,7 +29,7 @@ Observations ($N \times T$) & \multicolumn{2}{c}{3,834 / 6,949} & & \multicolumn
 \end{tabular}
 \begin{tablenotes}
 \footnotesize
-\item \textit{Note:} Low-Catholic counties defined as $\le 50\%$ Catholic in 1871; High-Catholic as $> 50\%$. Panel~A shows the temporal shift around the 1873 May Laws (full panel of 392 counties, Pre-1873 vs Post-1873). Panel~B shows the baseline cross-sectional differences across the entire 1862--1890 sample period. Birth and marriage rates are per 1{,}000 \emph{mid-year} population; $I_g$ is Coale's Hutterite-normalised marital-fertility index (Princeton EFP convention, headline outcome in Galloway, Hammel \& Lee 1994). Share Catholic is time-invariant (1871 census) and is therefore omitted from Panel~A.
+\item \textit{Note:} Low-Catholic counties defined as $\le 50\%$ Catholic in 1871; High-Catholic as $> 50\%$. Panel~A shows the temporal shift around the 1873 May Laws (full panel of 392 counties, Pre-1873 vs Post-1873). Panel~B shows the baseline cross-sectional differences across the entire 1862--1890 sample period. Birth and marriage rates are per 1{,}000 \emph{mid-year} population. The four Princeton EFP / Coale--Watkins indices are Hutterite-normalised and satisfy the identity $I_f \approx I_g \cdot I_m + I_h \cdot (1 - I_m)$: $I_f$ is overall fertility, $I_g$ is marital fertility (the headline outcome in Galloway, Hammel \& Lee 1994), $I_m$ is the Hutterite-weighted proportion of women 15--49 who are married, and $I_h$ is illegitimate fertility. Married-women and women 15--49 denominators are time-varying, piecewise-linearly interpolated between Galloway's STA1871, AGE1882, and AGE1890 anchors. Share Catholic is time-invariant (1871 census) and is therefore omitted from Panel~A.
 \item \textit{Source:} Author's calculations from the Galloway Prussia Database \citep{Galloway2007}; mid-year population constructed via linear interpolation between consecutive December censuses (see \citealp{GallowayHammelLee1994}).
 \end{tablenotes}
 \end{threeparttable}
