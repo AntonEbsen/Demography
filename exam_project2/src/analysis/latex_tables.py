@@ -634,7 +634,9 @@ def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
 
 def baseline_did_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = (
+        "cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate", "I_g",
+    ),
     out_path: Path | None = None,
 ) -> str:
     """Multi-outcome baseline DiD with TWFE and stricter Year x Rb FE columns.
@@ -680,9 +682,19 @@ def baseline_did_table(
         "illegitimate_br": "illegitimate_br_carryforward",
         "marriage_rate": "marriage_rate_carryforward",
     }
-    cf_outcomes = [_carryforward_map.get(o, o) for o in outcomes]
-    cols_cf_twfe = [_did_column(panel, o, "twfe") for o in cf_outcomes]
-    cols_cf_strict = [_did_column(panel, o, "year_x_rb") for o in cf_outcomes]
+    # Coale indices (e.g. I_g) and any other outcome without a
+    # carry-forward variant get a "--" cell in the carry-forward row
+    # since their denominators are constructed from mid-year population
+    # only.
+    cf_outcomes = [_carryforward_map.get(o) for o in outcomes]
+    def _did_col_or_none(o):
+        return _did_column(panel, o, "twfe") if o else None
+    cols_cf_twfe = [
+        _did_column(panel, o, "twfe") if o else None for o in cf_outcomes
+    ]
+    cols_cf_strict = [
+        _did_column(panel, o, "year_x_rb") if o else None for o in cf_outcomes
+    ]
     cols_cf = cols_cf_twfe + cols_cf_strict
 
     # Pre-trends Wald chi-squared per outcome (TWFE event study), and a
@@ -757,12 +769,18 @@ def baseline_did_table(
     # stays compact rather than adding a third panel.
     carryforward_coef_row = (
         "\\quad CathShare $\\times$ Post (Galloway carry-forward) & "
-        + " & ".join(_fmt_coef(c["coef"], c["p"]) for c in cols_cf)
+        + " & ".join(
+            "--" if c is None else _fmt_coef(c["coef"], c["p"])
+            for c in cols_cf
+        )
         + r" \\"
     )
     carryforward_se_row = (
         " & "
-        + " & ".join(_fmt_se(c["se"]) for c in cols_cf)
+        + " & ".join(
+            "" if c is None else _fmt_se(c["se"])
+            for c in cols_cf
+        )
         + r" \\"
     )
     # One-line I_g pre-trends Wald comparison (spans full table width).
@@ -2363,31 +2381,42 @@ def pretreatment_trends_table(
     out_path = out_path or TABLES_DIR / "pretreatment_trends.tex"
 
     df = run_pretreatment_trends_robustness(
-        panel, outcomes=("cbr", "marriage_rate"), form="linear",
+        panel, outcomes=("cbr", "marriage_rate", "I_g"), form="linear",
     )
+
+    def _ig_digits(o, key):
+        # I_g coefficients are O(1e-4), CBR/marriage_rate are O(1e-3).
+        # Use 5 digits for I_g so non-zero values are visible.
+        return 5 if o == "I_g" else 4
 
     rows: list[str] = []
     for spec in df["spec"].drop_duplicates():
         sub = df[df["spec"] == spec]
-        cbr_sub = sub[sub["outcome"] == "cbr"]
-        mar_sub = sub[sub["outcome"] == "marriage_rate"]
-        cbr = cbr_sub.iloc[0] if len(cbr_sub) else None
-        mar = mar_sub.iloc[0] if len(mar_sub) else None
-        cbr_coef = _fmt_coef(cbr["coef"], cbr["p"], digits=4) if cbr is not None else ""
-        cbr_se = _fmt_se(cbr["se"], digits=4) if cbr is not None else ""
-        mar_coef = _fmt_coef(mar["coef"], mar["p"], digits=4) if mar is not None else ""
-        mar_se = _fmt_se(mar["se"], digits=4) if mar is not None else ""
-        n_val = int(cbr["n"]) if cbr is not None else int(mar["n"])
+        outs = {
+            o: (sub[sub["outcome"] == o].iloc[0] if (sub["outcome"] == o).any() else None)
+            for o in ("cbr", "marriage_rate", "I_g")
+        }
+        coefs = [
+            _fmt_coef(outs[o]["coef"], outs[o]["p"], digits=_ig_digits(o, "coef"))
+            if outs[o] is not None else ""
+            for o in ("cbr", "marriage_rate", "I_g")
+        ]
+        ses = [
+            _fmt_se(outs[o]["se"], digits=_ig_digits(o, "se"))
+            if outs[o] is not None else ""
+            for o in ("cbr", "marriage_rate", "I_g")
+        ]
+        n_val = next((int(outs[o]["n"]) for o in outs if outs[o] is not None), 0)
         rows.append(
-            f"{_latex_escape(spec)} & {cbr_coef} & {mar_coef} & {n_val:,} \\\\"
+            f"{_latex_escape(spec)} & " + " & ".join(coefs) + f" & {n_val:,} \\\\"
         )
-        rows.append(f" & {cbr_se} & {mar_se} & \\\\")
+        rows.append(" & " + " & ".join(ses) + r" & \\")
 
     body = (
-        "\\begin{tabular}{lccc}\n"
+        "\\begin{tabular}{lcccc}\n"
         "\\toprule\n"
-        " & CBR & Marriage rate & $N$ \\\\\n"
-        " & (1) & (2) & \\\\\n"
+        " & CBR & Marriage rate & $I_g$ & $N$ \\\\\n"
+        " & (1) & (2) & (3) & \\\\\n"
         "\\midrule\n"
         + "\n".join(rows) + "\n"
         + "\\bottomrule\n"
@@ -2401,12 +2430,15 @@ def pretreatment_trends_table(
             "(Bai 2009; Hsiao 2014)"
         ),
         label="tab:pretreatment_trends",
-        n_cols=4,
+        n_cols=5,
         notes=(
             "Each row is a separate two-way fixed-effects regression of the "
-            "outcome on $\\mathrm{CathShare} \\times \\mathrm{Post}$, "
-            "$\\ln(\\mathrm{Pop})$, and the listed baseline iPEHD-1871 "
-            "characteristics interacted with a centred linear time trend. "
+            "outcome on $\\mathrm{CathShare} \\times \\mathrm{Post}$ and the "
+            "listed baseline iPEHD-1871 characteristics interacted with a "
+            "centred linear time trend. The marital-fertility column "
+            "reports the recalibrated Coale $I_g$ (Hutterite-normalised "
+            "legitimate births per married woman 15--49, with the STA1871 "
+            "marriage-prevalence shifter); see \\S6.5 of the data appendix. "
             "The interactions allow counties with different pre-treatment "
             "literacy ($\\mathrm{school1517}$), urbanisation "
             "($f_{\\mathrm{urban}}$), Prussian-citizenship share "
