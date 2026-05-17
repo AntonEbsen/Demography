@@ -1,114 +1,122 @@
-# Transcribing married-women-by-age from *Preußische Statistik*
+# Transcribing married-women-15-49 from *Preußische Statistik*
 
-This folder holds CSV templates for the Galloway 1994 GMFR replication, one
-per Prussian census year (1880, 1885, 1890, 1895, 1900). Each row is a
-Type-0 Kreis (the analysis unit), pre-populated with `Code`, `Rb`,
-`Kreis`, and the published `pop_total_{year}_galloway` for cross-validation.
+This folder holds the CSV templates and ingest infrastructure for the
+Galloway 1994 GMFR replication. The denominator (married women aged
+15–49) must be transcribed from *Preußische Statistik* directly because
+the populationspast.org electronic Galloway database includes the
+marital-status table only for 1871 (`STA1871.XLS`).
 
-The cells to fill in are the seven 5-year age bands of **married women**
-aged 15–49 (plus 50+), transcribed from the corresponding source volume.
+## Source-volume mapping (confirmed from Galloway 2007 *Description Tables*, Table 4, p. 5)
 
-## What to transcribe
+| Census | *Preußische Statistik* volume | Per-Kreis cell available |
+|---|---|---|
+| 1871 | Heft 30  | Married Female **≥15** only (no 15–49 cap; we use the Princeton schedule, see §6.6b of DATA_APPENDIX) |
+| 1880 | Heft 66 | **No marital-status × age data at Kreis level.** Skip or use Rb proxy. |
+| 1885 | Heft 96 | **Totals only, no age breakdown.** Skip or use Rb proxy. |
+| 1890 | Heft **121:1** | **Married Female 15–49 direct cell** |
+| 1895 | Heft **148:1** | **Married Female 15–49 direct cell** |
+| 1900 | Heft **177** | **Married Female 15–49 direct cell** |
+| 1905 | Heft **206:1** | **Married Female 15–49 direct cell** |
+| 1910 | Heft **234:1** | Married Female **15–44** direct cell (1-yr truncation) |
 
-For every Kreis, fill in:
+For the four golden years (1890, 1895, 1900, 1905) the source publishes
+**one number per Kreis**: total married women aged 15–49. That's the
+only cell you need. For 1910 the cap is 15–44, slightly narrower —
+acceptable for replication but flag it in the methods section.
 
-| Column        | What                                                       |
-|---------------|------------------------------------------------------------|
-| `mwf_15_19`   | Married women (verheiratet, weiblich) aged 15–19 (or 15–20 in some volumes) |
-| `mwf_20_24`   | Married women aged 20–24                                   |
-| `mwf_25_29`   | Married women aged 25–29                                   |
-| `mwf_30_34`   | Married women aged 30–34                                   |
-| `mwf_35_39`   | Married women aged 35–39                                   |
-| `mwf_40_44`   | Married women aged 40–44                                   |
-| `mwf_45_49`   | Married women aged 45–49                                   |
-| `mwf_50p`     | Married women aged 50+ (sanity check, not used in GMFR)    |
-| `source_page` | Page number(s) in the source volume                        |
-| `notes`       | Free text (e.g., "table uses 10-year bins, split 50:50")   |
+## What to fill in
 
-If the source volume uses 10-year bins (e.g., 15–25, 25–35), put the
-whole 10-year count in the lower band and zero in the upper band, then
-flag it in `notes` — the loader sums across bands anyway, so this is
-harmless for the 15–49 total.
+Each template has one row per Type-0 Kreis, pre-populated with `Code`,
+`Rb`, `Kreis`, and the published total population from `POP{year}` for
+cross-checking. The cells:
 
-The optional `twf_*` columns hold **total women** in each band — useful
-for validation (you can check the implied marriage rate is plausible)
-but not required.
+| Column                  | What to put in                                                     |
+|-------------------------|--------------------------------------------------------------------|
+| **`mwf_15_49_direct`** ← primary | The single published "Married Female 15–49" cell from the source. Use this for 1890–1905. For 1910 use the published 15–44 cell. |
+| `mwf_15_19`, `mwf_20_24`, …, `mwf_45_49` | Optional 5-year-band breakdown (use only if the source publishes bands rather than a single 15–49 cell). The loader sums them as a fallback. |
+| `mwf_50p`               | Optional: married women 50+ (sanity check, not used in GMFR).      |
+| `twf_15_19`, …, `twf_50p` | Optional: total women in each band (cross-validation).            |
+| `source_page`           | Page number(s) in the source volume.                                |
+| `notes`                 | Free-text comments.                                                |
 
-## Source volumes (start here)
-
-The marital-status × age cross-tab Galloway used lives in *Preußische
-Statistik* (the official Royal Prussian Statistical Office series). The
-specific Band numbers are:
-
-- **1880 census**: *Preußische Statistik* **Band LXVI** (66), "Die
-  definitiven Ergebnisse der Volkszählung vom 1. December 1880 im
-  preussischen Staate." HathiTrust does **not** carry Band 66 (its
-  gap covers 64–69). Internet Archive's Google Books scans may have
-  it — search archive.org for *"Preussische Statistik 1880"* or
-  *"Volkszählung 1880"*. Alternatively, the Bayerische Staatsbibliothek
-  (BSB) MDZ portal at `digitale-sammlungen.de`.
-- **1885 census**: *Preußische Statistik* Band 96 (probable; verify in
-  the Galloway 1988/2007 inventory document). HathiTrust gap.
-- **1890 census**: *Preußische Statistik* Band 121 and/or 122
-  (verify). HathiTrust covers 121–177, so this one is on
-  babel.hathitrust.org.
-- **1895 census**: Band 145 (probable). HathiTrust.
-- **1900 census**: Band 177 (probable). HathiTrust.
-
-**Confirm volume numbers** by downloading Patrick Galloway's
-*"Prussia vital registration and census data description tables 1849
-to 1914"* inventory PDF from `patrickrgalloway.com` — it lists every
-table he used by Band/Heft number.
+If the source page gives a single 15–49 number, fill **only**
+`mwf_15_49_direct` and leave the band columns blank — that's the
+intended workflow for 1890–1910.
 
 ## Workflow
 
-1. **Open** `MAR1880_transcription_template.csv` in your spreadsheet
-   editor of choice (Excel, LibreOffice, Google Sheets). Save to a new
-   name so the template stays clean: e.g., `MAR1880.csv`.
-2. **Fetch the source volume** PDF and find the per-Kreis marital-
-   status table (usually titled "Bevölkerung nach Familienstand und
-   Alter" or similar, organised by Provinz → Regierungsbezirk → Kreis).
-3. **Transcribe row-by-row**. The Galloway Code in the template matches
-   the order in which Kreise appear in his database, *not* the order in
-   *Preußische Statistik*. Use the Kreis name as the matching key.
-4. **Save** the filled CSV as `MAR{year}_transcription_template.csv`
-   (overwriting the empty template). The loader picks it up
-   automatically on the next `python -m src.data.build_dataset` run.
-5. **Run** `python -m src.data.build_dataset` — the pipeline merges the
-   transcribed data and produces `gmfr_galloway_{year}` columns.
+1. **Open** `MAR{year}_transcription_template.csv` in your spreadsheet
+   editor (Excel / LibreOffice / Sheets). Do NOT save as `.xlsx`; the
+   loader expects CSV.
+2. **Fetch the source volume** — see [Where to find scans](#where-to-find-scans).
+3. **Locate the per-Kreis Familienstand × Alter table.** In *Preußische
+   Statistik* it's usually a multi-page Tabelle ordered by Provinz →
+   Regierungsbezirk → Kreis. The column "Verheiratet weiblich, 15–49"
+   (or similar German wording) is the one you transcribe.
+4. **Match by Kreis name** — the Galloway `Code` order in the template
+   is not the same as the source-volume order, so go row-by-row by name.
+5. **Save** the filled CSV (overwriting the template) and run
+   `python -m src.data.build_dataset`. The pipeline auto-merges the
+   transcribed data and produces `gmfr_galloway_{year}` columns in the
+   analysis panel.
+
+## Where to find scans
+
+- **HathiTrust** holds *Preußische Statistik* Heft 121–177, which covers
+  the **1890 (121:1), 1895 (148:1), and 1900 (177)** censuses. Catalog:
+  https://catalog.hathitrust.org/Record/000680750. Full-text scans
+  available directly through HathiTrust's BookReader.
+- HathiTrust gaps include Heft 64–69 and Heft 95–97, so Heft 66 (1880)
+  and Heft 96 (1885) are not there — but those years don't have the
+  Kreis-level cross-tab anyway, so the gap is moot for GMFR purposes.
+- Heft 206:1 (1905) and Heft 234:1 (1910) are in HathiTrust's 179–222
+  and >222 ranges respectively; check the catalog.
+- **Internet Archive** carries several Google Books scans of
+  *Preußische Statistik* — search `"Preussische Statistik"` and look at
+  the title-page year to identify volumes.
+- **Bayerische Staatsbibliothek MDZ** (`digitale-sammlungen.de`) has
+  alternative scans of many German statistical volumes — useful when
+  HathiTrust is gated.
+
+## What if a Kreis is missing from the source?
+
+Some Kreise underwent boundary reform between censuses. If a Kreis
+in the template has no corresponding row in the source volume,
+leave its cells blank — the loader treats blank as NaN and the
+panel-merge will assign NaN for that Code. The Galloway crosswalk
+already handles a few of these.
 
 ## Validation hints
 
-- **Population cross-check**: For each row, `(mwf + total non-married
-  women all ages) + (total men all ages) ≈ pop_total_{year}_galloway`.
-  If you transcribe `twf_*` too, you can check `sum(twf) ≈ total
-  women`. The exact equality won't hold (military, institutional,
-  unknown-age subtractions), but should be within ~5%.
-- **Married-50+ sanity**: In late-19th-century Prussia, married women
-  50+ are typically 25–35% of all married women. If your `mwf_50p` is
-  outside that range relative to the 15–49 sum, double-check.
-- **Provincial means** of `married_women_15_49` should land in the
-  hundreds to low thousands for a typical Kreis (population ~50k,
-  women 15–49 ~10k, ~60% married → ~6k).
+- **Sanity check vs. population**. A Kreis with population ~50,000
+  typically has ~10,000 women aged 15–49, of whom 50–70% are married
+  (so `mwf_15_49_direct` should land in the **5,000–7,000** range for
+  a typical mid-sized rural Kreis). Cities have higher % unmarried, so
+  expect lower values.
+- **Cross-time sanity**. The same Kreis across 1890, 1895, 1900, 1905
+  should show slow, monotonic growth in married women (typically 1–3%
+  per 5 years). A jump of more than 25% between adjacent censuses is
+  almost certainly a transcription error or a boundary change.
+- **Compute the implied GMFR after transcribing 10 Kreise**:
+  `5-yr-avg(Birlegtot) / mwf_15_49_direct × 1000` should fall in
+  [180, 450] for late-19th-century Prussia.
 
 ## Citation
 
-When the GMFR appears in the paper, cite the source volume(s) explicitly,
-e.g.:
+When the new GMFR appears in the paper, cite the source volume(s)
+explicitly:
 
 > Married women aged 15–49 by Kreis are transcribed from *Preußische
-> Statistik*, Band LXVI (1880), Tabelle X, pp. yyy–zzz. Legitimate
-> birth counts are from Galloway, Patrick R., 2007, "Galloway Prussia
-> Database 1861 to 1914," www.patrickrgalloway.com.
+> Statistik*, Heft 121:1 (1890), Heft 148:1 (1895), Heft 177 (1900),
+> Heft 206:1 (1905), and Heft 234:1 (1910). Volume mapping confirmed
+> against Galloway, Patrick R. 2007, *Prussia Vital Registration and
+> Census Data Description Tables 1849 to 1914*, Table 4, p. 5
+> (www.patrickrgalloway.com).
 
-## Asking the AI assistant for OCR help
+## AI-OCR assistance
 
-If you have a PDF page URL or screenshot of a single table page, the
-assistant can read the numbers off the scan and fill in the
-corresponding rows. Practical limits:
-
-- One page at a time works best (typically 4–8 Kreise per page).
-- The assistant cannot bulk-process a 200-page PDF in one shot, so the
-  page-by-page workflow needs to be driven by you.
-- Always spot-check at least 5–10 transcribed rows against the source
-  before trusting the full file.
+If you supply a PDF page URL or screenshot of one or two Kreise of the
+table, the assistant can OCR the "Married Female 15–49" cell and write
+it into the template directly. Realistic per-session throughput: a
+single page (typically 4–8 Kreise) at a time, with you spot-checking
+~10% of transcribed values against the source.

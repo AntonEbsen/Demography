@@ -603,7 +603,7 @@ def build_analysis_panel(
     # if at least one Kreis has been transcribed -- otherwise the merge
     # is silently skipped so the template can sit empty until the user
     # starts filling it.
-    for year in (1880, 1885, 1890, 1895, 1900):
+    for year in (1880, 1885, 1890, 1895, 1900, 1905, 1910):
         try:
             cs = compute_galloway_gmfr(year)
             n_filled = int(cs[f"gmfr_galloway_{year}"].notna().sum())

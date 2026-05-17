@@ -1398,34 +1398,63 @@ def load_marital_status_transcribed(
             f"Transcription template for {year} not found at {path}. "
             f"Run the template builder in load_data.py to generate it."
         )
-    df = pd.read_csv(path)
+    # Templates start with `#` comment lines (source citation, notes) that
+    # pandas can skip via the `comment` argument.
+    df = pd.read_csv(path, comment="#")
     age_bands = ["15_19", "20_24", "25_29", "30_34", "35_39", "40_44", "45_49"]
     mwf_cols = [f"mwf_{b}" for b in age_bands]
     twf_cols = [f"twf_{b}" for b in age_bands]
 
     # Coerce to numeric (CSV cells may be blank or non-numeric notes).
-    for c in mwf_cols + twf_cols + ["mwf_50p", "twf_50p"]:
+    cols_to_numeric = (
+        ["mwf_15_49_direct"]
+        + mwf_cols + twf_cols + ["mwf_50p", "twf_50p"]
+    )
+    for c in cols_to_numeric:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
-    # Sum 15-49 only where all 7 bands are present; else NaN.
-    band_present = df[mwf_cols].notna().all(axis=1)
-    mw15_49 = df[mwf_cols].sum(axis=1, min_count=len(mwf_cols))
+    # PRIMARY: prefer the directly-published `mwf_15_49_direct` cell where
+    # the user has transcribed it. Galloway's 2007 inventory confirms that
+    # for census years 1890/1895/1900/1905 (and 1910 with a 15-44 cap),
+    # Preussische Statistik publishes a single "Married Female 15-49"
+    # number per Kreis -- much easier to transcribe than seven 5-year
+    # bands.
+    direct = (
+        df["mwf_15_49_direct"]
+        if "mwf_15_49_direct" in df.columns
+        else pd.Series(pd.NA, index=df.index, dtype="Float64")
+    )
+
+    # FALLBACK: sum the seven 5-year bands where all are present.
+    if all(c in df.columns for c in mwf_cols):
+        band_present = df[mwf_cols].notna().all(axis=1)
+        from_bands = df[mwf_cols].sum(axis=1, min_count=len(mwf_cols))
+    else:
+        band_present = pd.Series(False, index=df.index)
+        from_bands = pd.Series(pd.NA, index=df.index, dtype="Float64")
+
+    # Merge: direct value where present, otherwise the band sum.
+    mw15_49 = direct.where(direct.notna(), from_bands.where(band_present))
+    has_value = mw15_49.notna()
+
     out = pd.DataFrame({"Code": df["Code"]})
-    out[f"married_women_15_49_{year}"] = mw15_49.where(band_present)
+    out[f"married_women_15_49_{year}"] = mw15_49
     if "mwf_50p" in df.columns:
         out[f"married_women_50plus_{year}"] = df["mwf_50p"]
-    out[f"total_women_15_49_{year}"] = df[twf_cols].sum(
-        axis=1, min_count=len(twf_cols)
-    )
-    n_transcribed = int(band_present.sum())
+    if all(c in df.columns for c in twf_cols):
+        out[f"total_women_15_49_{year}"] = df[twf_cols].sum(
+            axis=1, min_count=len(twf_cols)
+        )
+    n_transcribed = int(has_value.sum())
     out[f"n_kreise_transcribed_{year}"] = n_transcribed
 
     if require_complete and n_transcribed < len(df):
-        missing = df.loc[~band_present, ["Code", "Kreis"]].head(10)
+        missing = df.loc[~has_value, ["Code", "Kreis"]].head(10)
         raise ValueError(
             f"Transcription incomplete: {n_transcribed} of {len(df)} Kreise "
-            f"have all 7 age bands filled. Missing examples:\n{missing.to_string()}"
+            f"have either mwf_15_49_direct OR all 7 age bands filled. "
+            f"Missing examples:\n{missing.to_string()}"
         )
 
     if n_transcribed == 0:
