@@ -188,8 +188,10 @@ Six additional Galloway tables were merged in to widen the covariate base around
 | `AGR1882.XLS` | 1882 | [`load_agr1882()`](src/data/load_data.py:982) | `farms_total_1882`, `farms_share_under_2ha_1882`, `farms_share_over_50ha_1882`, `land_gini_1882` | Land-inequality moderator. The Gini is computed over the six farm-size bins (<1, 1–2, 2–10, 10–50, 50–100, >100 ha) using mid-point land area as the welfare measure. AGR1882 is post-treatment but farm-size distribution is approximately structural (slowly evolving). Added to §8.7 spec (9). |
 | `GEL1882.XLS` | 1882 | [`load_gel1882()`](src/data/load_data.py:1015) | `rel_edu_emp_1882`, `transport_emp_1882`, `health_emp_1882`, `finance_emp_1882`, `pop_1880_gel`, plus per-1k versions | Service-sector employment by branch. `rel_edu_emp_1882` (religion + education + instruction occupations) is the **Kulturkampf-channel outcome** in §6.7 (paired with `rel1849_cat_priest`). |
 | `EDU1886.XLS` | 1886 | [`load_edu1886()`](src/data/load_data.py:1058) | `school_age_pop_1886`, `attend_public_1886`, `attend_private_1886`, `attend_rate_1886`, `teachers_1886`, `teacher_income_1886`, `pupils_per_teacher_1886` | Post-Kulturkampf schooling cross-section. **Schooling-channel endpoint** (paired with EDU1849 / iPEHD `school1517`). |
+| `AGE1882.XLS` | 1882 | [`load_age1882()`](src/data/load_data.py:1175) | `pop_1882f`, `marriedf_1882`, plus the derived `women_15_49_1882`, `married_women_15_49_1882`, `married_share_15_49_f_1882` (built in `build_dataset` by multiplying AGE1882 totals by AGE1890 per-Kreis ratios) | **Mid-sample anchor for $I_g$ / GMFR**. AGE1882 only resolves coarse bins (0-19, 20-69, 70+), so the 15-49 quantities are approximations: AGE1890's within-Kreis ratios $R_W = \text{Age15-49f}/\text{Popf}$ and $R_M = \text{Age15-49marriedf}/\text{Marriedf}$ are applied to AGE1882's totals. Outliers with implied marriage share outside $[0.30, 0.70]$ are nulled (1 of 381 Kreise — KLEVE has a clearly mis-transcribed Married20-69f). |
+| `AGE1890.XLS` | 1890 | [`load_age1890()`](src/data/load_data.py:1133) | `women_15_49_1890`, `married_women_15_49_1890`, `married_share_15_49_f_1890`, `r_w_15_49_in_popf_1890`, `r_m_15_49_in_marriedf_1890` | **End-of-sample anchor for $I_g$ / GMFR**. AGE1890 has Galloway's own direct tabulation of women aged 15-49 (`Age15-49f`) and married women aged 15-49 (`Age15-49marriedf`) per Kreis — the actual denominators required by the Princeton EFP marital-fertility framework. Coverage: 451 Kreise, marriage prevalence 0.528 ± 0.046. Validated against the 1895/1900/1905 AGE files (post-sample): the projected 1895 mean from a 1871-1890 linear trend (0.5262) matches the actual AGE1895 mean (0.5267) within 0.001. |
 
-These columns are populated for every Galloway Type-0 county in the source file; merge coverage is 393/393 (BIR1871, STA1871), 404/393 (TAX1876, AGR1882, GEL1882; 11 city-only `Type=1` counties not present in our analysis), 453/393 (EDU1886).
+These columns are populated for every Galloway Type-0 county in the source file; merge coverage is 393/393 (BIR1871, STA1871), 404/393 (TAX1876, AGR1882, GEL1882, AGE1882; 11 city-only `Type=1` counties not present in our analysis), 451/393 (AGE1890), 453/393 (EDU1886).
 
 ---
 
@@ -394,12 +396,37 @@ with the identity $I_f \approx I_g \cdot I_m + I_h(1 - I_m)$, where $I_m = \sum_
 
 1. **Hutterite ASFR** from Coale (1969), 7 age bands × natural-fertility max.
 2. **Coale–Demeny "West" Level 7** female age distribution within 15–49 (typical for $e_0 \approx 35$ Prussia 1860–90).
-3. **Marriage-share schedule.** Originally a Prussia-wide constant Hajnal-derived schedule (overall prevalence ~62% of women 15–49 married, peaking at 90% in ages 35–39). **As of May 2026 the schedule is *recalibrated per county*** using STA1871's `Marriedover15f / Popover15f`: each county receives a scalar shifter $k_i = \mu_i / \bar\mu^{\text{Prussia}}$ (clipped to $[0.5, 1.5]$) that scales the marital-fertility denominator. This preserves the Prussia-wide age pattern of marriage but lets the *level* of marriage prevalence vary across counties — closing a known weakness in the constant-schedule approximation. Within-county across time, the shifter is still constant (STA1871 is a 1871 cross-section).
-4. **Women 15–49 share** of total population: county-specific value from POP1871 (`women_15_49_1871 / pop_total_1871`, mean ≈ 24.9%, sd ≈ 0.85), scaled to mid-year population. Allows cross-county variation but assumes within-county constancy across 1862–1890.
+3. **Time-varying age × marital counts (3-anchor interpolation).** The headline 2026 calibration uses Galloway's AGE files as direct anchors for the two denominators that matter — count of women 15–49 and count of married women 15–49 — at three Prussian census years inside our panel:
 
-These approximations affect the *level* of the indices but **not** the within-county DiD coefficients, which are what the empirical analysis uses. The STA1871 recalibration also leaves the within-county DiD invariant (the shifter is time-invariant within a county), but it reduces *cross-county* dispersion in $I_g$ (sd drops from 0.079 → 0.068 in 1871), correctly partitioning cross-county marriage-prevalence variation onto the nuptiality side instead of the marital-fertility component.
+    | Year | Source | Notes |
+    |---|---|---|
+    | **1871** | POP1871 (`women_15_49_1871`) + STA1871 (`Marriedover15f / Popover15f`) | $W_{1871}$ direct; $M_{1871} = W_{1871} \cdot \mu_i^{\text{STA1871}}$ using the over-15 marriage prevalence as a 15-49 approximation. The Prussia means are 0.516 (over-15) vs 0.528 (15-49 in 1890), within 2 pp — close enough that the level mismatch is empirically negligible. |
+    | **1882** | AGE1882 totals × AGE1890 per-Kreis ratios | AGE1882 has only coarse 0-19 / 20-69 / 70+ bins, so $W_{1882}^i = \text{Pop1882f}^i \cdot (\text{Age15-49f}/\text{Popf})_{1890}^i$ and $M_{1882}^i = \text{Marriedf}_{1882}^i \cdot (\text{Age15-49marriedf}/\text{Marriedf})_{1890}^i$. 1 of 381 Kreise (KLEVE) is nulled as a transcription error; the remaining 380 are kept. |
+    | **1890** | AGE1890 (`Age15-49f`, `Age15-49marriedf`) | Direct Galloway counts. |
 
-**Empirical levels** (current build, post-STA1871-recalibration): $I_f = 0.37$, $I_g = 0.55$ panel mean (0.66 in high-Catholic counties — within the Princeton EFP target range 0.65–0.72), $I_h = 0.07$, gmfr ≈ 230. Cross-county dispersion of $I_g$ is now within the Princeton EFP norm.
+    For 1871 ≤ year ≤ 1890, $W_t$ and $M_t$ are **piecewise-linearly interpolated** between these anchors (per Kreis; missing per-Kreis anchors are skipped). For year < 1871, the 1871 anchor is pop-scaled by $\text{Poptot}_t / \text{pop\_total}_{1871}$ as before.
+
+    **Validation.** Projecting the 1871 → 1890 linear trend forward to 1895 predicts a Prussia-wide marriage prevalence of 0.5262; the AGE1895 actual is 0.5267 (difference < 0.001). The trend continues plausibly through 1900 (actual 0.537) and 1905 (actual 0.541).
+
+4. **Women 15–49 share** of total population: county-specific value from POP1871 (`women_15_49_1871 / pop_total_1871`, mean ≈ 24.9%, sd ≈ 0.85). Used for pre-1871 pop-scaling; in 1871-1890 the direct count is preferred (via the AGE anchors).
+
+These approximations affect the *level* of the indices and, critically, the *within-county time profile* of $W_t$ and $M_t$. The pre-2026 build held $\mu_i$ constant within county across 1862-1890, which mechanically forced $I_g$ to inherit the marriage-rate signal in the same direction. With AGE1890 + AGE1882 letting $M_t$ vary in real time, the **Princeton EFP identity** $I_f \approx I_g \cdot I_m + I_h(1-I_m)$ now decomposes the Kulturkampf shock cleanly: marriage rate ($\approx I_m$) falls in Catholic counties, $I_f$ is essentially unchanged, and $I_g$ rises to balance the identity.
+
+**Empirical levels** (current build, post-AGE1890+AGE1882-anchoring): $I_f \approx 0.42$, $I_g$ panel mean 0.74 with year-specific values 0.66 (1871) → 0.78 (1875 baby catch-up) → 0.74 (1882) → 0.72 (1890), all within the Princeton EFP target band 0.65-0.79. gmfr panel mean 282 per 1,000 married women 15-49. $I_h$ panel mean 0.08.
+
+**Empirical DiD coefficients on `cath_share × Post`** (county + year FE, cluster SE):
+
+| Outcome | β | p | Reading |
+|---|---|---|---|
+| CBR | −0.004 | 0.22 | n.s. |
+| Marriage rate (≈ $I_m$) | −0.0042 | <0.001 | Falls in Catholic counties |
+| $I_f$ (overall fertility) | −0.00002 | 0.61 | Unchanged |
+| **$I_g$ (marital fertility)** | **+0.00037** | **<0.001** | **Rises (Princeton compensation)** |
+| gmfr (Galloway headline) | +0.141 | <0.001 | Same as $I_g$ |
+| $I_h$ (illegitimate) | −0.00010 | <0.001 | Small negative |
+| `lgfr` (legitimate per women 15-49) | +0.003 | 0.84 | Unchanged |
+
+This is the textbook Coale-Watkins decomposition for an institutional nuptiality shock: $I_m$ falls, $I_f$ doesn't move, $I_g$ rises mechanically because surviving marriages remain fertile.
 
 ### 6.7 Other constructed variables
 

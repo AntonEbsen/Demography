@@ -32,6 +32,8 @@ from src.data.load_data import (
     load_gel1882,
     load_edu1886,
     load_sta1871,
+    load_age1882,
+    load_age1890,
     _find_file,
     DATA_RAW,
     DATA_PROCESSED,
@@ -575,6 +577,18 @@ def build_analysis_panel(
         (load_gel1882, "GEL1882"),
         (load_edu1886, "EDU1886"),
         (load_sta1871, "STA1871"),
+        # AGE1890: actual count of women 15-49 and married women 15-49
+        # per Kreis from Galloway's own age-by-marital tabulation. Acts
+        # as the 1890 anchor for the time-varying marriage-prevalence
+        # interpolation in compute_coale_indices. Also returns
+        # `r_w_15_49_in_popf_1890` and `r_m_15_49_in_marriedf_1890` --
+        # within-Kreis ratios used to extract 15-49 counts from
+        # AGE1882's coarser bins below.
+        (load_age1890, "AGE1890"),
+        # AGE1882: only resolves coarse bins (0-19, 20-69, 70+); use
+        # the AGE1890 per-Kreis ratios to extract approximate 15-49
+        # counts (built in the post-merge step below).
+        (load_age1882, "AGE1882"),
     ]:
         try:
             cs = loader()
@@ -588,6 +602,55 @@ def build_analysis_panel(
             logger.warning("%s merge skipped (file not found): %s", label, exc)
         except Exception as exc:
             logger.warning("%s merge failed: %s", label, exc)
+
+    # ------------------------------------------------------------------
+    # AGE1882 has only coarse 0-19 / 20-69 / 70+ marital bins, so we
+    # derive approximate 15-49 counts by applying the AGE1890 within-
+    # Kreis ratios. This buys us a mid-sample (1882) anchor for the
+    # piecewise-linear interpolation of women_15_49 and
+    # married_women_15_49 in compute_coale_indices, splitting the
+    # 1871-1890 stretch into 1871-1882 and 1882-1890 segments.
+    # ------------------------------------------------------------------
+    if {"pop_1882f", "marriedf_1882", "r_w_15_49_in_popf_1890",
+            "r_m_15_49_in_marriedf_1890"}.issubset(panel.columns):
+        panel["women_15_49_1882"] = (
+            panel["pop_1882f"] * panel["r_w_15_49_in_popf_1890"]
+        )
+        panel["married_women_15_49_1882"] = (
+            panel["marriedf_1882"] * panel["r_m_15_49_in_marriedf_1890"]
+        )
+        panel["married_share_15_49_f_1882"] = (
+            panel["married_women_15_49_1882"]
+            / panel["women_15_49_1882"].replace(0, np.nan)
+        )
+        # Sanity filter: a handful of Kreise have AGE1882 marital
+        # totals that look like transcription errors (e.g. KLEVE Code
+        # 614 reports Married20-69f = 2,742 against Pop1882f = 25,046,
+        # implying an 11% marriage rate -- vs ~33% panel-wide and 50%+
+        # in nearby Kreise). When the implied 15-49 marriage share is
+        # outside [0.30, 0.70] (panel sd ~0.05 around mean 0.52),
+        # null the 1882 anchor for that Kreis. compute_coale_indices
+        # then falls back to the 1871-1890 linear interpolation for
+        # those rows (i.e. the two-anchor case).
+        bad = (
+            (panel["married_share_15_49_f_1882"] < 0.30)
+            | (panel["married_share_15_49_f_1882"] > 0.70)
+        )
+        n_dropped = panel.loc[bad, "Code"].nunique()
+        for col in (
+            "women_15_49_1882", "married_women_15_49_1882",
+            "married_share_15_49_f_1882",
+        ):
+            panel.loc[bad, col] = np.nan
+        n_kept = panel.dropna(subset=["women_15_49_1882"])["Code"].nunique()
+        logger.info(
+            "AGE1882 approximate 15-49 anchors materialised: %d Kreise "
+            "kept, %d Kreise nulled as implausible (marriage share <0.30 "
+            "or >0.70); AGE1890 calibration ratios R_W=%.4f, R_M=%.4f",
+            n_kept, n_dropped,
+            float(panel["r_w_15_49_in_popf_1890"].mean()),
+            float(panel["r_m_15_49_in_marriedf_1890"].mean()),
+        )
 
     # ------------------------------------------------------------------
     # 6c-quinquies. iPEHD 1849 covariates via kreiskey1849 crosswalk.
@@ -666,7 +729,7 @@ def build_analysis_panel(
         # Birlegtot / Birbastot in their numerators, so an extreme CBR
         # signals contaminated index values for the same row.
         if "cbr_flag" in panel.columns:
-            for col in ("I_f", "I_g", "I_h", "gmfr"):
+            for col in ("I_f", "I_g", "I_h", "gmfr", "lgfr"):
                 if col in panel.columns:
                     panel.loc[panel["cbr_flag"].fillna(False), col] = np.nan
         # Light flag for demographically implausible I_g (>1.0 means
