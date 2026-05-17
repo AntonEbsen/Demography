@@ -37,7 +37,7 @@ def franco_prussian_war_analysis(df: pd.DataFrame):
     df_war["cath_x_war"] = df_war["cath_share"] * df_war["war_year"]
 
     try:
-        res = safe_panel_ols(df_war, "cbr", ["cath_x_war", "ln_pop"])
+        res = safe_panel_ols(df_war, "cbr", ["cath_x_war"])
         logger.info("  Catholic share x War: b=%.4f (SE=%.4f, p=%.3f)",
                      res.params["cath_x_war"], res.std_errors["cath_x_war"], res.pvalues["cath_x_war"])
     except Exception as e:
@@ -150,12 +150,12 @@ def robustness_exclude_war(
     logger.info("ROBUSTNESS: EXCLUDING WAR YEARS %s", war_years)
     df_clean = df[~df["Year"].isin(war_years)].copy()
 
-    res_did = safe_panel_ols(df_clean, outcome, ["cath_share_x_post", "ln_pop"])
+    res_did = safe_panel_ols(df_clean, outcome, ["cath_share_x_post"])
     logger.info("  cath_share x post: b=%.4f (SE=%.4f, p=%.3f)",
                  res_did.params["cath_share_x_post"], res_did.std_errors["cath_share_x_post"],
                  res_did.pvalues["cath_share_x_post"])
 
-    cols_needed = ["Code", "Year", outcome, "cath_share", "ln_pop"]
+    cols_needed = ["Code", "Year", outcome, "cath_share"]
     sub = df_clean[cols_needed].drop_duplicates(subset=["Code", "Year"]).dropna().copy()
     sub = sub.set_index(["Code", "Year"])
     years = sorted(sub.index.get_level_values("Year").unique())
@@ -165,7 +165,7 @@ def robustness_exclude_war(
         sub[f"treat_x_{yr}"] = year_dummy * sub["cath_share"].values
     interact_cols = [f"treat_x_{yr}" for yr in interact_years]
     y_var = sub[outcome]
-    X = sub[interact_cols + ["ln_pop"]]
+    X = sub[interact_cols]
     mod = PanelOLS(y_var, X, entity_effects=True, time_effects=True)
     res_event = mod.fit(cov_type="clustered", cluster_entity=True)
 
