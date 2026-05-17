@@ -401,11 +401,40 @@ These approximations affect the *level* of the indices but **not** the within-co
 
 **Empirical levels** (current build, post-STA1871-recalibration): $I_f = 0.37$, $I_g = 0.55$ panel mean (0.66 in high-Catholic counties — within the Princeton EFP target range 0.65–0.72), $I_h = 0.07$, gmfr ≈ 230. Cross-county dispersion of $I_g$ is now within the Princeton EFP norm.
 
+#### 6.6b Galloway, Hammel & Lee (1994) GMFR for census year 1871
+
+A literal replication of the dependent variable used by Galloway, Hammel & Lee (1994, *Population Studies* 48: 135--158): legitimate births per 1{,}000 married women aged 15--49, with a **5-year-centred** birth average in the numerator and the **census** count of married women in the denominator. Computed by [`compute_galloway_gmfr_1871()`](src/data/load_data.py:1180) and merged into the panel by [`build_dataset.py`](src/data/build_dataset.py).
+
+$$
+\mathrm{GMFR}^{\mathrm{Galloway}}_{i,1871} =
+\frac{\frac{1}{5}\sum_{t=1869}^{1873}\mathtt{Birlegtot}_{i,t}}{\widehat{\mathtt{MarriedWomen15\_49}}_{i,1871}} \times 1000
+$$
+
+**Why we can only do this for 1871.** Galloway's electronic database ships marital-status tabulations only for the 1871 census (`STA1871.XLS`). Census years 1880, 1885, 1890 in our data folder have no STA equivalent, so a Galloway-style series across multiple census years is not directly available; only the 1871 cross-section can be reconstructed.
+
+**Why the denominator is estimated.** `STA1871` reports married women aged **15+**, not 15--49. We split this band-by-band by applying the Knodel (1974, Tables 4.7--4.8) / Coale & Watkins (1986) Prussia-1871 marriage-prevalence-by-age schedule (`KNODEL_PRUSSIA_1871_MARRIAGE_PREV` in [`load_data.py`](src/data/load_data.py)) to the county's POP1871 women-by-age counts, then **rescale band-wise** so that the schedule-implied married-women-15+ total equals the county's observed `Marriedover15f`. This preserves the age profile from the Princeton-EFP schedule while pinning the level to each county's own observed marital-status total.
+
+**Outlier handling.** Values outside `[50, 600]` (per 1{,}000) are flagged in `gmfr_galloway_1871_flag` and set to NaN in `gmfr_galloway_1871`. Empirically only Kreis 278 (Tarnowitz, Upper Silesia) is censored on the current build — a boundary-reform artefact where pre-1873 birth registration was assigned to a smaller geographic area than the 1871 census denominator.
+
+**New panel columns.**
+
+| Variable | Definition | Coverage |
+|---|---|---|
+| `births_avg_1869_73` | Numerator: 5-year-centred mean of `Birlegtot` over 1869--1873. | 384/392 counties |
+| `married_women_15plus_1871` | Raw STA1871 `Marriedover15f`. | 393/393 |
+| `married_women_15_49_1871` | Denominator: schedule-based estimate of married women 15--49 (Knodel schedule, county-calibrated to observed `Marriedover15f`). | 384/392 |
+| `gmfr_galloway_1871` | Headline measure: births $/$ `married_women_15_49_1871` $\times$ 1000. NaN if outlier-flagged. | 383/392 |
+| `gmfr_galloway_1871_flag` | True if the raw value fell outside [50, 600] -- flags boundary-reform artefacts. | 392/392 |
+
+**Empirical level on the current build.** Mean GMFR$_{\rm Galloway}$ for 1871 = **285** births per 1{,}000 married women 15--49 (SD 37, range [186, 512]). By Catholic-share group: high-Catholic counties (>50%) average **309**, low-Catholic counties **274** — a 35-point (≈ 13%) higher marital fertility in Catholic counties at the start of the panel, the classic Princeton-EFP differential documented by Galloway, Hammel & Lee (1994).
+
+**Relationship to the existing `gmfr` column.** The existing annual `gmfr` (§6.6) implements the same conceptual measure but with an annual numerator and a denominator built from the Princeton schedule applied to women 15--49 **without** county-level calibration. Mean annual `gmfr` for 1871 = 208 (vs the Galloway-style 284) -- the level is biased downward because it lacks the county-specific calibration step, but the cross-county ranking is preserved (corr ≈ 0.82). For year-by-year DiD specifications, `gmfr` remains the right variable; for a single benchmark cross-section that matches the Princeton-tradition headline number, `gmfr_galloway_1871` is the literal replication.
+
 ### 6.7 Other constructed variables
 
 | Variable | Definition | Formula | Unit | Built at |
 |---|---|---|---|---|
-| `ln_pop` | Log mid-year population. **No longer a default control** (see §8 caveat below): every rate outcome already has mid-year population in its denominator, so adding $\ln(\text{Pop})$ on the right-hand side is mechanically correlated with the LHS and risks "bad-control" bias. Kept in the panel and as one of the tested specifications in the population/migration robustness table. | $\ln(\texttt{Poptot\_midyear})$ | log persons | [`build_dataset.py:178–181`](src/data/build_dataset.py:178) |
+| `ln_pop` | Log mid-year population. **No longer a default control** (see §9 caveat below): every rate outcome already has mid-year population in its denominator, so adding $\ln(\text{Pop})$ on the right-hand side is mechanically correlated with the LHS and risks "bad-control" bias. Kept in the panel for descriptive use and as one of the tested specifications in the population/migration robustness table. | $\ln(\texttt{Poptot\_midyear})$ | log persons | [`build_dataset.py:178–181`](src/data/build_dataset.py:178) |
 | `cbr_flag` | CBR outlier flag (catches extremes under either mid-year or Galloway carry-forward denominator) | $\mathbb{1}[\texttt{cbr}\notin[15,70]\,\text{or}\,\texttt{cbr\_carryforward}\notin[15,70]]$ | bool; **6 obs = TRUE** | [`build_dataset.py:222–230`](src/data/build_dataset.py:222) |
 | `gfr_flag` | GFR outlier flag | $\mathbb{1}[\texttt{gfr\_static\_1871}>400]$ | bool; **10 obs = TRUE** (mostly 1869–1872 boundary-reform artefacts) | [`build_dataset.py:264–266`](src/data/build_dataset.py:264) |
 
@@ -474,7 +503,7 @@ A row is in the final analysis panel iff it survives every rule below, applied i
 
 This section reproduces the regression equations *as estimated by the code*. Each specification cites the function that runs it; all functions share the same panel and the same convention `(Code, Year)` for the multi-index.
 
-Notation: $Y_{it}$ is the outcome for county $i$ in year $t$; $\alpha_i$ are county fixed effects; $\delta_t$ are year fixed effects; $X_{it}$ is a vector of time-varying controls (default: $\ln(\text{Poptot})$); $\text{Post}_t \equiv \mathbb{1}[t \ge 1873]$.
+Notation: $Y_{it}$ is the outcome for county $i$ in year $t$; $\alpha_i$ are county fixed effects; $\delta_t$ are year fixed effects; $X_{it}$ is a vector of time-varying controls (**default: empty** — see §9 for the rationale); $\text{Post}_t \equiv \mathbb{1}[t \ge 1873]$.
 
 ### 8.1 Baseline two-way fixed-effects DiD
 
@@ -482,12 +511,12 @@ Function: [`run_baseline_did()`](src/analysis/regressions.py:54). Three FE desig
 
 **Continuous treatment** (default):
 $$
-Y_{it} = \beta\,(\texttt{cath\_share}_i \times \text{Post}_t) + \alpha_i + \delta_t + \gamma\,\ln(\text{Poptot})_{it} + \varepsilon_{it}
+Y_{it} = \beta\,(\texttt{cath\_share}_i \times \text{Post}_t) + \alpha_i + \delta_t + \varepsilon_{it}
 $$
 
 **Binary treatment** (`treatment="binary"`):
 $$
-Y_{it} = \beta\,(\texttt{high\_cath}_i \times \text{Post}_t) + \alpha_i + \delta_t + \gamma\,\ln(\text{Poptot})_{it} + \varepsilon_{it}
+Y_{it} = \beta\,(\texttt{high\_cath}_i \times \text{Post}_t) + \alpha_i + \delta_t + \varepsilon_{it}
 $$
 
 **FE designs** ([`regressions.py:167–201`](src/analysis/regressions.py:167)):
@@ -523,7 +552,7 @@ returning Wald $\chi^2$, df, F-equivalent (Wald/df), and p-value ([`regressions.
 
 Function: [`run_long_difference()`](src/analysis/regressions.py:340). Collapses the panel to two periods (default pre = 1862–1871, post = 1880–1889) and estimates
 $$
-\Delta Y_i = \alpha + \beta\,\texttt{cath\_share}_i + \gamma\,\Delta\ln(\text{Poptot})_i + \varepsilon_i
+\Delta Y_i = \alpha + \beta\,\texttt{cath\_share}_i + \varepsilon_i
 $$
 where $\Delta Y_i = \overline{Y}_i^{\text{post}} - \overline{Y}_i^{\text{pre}}$. Estimator is OLS with HC1 robust SE ([`regressions.py:385`](src/analysis/regressions.py:385)). Avoids TWFE pathologies (negative weights, residual autocorrelation).
 
@@ -558,7 +587,7 @@ $$
 Y_{it} = \beta_1\,(\texttt{cath\_share}_i \times \text{Post}_t)
        + \beta_2\,(M_i \times \text{Post}_t)
        + \beta_3\,(\texttt{cath\_share}_i \times M_i \times \text{Post}_t)
-       + \alpha_i + \delta_t + \gamma\,\ln(\text{Poptot})_{it} + \varepsilon_{it}
+       + \alpha_i + \delta_t + \varepsilon_{it}
 $$
 The moderator $M_i$ is **mean-centred** ([`regressions.py:483`](src/analysis/regressions.py:483)) so that $\beta_1$ is the treatment effect at the mean moderator. Moderators tested: `school1517`, `f_urban` (extensible).
 
@@ -607,10 +636,10 @@ The point of the (7)–(9) ladder is to test that the marriage-rate effect survi
 
 Function: [`run_emigration_robustness()`](src/analysis/regressions.py:772). Six specifications addressing the post-1885 Polish-province emigration confound:
 
-1. Baseline TWFE with `ln_pop` only.
+1. Baseline TWFE (no time-varying controls; entity + year FE only).
 2. + `pop_growth_rate` (constructed inline from `Poptot` differences).
 3. + `migration_rate` *implied* by the demographic accounting identity ($\Delta\text{Pop} - (\text{Birtot}-\text{Dthtot})$, per 1,000).
-4. Sample restricted to pre-1885.
+4. Sample restricted to pre-1885 (no controls).
 5. + **measured `outmig_rate`** from Galloway VIT (per 1,000 pop, official permit out-migration only).
 6. + **measured `net_mig_rate`** from Galloway VIT (per 1,000 pop, $\text{In}-\text{Out}$).
 
@@ -645,7 +674,7 @@ This is the textbook Princeton EFP / Galloway demographic-transition result: **t
 
 Defined in [`channels.py`](src/analysis/channels.py):
 
-- **Illegitimacy** ([`illegitimacy_analysis()`](src/analysis/channels.py:17)): baseline DiD on `illegitimacy_ratio` with `cath_share_x_post` (no $\ln(\text{Pop})$ control — see §6.7/§8 caveat).
+- **Illegitimacy** ([`illegitimacy_analysis()`](src/analysis/channels.py:17)): baseline DiD on `illegitimacy_ratio` with the single regressor `cath_share_x_post` (entity + year FE; no $\ln(\text{Pop})$ control — see §6.7/§9 caveat).
 - **Infant mortality** ([`infant_mortality_analysis()`](src/analysis/channels.py:73)): restricts to **1875+** (because of the Galloway definition change at 1875, see §4.1) and re-bases the post indicator at the **rollback** start: `cath_x_rollback = cath_share × 1[Year ≥ 1880]`.
 
 ---
@@ -669,6 +698,7 @@ A short, honest accounting. Each item is annotated with where it bites.
 - **`pop_area_1871` units are not certified in the appendix.** The Galloway codebook (PDF distributed with the data) specifies the unit; values 5,923–243,000 are consistent with hectares but not with km². Treat `pop_area_1871` as an ordinal county-size measure unless you confirm the unit from the codebook.
 - **Non-Prussian observations.** The sample is Prussia only; conclusions do not extend to e.g. Bavaria or the South-German Catholic states.
 - **Pre-trends rejection on `cbr`.** The pre-trends Wald test rejects on the crude birth rate but not on the marriage rate, so causal claims about *fertility* (cbr/legitimate_br) are weaker than those about *marriage formation*. Honest-DiD breakdown $M$ should be reported alongside the headline coefficient.
+- **No time-varying log-population control.** The headline specifications no longer include $\ln(\texttt{Poptot\_midyear})$ as a regressor. The reason is a "bad control" concern: county population is itself responsive to the Kulturkampf (fertility, mortality, and net migration all feed into the denominator), so conditioning on $\ln(\text{Pop})$ would close part of the causal pathway we are trying to estimate. Entity fixed effects already absorb time-invariant size differences. The `ln_pop` column remains in the panel for descriptive use and can be re-introduced by any caller via `run_baseline_did(..., controls=["ln_pop"])`. Empirically, removing it leaves the marriage-rate and CBR point estimates essentially unchanged (entity FE were doing nearly all of the work) but tightens the interpretive story.
 
 ---
 
