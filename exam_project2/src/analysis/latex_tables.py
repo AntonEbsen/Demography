@@ -635,7 +635,8 @@ def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
 def baseline_did_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
-        "cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate", "I_g",
+        "cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate",
+        "I_g", "gmfr",
     ),
     out_path: Path | None = None,
 ) -> str:
@@ -998,7 +999,7 @@ def channels_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
 
 def polish_german_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "I_g", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "I_g", "gmfr", "marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """Heterogeneity by sub-region (Polish vs German Catholic vs Protestant).
@@ -2380,43 +2381,53 @@ def pretreatment_trends_table(
     """
     out_path = out_path or TABLES_DIR / "pretreatment_trends.tex"
 
+    outcome_keys = ("cbr", "marriage_rate", "I_g", "gmfr")
     df = run_pretreatment_trends_robustness(
-        panel, outcomes=("cbr", "marriage_rate", "I_g"), form="linear",
+        panel, outcomes=outcome_keys, form="linear",
     )
 
-    def _ig_digits(o, key):
-        # I_g coefficients are O(1e-4), CBR/marriage_rate are O(1e-3).
-        # Use 5 digits for I_g so non-zero values are visible.
-        return 5 if o == "I_g" else 4
+    def _digits(o):
+        # I_g coefficients are O(1e-4); gmfr is O(1e-1); CBR /
+        # marriage_rate are O(1e-3). Use 5 digits for I_g so non-zero
+        # values are visible, 3 for gmfr, 4 for the rest.
+        if o == "I_g":
+            return 5
+        if o == "gmfr":
+            return 3
+        return 4
 
     rows: list[str] = []
     for spec in df["spec"].drop_duplicates():
         sub = df[df["spec"] == spec]
         outs = {
-            o: (sub[sub["outcome"] == o].iloc[0] if (sub["outcome"] == o).any() else None)
-            for o in ("cbr", "marriage_rate", "I_g")
+            o: (sub[sub["outcome"] == o].iloc[0]
+                if (sub["outcome"] == o).any() else None)
+            for o in outcome_keys
         }
         coefs = [
-            _fmt_coef(outs[o]["coef"], outs[o]["p"], digits=_ig_digits(o, "coef"))
+            _fmt_coef(outs[o]["coef"], outs[o]["p"], digits=_digits(o))
             if outs[o] is not None else ""
-            for o in ("cbr", "marriage_rate", "I_g")
+            for o in outcome_keys
         ]
         ses = [
-            _fmt_se(outs[o]["se"], digits=_ig_digits(o, "se"))
+            _fmt_se(outs[o]["se"], digits=_digits(o))
             if outs[o] is not None else ""
-            for o in ("cbr", "marriage_rate", "I_g")
+            for o in outcome_keys
         ]
-        n_val = next((int(outs[o]["n"]) for o in outs if outs[o] is not None), 0)
+        n_val = next(
+            (int(outs[o]["n"]) for o in outs if outs[o] is not None), 0
+        )
         rows.append(
-            f"{_latex_escape(spec)} & " + " & ".join(coefs) + f" & {n_val:,} \\\\"
+            f"{_latex_escape(spec)} & " + " & ".join(coefs)
+            + f" & {n_val:,} \\\\"
         )
         rows.append(" & " + " & ".join(ses) + r" & \\")
 
     body = (
-        "\\begin{tabular}{lcccc}\n"
+        "\\begin{tabular}{lccccc}\n"
         "\\toprule\n"
-        " & CBR & Marriage rate & $I_g$ & $N$ \\\\\n"
-        " & (1) & (2) & (3) & \\\\\n"
+        " & CBR & Marriage rate & $I_g$ & GMFR & $N$ \\\\\n"
+        " & (1) & (2) & (3) & (4) & \\\\\n"
         "\\midrule\n"
         + "\n".join(rows) + "\n"
         + "\\bottomrule\n"
@@ -2430,15 +2441,17 @@ def pretreatment_trends_table(
             "(Bai 2009; Hsiao 2014)"
         ),
         label="tab:pretreatment_trends",
-        n_cols=5,
+        n_cols=6,
         notes=(
             "Each row is a separate two-way fixed-effects regression of the "
             "outcome on $\\mathrm{CathShare} \\times \\mathrm{Post}$ and the "
             "listed baseline iPEHD-1871 characteristics interacted with a "
-            "centred linear time trend. The marital-fertility column "
-            "reports the recalibrated Coale $I_g$ (Hutterite-normalised "
-            "legitimate births per married woman 15--49, with the STA1871 "
-            "marriage-prevalence shifter); see \\S6.5 of the data appendix. "
+            "centred linear time trend. The marital-fertility columns "
+            "report Coale's $I_g$ (Hutterite-normalised) and the "
+            "Galloway, Hammel \\& Lee (1994) headline GMFR (legitimate "
+            "births per 1{,}000 married women 15--49, the unnormalised "
+            "analogue of $I_g$). Both use the AGE1890 / STA1871 time-"
+            "varying marital denominator (see \\S6.5 of the data appendix). "
             "The interactions allow counties with different pre-treatment "
             "literacy ($\\mathrm{school1517}$), urbanisation "
             "($f_{\\mathrm{urban}}$), Prussian-citizenship share "

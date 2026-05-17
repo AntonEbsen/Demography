@@ -10,7 +10,25 @@
       "Bash(gh pr *)",
       "Bash(git fetch *)",
       "Bash(git checkout *)",
-      "Bash(git pull *)"
+      "Bash(git pull *)",
+      "Bash(git merge *)",
+      "Bash(git rm *)",
+      "Bash(git add *)",
+      "Bash(jupyter nbconvert *)",
+      "Bash(python scripts/export_notebooks_for_ai.py --format md --notebooks notebooks/01_data_and_eda.ipynb --name _smoketest)",
+      "Bash(rm -f outputs/for_ai/_smoketest.md)",
+      "Bash(python scripts/export_notebooks_for_ai.py --format all)",
+      "Bash(grep -lE 'I_g|$I_g$' 'outputs/tables/*.tex')",
+      "Bash(gh auth *)",
+      "Bash(grep -l \"ln_pop\\\\|ln\\(\\\\\\\\\\\\\\\\text{Population}\\)\" notebooks/*.ipynb)",
+      "Bash(grep -lE \"ln_pop|\\\\\\\\\\\\\\\\\\\\$\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ln\" outputs/tables/*.tex)",
+      "Bash(python -m nbconvert --to notebook --execute notebooks/02_baseline_regressions.ipynb --inplace --ExecutePreprocessor.timeout=600)",
+      "Bash(python -m nbconvert --to notebook --execute notebooks/03_extensions_and_mechanisms.ipynb --inplace --ExecutePreprocessor.timeout=900)",
+      "Bash(python -m nbconvert --to notebook --execute notebooks/04_spatial_analysis.ipynb --inplace --ExecutePreprocessor.timeout=900)",
+      "Bash(python -m nbconvert --to notebook --execute notebooks/01_data_and_eda.ipynb --inplace --ExecutePreprocessor.timeout=600)",
+      "Bash(python -m nbconvert --to notebook --execute notebooks/04_spatial_analysis.ipynb --inplace --ExecutePreprocessor.timeout=900 --ExecutePreprocessor.allow_errors=True)",
+      "Bash(python scripts/export_notebooks_for_ai.py --format md)",
+      "Bash(grep -nE \"I_g \\\\\\\\\\(marital|Panel.*I_g\" outputs/tables/polish_german.tex)"
     ]
   }
 }
