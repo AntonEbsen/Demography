@@ -432,7 +432,7 @@ This is the textbook Coale-Watkins decomposition for an institutional nuptiality
 
 | Variable | Definition | Formula | Unit | Built at |
 |---|---|---|---|---|
-| `ln_pop` | Log mid-year population. **No longer a default control** (see §8 caveat below): every rate outcome already has mid-year population in its denominator, so adding $\ln(\text{Pop})$ on the right-hand side is mechanically correlated with the LHS and risks "bad-control" bias. Kept in the panel and as one of the tested specifications in the population/migration robustness table. | $\ln(\texttt{Poptot\_midyear})$ | log persons | [`build_dataset.py:178–181`](src/data/build_dataset.py:178) |
+| `ln_pop` | Log mid-year population. **No longer a default control** (see §9 caveat below): every rate outcome already has mid-year population in its denominator, so adding $\ln(\text{Pop})$ on the right-hand side is mechanically correlated with the LHS and risks "bad-control" bias. Kept in the panel for descriptive use and as one of the tested specifications in the population/migration robustness table. | $\ln(\texttt{Poptot\_midyear})$ | log persons | [`build_dataset.py:178–181`](src/data/build_dataset.py:178) |
 | `cbr_flag` | CBR outlier flag (catches extremes under either mid-year or Galloway carry-forward denominator) | $\mathbb{1}[\texttt{cbr}\notin[15,70]\,\text{or}\,\texttt{cbr\_carryforward}\notin[15,70]]$ | bool; **6 obs = TRUE** | [`build_dataset.py:222–230`](src/data/build_dataset.py:222) |
 | `gfr_flag` | GFR outlier flag | $\mathbb{1}[\texttt{gfr\_static\_1871}>400]$ | bool; **10 obs = TRUE** (mostly 1869–1872 boundary-reform artefacts) | [`build_dataset.py:264–266`](src/data/build_dataset.py:264) |
 
@@ -501,7 +501,7 @@ A row is in the final analysis panel iff it survives every rule below, applied i
 
 This section reproduces the regression equations *as estimated by the code*. Each specification cites the function that runs it; all functions share the same panel and the same convention `(Code, Year)` for the multi-index.
 
-Notation: $Y_{it}$ is the outcome for county $i$ in year $t$; $\alpha_i$ are county fixed effects; $\delta_t$ are year fixed effects; $X_{it}$ is a vector of time-varying controls (default: $\ln(\text{Poptot})$); $\text{Post}_t \equiv \mathbb{1}[t \ge 1873]$.
+Notation: $Y_{it}$ is the outcome for county $i$ in year $t$; $\alpha_i$ are county fixed effects; $\delta_t$ are year fixed effects; $X_{it}$ is a vector of time-varying controls (**default: empty** — see §9 for the rationale); $\text{Post}_t \equiv \mathbb{1}[t \ge 1873]$.
 
 ### 8.1 Baseline two-way fixed-effects DiD
 
@@ -509,12 +509,12 @@ Function: [`run_baseline_did()`](src/analysis/regressions.py:54). Three FE desig
 
 **Continuous treatment** (default):
 $$
-Y_{it} = \beta\,(\texttt{cath\_share}_i \times \text{Post}_t) + \alpha_i + \delta_t + \gamma\,\ln(\text{Poptot})_{it} + \varepsilon_{it}
+Y_{it} = \beta\,(\texttt{cath\_share}_i \times \text{Post}_t) + \alpha_i + \delta_t + \varepsilon_{it}
 $$
 
 **Binary treatment** (`treatment="binary"`):
 $$
-Y_{it} = \beta\,(\texttt{high\_cath}_i \times \text{Post}_t) + \alpha_i + \delta_t + \gamma\,\ln(\text{Poptot})_{it} + \varepsilon_{it}
+Y_{it} = \beta\,(\texttt{high\_cath}_i \times \text{Post}_t) + \alpha_i + \delta_t + \varepsilon_{it}
 $$
 
 **FE designs** ([`regressions.py:167–201`](src/analysis/regressions.py:167)):
@@ -550,7 +550,7 @@ returning Wald $\chi^2$, df, F-equivalent (Wald/df), and p-value ([`regressions.
 
 Function: [`run_long_difference()`](src/analysis/regressions.py:340). Collapses the panel to two periods (default pre = 1862–1871, post = 1880–1889) and estimates
 $$
-\Delta Y_i = \alpha + \beta\,\texttt{cath\_share}_i + \gamma\,\Delta\ln(\text{Poptot})_i + \varepsilon_i
+\Delta Y_i = \alpha + \beta\,\texttt{cath\_share}_i + \varepsilon_i
 $$
 where $\Delta Y_i = \overline{Y}_i^{\text{post}} - \overline{Y}_i^{\text{pre}}$. Estimator is OLS with HC1 robust SE ([`regressions.py:385`](src/analysis/regressions.py:385)). Avoids TWFE pathologies (negative weights, residual autocorrelation).
 
@@ -585,7 +585,7 @@ $$
 Y_{it} = \beta_1\,(\texttt{cath\_share}_i \times \text{Post}_t)
        + \beta_2\,(M_i \times \text{Post}_t)
        + \beta_3\,(\texttt{cath\_share}_i \times M_i \times \text{Post}_t)
-       + \alpha_i + \delta_t + \gamma\,\ln(\text{Poptot})_{it} + \varepsilon_{it}
+       + \alpha_i + \delta_t + \varepsilon_{it}
 $$
 The moderator $M_i$ is **mean-centred** ([`regressions.py:483`](src/analysis/regressions.py:483)) so that $\beta_1$ is the treatment effect at the mean moderator. Moderators tested: `school1517`, `f_urban` (extensible).
 
@@ -634,10 +634,10 @@ The point of the (7)–(9) ladder is to test that the marriage-rate effect survi
 
 Function: [`run_emigration_robustness()`](src/analysis/regressions.py:772). Six specifications addressing the post-1885 Polish-province emigration confound:
 
-1. Baseline TWFE with `ln_pop` only.
+1. Baseline TWFE (no time-varying controls; entity + year FE only).
 2. + `pop_growth_rate` (constructed inline from `Poptot` differences).
 3. + `migration_rate` *implied* by the demographic accounting identity ($\Delta\text{Pop} - (\text{Birtot}-\text{Dthtot})$, per 1,000).
-4. Sample restricted to pre-1885.
+4. Sample restricted to pre-1885 (no controls).
 5. + **measured `outmig_rate`** from Galloway VIT (per 1,000 pop, official permit out-migration only).
 6. + **measured `net_mig_rate`** from Galloway VIT (per 1,000 pop, $\text{In}-\text{Out}$).
 
@@ -672,7 +672,7 @@ This is the textbook Princeton EFP / Galloway demographic-transition result: **t
 
 Defined in [`channels.py`](src/analysis/channels.py):
 
-- **Illegitimacy** ([`illegitimacy_analysis()`](src/analysis/channels.py:17)): baseline DiD on `illegitimacy_ratio` with `cath_share_x_post` (no $\ln(\text{Pop})$ control — see §6.7/§8 caveat).
+- **Illegitimacy** ([`illegitimacy_analysis()`](src/analysis/channels.py:17)): baseline DiD on `illegitimacy_ratio` with the single regressor `cath_share_x_post` (entity + year FE; no $\ln(\text{Pop})$ control — see §6.7/§9 caveat).
 - **Infant mortality** ([`infant_mortality_analysis()`](src/analysis/channels.py:73)): restricts to **1875+** (because of the Galloway definition change at 1875, see §4.1) and re-bases the post indicator at the **rollback** start: `cath_x_rollback = cath_share × 1[Year ≥ 1880]`.
 
 ---
@@ -696,6 +696,7 @@ A short, honest accounting. Each item is annotated with where it bites.
 - **`pop_area_1871` units are not certified in the appendix.** The Galloway codebook (PDF distributed with the data) specifies the unit; values 5,923–243,000 are consistent with hectares but not with km². Treat `pop_area_1871` as an ordinal county-size measure unless you confirm the unit from the codebook.
 - **Non-Prussian observations.** The sample is Prussia only; conclusions do not extend to e.g. Bavaria or the South-German Catholic states.
 - **Pre-trends rejection on `cbr`.** The pre-trends Wald test rejects on the crude birth rate but not on the marriage rate, so causal claims about *fertility* (cbr/legitimate_br) are weaker than those about *marriage formation*. Honest-DiD breakdown $M$ should be reported alongside the headline coefficient.
+- **No time-varying log-population control.** The headline specifications no longer include $\ln(\texttt{Poptot\_midyear})$ as a regressor. The reason is a "bad control" concern: county population is itself responsive to the Kulturkampf (fertility, mortality, and net migration all feed into the denominator), so conditioning on $\ln(\text{Pop})$ would close part of the causal pathway we are trying to estimate. Entity fixed effects already absorb time-invariant size differences. The `ln_pop` column remains in the panel for descriptive use and can be re-introduced by any caller via `run_baseline_did(..., controls=["ln_pop"])`. Empirically, removing it leaves the marriage-rate and CBR point estimates essentially unchanged (entity FE were doing nearly all of the work) but tightens the interpretive story.
 
 ---
 

@@ -123,7 +123,12 @@ def build_analysis_panel(
                         used by channels.schooling_channel() for the
                         1849->1886 long-difference DiD on attendance
                         rates; time-invariant after merge)
-        Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
+        Controls:     iPEHD baseline covariates (time-invariant);
+                      `ln_pop = log Poptot_midyear` is built and retained
+                      for descriptive use but is NOT in the default
+                      regression controls -- entity FE absorb time-
+                      invariant size differences, and population is
+                      itself responsive to the Kulturkampf;
                       raw Galloway `Poptot` is also retained as a column
                       for users who want to recompute carry-forward rates
     """

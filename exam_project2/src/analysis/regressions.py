@@ -90,9 +90,9 @@ def run_baseline_did(
         as a control on the right-hand side is mechanically correlated
         with the LHS and risks "bad-control" bias. Pass
         ``controls=["ln_pop"]`` explicitly to recover the old behaviour
-        for sensitivity checks; the population/migration robustness
-        table in ``run_pop_robustness`` still uses ``ln_pop`` as one of
-        its tested specifications.
+        for sensitivity checks. See ``run_emigration_robustness`` (§8.10
+        of DATA_APPENDIX) for a six-spec population/migration-control
+        ladder.
     cluster : str
         Cluster variable for standard errors. Default: 'Code' (county).
 
@@ -820,21 +820,21 @@ def run_emigration_robustness(
     Robustness specifications addressing the post-1885 Polish-province
     emigration confound:
 
-    (1) Baseline TWFE with ln_pop only -- the existing default.
-    (2) TWFE with ln_pop + population growth rate as additional control.
-    (3) TWFE with ln_pop + implied net migration rate (= pop_change -
-        natural_increase, per 1{,}000 pop) as additional control. The
-        migration variable is itself an outcome of the Kulturkampf, so this
-        is a "bad-control" specification -- but if the headline coefficient
-        survives, the result clearly is not just emigration mechanics.
+    (1) Baseline TWFE (no controls beyond entity + year FE).
+    (2) + population growth rate as additional control.
+    (3) + implied net migration rate (= pop_change - natural_increase,
+        per 1{,}000 pop) as additional control. The migration variable is
+        itself an outcome of the Kulturkampf, so this is a "bad-control"
+        specification -- but if the headline coefficient survives, the
+        result clearly is not just emigration mechanics.
     (4) Sample restricted to pre-1885, before the Bismarck-era
         Polenausweisungen and Settlement Commission. Cleanest cut.
-    (5) TWFE with ln_pop + *measured* out-migration rate from Galloway VIT
-        (annual, per 1,000 pop). Cleaner than the implied identity in (3)
-        but only available for years with VIT migration columns
-        (1862-1867 and 1872-1886; ~21 of 29 panel years).
-    (6) TWFE with ln_pop + *measured* net migration rate (in - out, per
-        1,000 pop). Same coverage caveat as (5).
+    (5) + *measured* out-migration rate from Galloway VIT (annual,
+        per 1,000 pop). Cleaner than the implied identity in (3) but only
+        available for years with VIT migration columns (1862-1867 and
+        1872-1886; ~21 of 29 panel years).
+    (6) + *measured* net migration rate (in - out, per 1,000 pop). Same
+        coverage caveat as (5).
     """
     work = df.copy().sort_values(["Code", "Year"])
     work["pop_change"] = work.groupby("Code")["Poptot"].diff()
@@ -848,12 +848,12 @@ def run_emigration_robustness(
     rows = []
     for outcome in outcomes:
         for label, controls, sample_filter in [
-            ("(1) Baseline (ln_pop only)", ["ln_pop"], None),
-            ("(2) + pop growth rate",      ["ln_pop", "pop_growth_rate"], None),
-            ("(3) + implied migration",    ["ln_pop", "migration_rate"], None),
-            ("(4) Restrict to pre-1885",   ["ln_pop"], lambda d: d["Year"] < 1885),
-            ("(5) + measured outmig rate", ["ln_pop", "outmig_rate"], None),
-            ("(6) + measured net mig rate", ["ln_pop", "net_mig_rate"], None),
+            ("(1) Baseline (no controls)", [], None),
+            ("(2) + pop growth rate",      ["pop_growth_rate"], None),
+            ("(3) + implied migration",    ["migration_rate"], None),
+            ("(4) Restrict to pre-1885",   [], lambda d: d["Year"] < 1885),
+            ("(5) + measured outmig rate", ["outmig_rate"], None),
+            ("(6) + measured net mig rate", ["net_mig_rate"], None),
         ]:
             sub = work if sample_filter is None else work[sample_filter(work)]
             try:
