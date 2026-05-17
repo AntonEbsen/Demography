@@ -1159,5 +1159,157 @@ def load_sta1871(path: Optional[Path] = None) -> pd.DataFrame:
         "hh_avg_size_1871": df["Hhfamily"].astype(float) / (
             (pop_m + pop_f).replace(0, np.nan)
         ),
+        # Raw marital-status counts retained so downstream code (e.g.
+        # `compute_galloway_gmfr_1871`) can re-use the calibration anchor.
+        "married_women_15plus_1871": df["Marriedover15f"].astype(float),
     })
     return out.reset_index(drop=True)
+
+
+# ===================================================================
+# 8.  Galloway 1994 GMFR (census-anchored marital fertility rate)
+# ===================================================================
+#
+# Replicates the dependent variable in Galloway, Hammel & Lee (1994):
+# legitimate births per 1,000 married women aged 15-49, where the
+# numerator is a 5-year-centred average around the census year. Galloway
+# computed this for multiple census years (1880, 1885, 1890). Our
+# electronic Galloway database ships STA1871 only -- no marital-status
+# cross-tab for 1880/1885/1890 -- so we can replicate the measure for
+# census year 1871 alone.
+#
+# Married women 15-49 is not published as a single cell in STA1871; the
+# file gives "Marriedover15f" (married women 15+) by county. We split
+# this into 15-49 and 50+ by applying the Princeton EFP / Knodel (1974)
+# marriage-prevalence-by-age schedule for Prussia 1871 to the county's
+# POP1871 women-by-age counts, then RESCALING band-wise so that the
+# county's predicted married-women-15+ total equals the observed STA1871
+# count. This preserves the AGE PROFILE from the Princeton schedule but
+# pins the LEVEL to each county's observed Marriedover15f.
+
+
+# Princeton EFP / Knodel (1974, Tables 4.7-4.8; Coale & Watkins 1986,
+# Table 2.1) Prussia-1871 marriage-prevalence-by-age schedule: proportion
+# of women in each age band who are currently married.
+KNODEL_PRUSSIA_1871_MARRIAGE_PREV = {
+    "15_19": 0.029,
+    "20_29": 0.435,
+    "30_39": 0.785,
+    "40_49": 0.795,
+    "50_59": 0.700,
+    "60p":   0.450,
+}
+
+
+def compute_galloway_gmfr_1871(
+    data_dir: Optional[Path] = None,
+    gmfr_max: float = 600.0,
+    gmfr_min: float = 50.0,
+) -> pd.DataFrame:
+    """
+    Compute Galloway, Hammel & Lee (1994)-style GMFR for census year 1871.
+
+    Parameters
+    ----------
+    data_dir : Path, optional
+        Galloway data dir. Defaults to DATA_RAW.
+    gmfr_max, gmfr_min : float
+        Cap and floor for the headline GMFR_1871. Values outside this
+        window are set to NaN (Galloway's empirical Prussian range is
+        ~150-450; the demographically plausible maximum for marital
+        fertility is around 600, since the Hutterite ceiling is ~700
+        and Prussian married women were not Hutterite-fertile). Values
+        outside the window are almost always boundary-reform artefacts
+        (e.g. Tarnowitz, Kreis 278, where post-1871 boundary changes
+        produce a mismatched numerator/denominator pair).
+
+    Returns
+    -------
+    pd.DataFrame keyed by Code with columns:
+        births_avg_1869_73         5-year-centred legitimate birth count
+        married_women_15plus_1871  observed from STA1871
+        married_women_15_49_1871   estimated via Knodel-schedule
+                                   calibration to STA1871 total
+        gmfr_galloway_1871         = births / married_15_49 x 1000,
+                                   NaN if outside [gmfr_min, gmfr_max]
+        gmfr_galloway_1871_flag    True if censored as outlier
+    """
+    if data_dir is None:
+        data_dir = DATA_RAW
+
+    # Step 1. Numerator: 5-year-centred legitimate-birth average,
+    # 1869-1873. We pull all VIT 1869-1873 files via the existing
+    # loader and average Birlegtot per county.
+    vit = load_vit_panel(data_dir=data_dir, year_start=1869, year_end=1873)
+    vit_t0 = vit[vit["Type"] == 0]
+    births_avg = (
+        vit_t0.groupby("Code")["Birlegtot"]
+              .mean()
+              .rename("births_avg_1869_73")
+              .reset_index()
+    )
+
+    # Step 2. STA1871 -> married women 15+ per county.
+    sta = load_sta1871(_find_file(data_dir, "STA1871"))
+    sta = sta[["Code", "married_women_15plus_1871"]]
+
+    # Step 3. POP1871 -> women by age band.
+    pop = load_pop1871_age_structure(_find_file(data_dir, "POP1871"))
+    band_cols = {
+        "15_19": "age_15_19_f_1871",
+        "20_29": "age_20_29_f_1871",
+        "30_39": "age_30_39_f_1871",
+        "40_49": "age_40_49_f_1871",
+        "50_59": "age_50_59_f_1871",
+        "60p":   "age_60p_f_1871",
+    }
+
+    # Schedule-implied married women in each band.
+    pred = pd.DataFrame({"Code": pop["Code"]})
+    for band, col in band_cols.items():
+        pred[f"mw_{band}"] = pop[col].astype(float) * KNODEL_PRUSSIA_1871_MARRIAGE_PREV[band]
+    pred["mw_15_49_pred"] = (
+        pred["mw_15_19"] + pred["mw_20_29"]
+        + pred["mw_30_39"] + pred["mw_40_49"]
+    )
+    pred["mw_15plus_pred"] = (
+        pred["mw_15_49_pred"] + pred["mw_50_59"] + pred["mw_60p"]
+    )
+
+    # Step 4. Calibrate to county-specific Marriedover15f.
+    merged = pred.merge(sta, on="Code", how="inner")
+    merged["calibration_factor"] = (
+        merged["married_women_15plus_1871"] / merged["mw_15plus_pred"]
+    )
+    merged["married_women_15_49_1871"] = (
+        merged["mw_15_49_pred"] * merged["calibration_factor"]
+    )
+
+    # Step 5. GMFR_Galloway_1871.
+    out = merged[[
+        "Code", "married_women_15plus_1871", "married_women_15_49_1871"
+    ]].merge(births_avg, on="Code", how="inner")
+    out["gmfr_galloway_1871_raw"] = (
+        out["births_avg_1869_73"]
+        / out["married_women_15_49_1871"].replace(0, np.nan)
+        * 1000
+    )
+
+    # Outlier-flag and censor.
+    out["gmfr_galloway_1871_flag"] = (
+        (out["gmfr_galloway_1871_raw"] > gmfr_max)
+        | (out["gmfr_galloway_1871_raw"] < gmfr_min)
+        | out["gmfr_galloway_1871_raw"].isna()
+    )
+    out["gmfr_galloway_1871"] = out["gmfr_galloway_1871_raw"]
+    out.loc[out["gmfr_galloway_1871_flag"], "gmfr_galloway_1871"] = np.nan
+
+    # ``married_women_15plus_1871`` is already produced by load_sta1871 and
+    # merged into the panel; we drop it here so the build_dataset merge
+    # does not create suffixed duplicates.
+    keep = [
+        "Code", "births_avg_1869_73",
+        "married_women_15_49_1871", "gmfr_galloway_1871",
+        "gmfr_galloway_1871_flag",
+    ]
+    return out[keep].reset_index(drop=True)

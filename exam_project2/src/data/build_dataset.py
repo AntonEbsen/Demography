@@ -32,6 +32,7 @@ from src.data.load_data import (
     load_gel1882,
     load_edu1886,
     load_sta1871,
+    compute_galloway_gmfr_1871,
     _find_file,
     DATA_RAW,
     DATA_PROCESSED,
@@ -114,7 +115,12 @@ def build_analysis_panel(
                        Reichstag elections 1871-1890)
         Urban TV:      urban_share_current (linearly interpolated from
                        URB1875/80/85/90; NaN pre-1875)
-        Controls:     ln_pop (= log Poptot_midyear), plus iPEHD covariates;
+        Controls:     iPEHD baseline covariates (time-invariant);
+                      `ln_pop = log Poptot_midyear` is built and retained
+                      for descriptive use but is NOT in the default
+                      regression controls -- entity FE absorb time-
+                      invariant size differences, and population is
+                      itself responsive to the Kulturkampf;
                       raw Galloway `Poptot` is also retained as a column
                       for users who want to recompute carry-forward rates
     """
@@ -568,6 +574,7 @@ def build_analysis_panel(
         (load_gel1882, "GEL1882"),
         (load_edu1886, "EDU1886"),
         (load_sta1871, "STA1871"),
+        (compute_galloway_gmfr_1871, "Galloway-1994 GMFR(1871)"),
     ]:
         try:
             cs = loader()

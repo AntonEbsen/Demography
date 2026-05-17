@@ -45,7 +45,7 @@ def illegitimacy_analysis(df: pd.DataFrame):
         logger.info("    High Catholic (>50%%): %.2f%%", by_cath.get(1, np.nan))
 
     logger.info("DiD: Illegitimacy ratio ~ CathShare × Post")
-    res = safe_panel_ols(df, "illegitimacy_ratio", ["cath_share_x_post", "ln_pop"])
+    res = safe_panel_ols(df, "illegitimacy_ratio", ["cath_share_x_post"])
     coef = res.params["cath_share_x_post"]
     se = res.std_errors["cath_share_x_post"]
     pval = res.pvalues["cath_share_x_post"]
@@ -93,7 +93,7 @@ def infant_mortality_analysis(df: pd.DataFrame):
     df["post_rollback"] = (df["Year"] >= 1880).astype(int)
     df["cath_x_rollback"] = df["cath_share"] * df["post_rollback"]
 
-    res = safe_panel_ols(df, "infant_mortality_rate", ["cath_x_rollback", "ln_pop"])
+    res = safe_panel_ols(df, "infant_mortality_rate", ["cath_x_rollback"])
     coef = res.params["cath_x_rollback"]
     se = res.std_errors["cath_x_rollback"]
     pval = res.pvalues["cath_x_rollback"]
@@ -114,7 +114,7 @@ def infant_mortality_analysis(df: pd.DataFrame):
         if sub["Code"].nunique() < 10:
             continue
         try:
-            res_sub = safe_panel_ols(sub, "infant_mortality_rate", ["cath_x_rollback", "ln_pop"])
+            res_sub = safe_panel_ols(sub, "infant_mortality_rate", ["cath_x_rollback"])
             logger.info("  %s (%d counties): β = %.4f (SE = %.4f, p = %.3f)",
                         label, sub["Code"].nunique(),
                         res_sub.params["cath_x_rollback"],

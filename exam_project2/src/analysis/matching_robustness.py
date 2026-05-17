@@ -284,7 +284,7 @@ def matched_sample_did(
         print("DiD ON FULL SAMPLE (for comparison)")
         print("=" * 70)
     full_result = run_baseline_did(
-        panel, outcome=outcome, treatment="continuous", controls=["ln_pop"],
+        panel, outcome=outcome, treatment="continuous", controls=[],
     )
     print(full_result["summary"])
     
@@ -293,7 +293,7 @@ def matched_sample_did(
         print("DiD ON MATCHED SAMPLE")
         print("=" * 70)
     matched_result = run_baseline_did(
-        matched_panel, outcome=outcome, treatment="continuous", controls=["ln_pop"],
+        matched_panel, outcome=outcome, treatment="continuous", controls=[],
     )
     print(matched_result["summary"])
     

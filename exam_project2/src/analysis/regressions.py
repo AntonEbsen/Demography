@@ -83,7 +83,13 @@ def run_baseline_did(
         'continuous' → uses cath_share_x_post (Catholic share × Post)
         'binary' → uses treat_x_post (HighCath × Post)
     controls : list, optional
-        Additional time-varying controls. Default: ['ln_pop'].
+        Additional time-varying controls. Default: ``[]`` (no
+        time-varying controls beyond the entity + year FE). The
+        previous default ``["ln_pop"]`` is no longer used because
+        log-population is itself responsive to the Kulturkampf
+        (fertility, mortality, and migration shocks all show up
+        in the denominator), making it a "bad control" in the
+        Pearlian sense.
     cluster : str
         Cluster variable for standard errors. Default: 'Code' (county).
     
@@ -92,12 +98,14 @@ def run_baseline_did(
     dict with keys: 'result' (PanelOLS result), 'summary' (string)
     """
     if controls is None:
-        # NOTE: infant_mortality_rate intentionally excluded — Galloway's
-        # definition changes in 1875, which would make a control conditioned
-        # on a variable that does not have a constant meaning across the
-        # sample. See channels.py for the 1875+ restriction we apply when
-        # infant mortality is the *outcome*.
-        controls = ["ln_pop"]
+        # Headline DiD runs WITHOUT a time-varying log-population
+        # control. Entity fixed effects already absorb time-invariant
+        # county-size differences, and adding ln_pop on top would
+        # condition on a post-treatment variable (the Kulturkampf
+        # itself plausibly affected population growth via fertility
+        # and net migration). Callers can re-introduce it by passing
+        # controls=["ln_pop"] explicitly.
+        controls = []
 
     panel = _prepare_panel(df)
 
@@ -258,7 +266,7 @@ def run_iv_did_multi(
     is consistent with all instruments being exogenous.
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = []
     missing = [z for z in instruments if z not in df.columns]
     if missing:
         raise KeyError(
@@ -359,7 +367,7 @@ def run_long_difference(
     treatment) and to autocorrelation in the panel residuals.
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = []
 
     pre_a, pre_b = pre_years
     post_a, post_b = post_years
@@ -477,7 +485,7 @@ def run_heterogeneity_did(
         )
 
     sub = df[["Code", "Year", outcome, "cath_share", "post_kulturkampf",
-              moderator, "ln_pop"]].dropna().copy()
+              moderator]].dropna().copy()
     # Center the moderator so the main CathShare x Post coefficient is the
     # effect at the moderator's mean.
     mod_centered = sub[moderator] - sub[moderator].mean()
@@ -487,7 +495,7 @@ def run_heterogeneity_did(
     sub = sub.set_index(["Code", "Year"])
 
     y = sub[outcome]
-    X = sub[["cath_x_post", "mod_x_post", "triple", "ln_pop"]]
+    X = sub[["cath_x_post", "mod_x_post", "triple"]]
     valid = y.notna() & X.notna().all(axis=1)
     y, X = y[valid], X[valid]
 
@@ -620,7 +628,7 @@ def run_rb_specific_did(
         )
         treat_cols.append(col)
 
-    exog_vars = treat_cols + ["ln_pop"]
+    exog_vars = list(treat_cols)
     y = panel[outcome]
     X = panel[exog_vars]
     valid = y.notna() & X.notna().all(axis=1)
@@ -816,21 +824,21 @@ def run_emigration_robustness(
     Robustness specifications addressing the post-1885 Polish-province
     emigration confound:
 
-    (1) Baseline TWFE with ln_pop only -- the existing default.
-    (2) TWFE with ln_pop + population growth rate as additional control.
-    (3) TWFE with ln_pop + implied net migration rate (= pop_change -
-        natural_increase, per 1{,}000 pop) as additional control. The
-        migration variable is itself an outcome of the Kulturkampf, so this
-        is a "bad-control" specification -- but if the headline coefficient
-        survives, the result clearly is not just emigration mechanics.
+    (1) Baseline TWFE (no controls beyond entity + year FE).
+    (2) + population growth rate as additional control.
+    (3) + implied net migration rate (= pop_change - natural_increase,
+        per 1{,}000 pop) as additional control. The migration variable is
+        itself an outcome of the Kulturkampf, so this is a "bad-control"
+        specification -- but if the headline coefficient survives, the
+        result clearly is not just emigration mechanics.
     (4) Sample restricted to pre-1885, before the Bismarck-era
         Polenausweisungen and Settlement Commission. Cleanest cut.
-    (5) TWFE with ln_pop + *measured* out-migration rate from Galloway VIT
-        (annual, per 1,000 pop). Cleaner than the implied identity in (3)
-        but only available for years with VIT migration columns
-        (1862-1867 and 1872-1886; ~21 of 29 panel years).
-    (6) TWFE with ln_pop + *measured* net migration rate (in - out, per
-        1,000 pop). Same coverage caveat as (5).
+    (5) + *measured* out-migration rate from Galloway VIT (annual,
+        per 1,000 pop). Cleaner than the implied identity in (3) but only
+        available for years with VIT migration columns (1862-1867 and
+        1872-1886; ~21 of 29 panel years).
+    (6) + *measured* net migration rate (in - out, per 1,000 pop). Same
+        coverage caveat as (5).
     """
     work = df.copy().sort_values(["Code", "Year"])
     work["pop_change"] = work.groupby("Code")["Poptot"].diff()
@@ -844,12 +852,12 @@ def run_emigration_robustness(
     rows = []
     for outcome in outcomes:
         for label, controls, sample_filter in [
-            ("(1) Baseline (ln_pop only)", ["ln_pop"], None),
-            ("(2) + pop growth rate",      ["ln_pop", "pop_growth_rate"], None),
-            ("(3) + implied migration",    ["ln_pop", "migration_rate"], None),
-            ("(4) Restrict to pre-1885",   ["ln_pop"], lambda d: d["Year"] < 1885),
-            ("(5) + measured outmig rate", ["ln_pop", "outmig_rate"], None),
-            ("(6) + measured net mig rate", ["ln_pop", "net_mig_rate"], None),
+            ("(1) Baseline (no controls)", [], None),
+            ("(2) + pop growth rate",      ["pop_growth_rate"], None),
+            ("(3) + implied migration",    ["migration_rate"], None),
+            ("(4) Restrict to pre-1885",   [], lambda d: d["Year"] < 1885),
+            ("(5) + measured outmig rate", ["outmig_rate"], None),
+            ("(6) + measured net mig rate", ["net_mig_rate"], None),
         ]:
             sub = work if sample_filter is None else work[sample_filter(work)]
             try:
@@ -921,7 +929,7 @@ def run_jewish_placebo(
     Jewish-share interactions with Post should show null effects.
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = []
     if "f_jew" not in df.columns:
         raise KeyError(
             "f_jew not in panel — rebuild via `dvc repro build` so iPEHD merge runs."
@@ -968,10 +976,10 @@ def run_fake_treatment_placebo(
     sub["cath_share_x_fake_post"] = sub["cath_share"] * sub["fake_post"]
 
     for outcome in outcomes:
-        s = sub[["Code", "Year", outcome, "cath_share_x_fake_post", "ln_pop"]].dropna().copy()
+        s = sub[["Code", "Year", outcome, "cath_share_x_fake_post"]].dropna().copy()
         s = s.set_index(["Code", "Year"])
         y = s[outcome]
-        X = s[["cath_share_x_fake_post", "ln_pop"]]
+        X = s[["cath_share_x_fake_post"]]
         valid = y.notna() & X.notna().all(axis=1)
         y, X = y[valid], X[valid]
         if len(y) < 100:
@@ -1002,7 +1010,7 @@ def run_triple_difference_polish(
     counties, on top of the main cath_share x Post coefficient.
     """
     sub = df[["Code", "Year", outcome, "cath_share", "post_kulturkampf",
-              "Rb", "ln_pop"]].dropna().copy()
+              "Rb"]].dropna().copy()
     sub["polish"] = sub["Rb"].isin(polish_rbs).astype(int)
     sub["cath_share_x_post"] = sub["cath_share"] * sub["post_kulturkampf"]
     sub["polish_x_post"] = sub["polish"] * sub["post_kulturkampf"]
@@ -1012,7 +1020,7 @@ def run_triple_difference_polish(
 
     y = sub[outcome]
     # polish (level) and cath_share_x_polish are absorbed by entity FE; drop them.
-    X = sub[["cath_share_x_post", "polish_x_post", "triple", "ln_pop"]]
+    X = sub[["cath_share_x_post", "polish_x_post", "triple"]]
     valid = y.notna() & X.notna().all(axis=1)
     y, X = y[valid], X[valid]
 
@@ -1052,7 +1060,7 @@ def run_iv_did(
     the excluded instrument, and the OLS comparison coefficient.
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = []
     if instrument not in df.columns:
         raise KeyError(
             f"Instrument column {instrument!r} not in panel — rebuild via "
@@ -1154,9 +1162,11 @@ def run_event_study(
                     (for plotting)
     """
     if controls is None:
-        # See note in run_baseline_did: infant_mortality_rate has a 1875
-        # definition break and is unsafe as a panel-wide control.
-        controls = ["ln_pop"]
+        # See run_baseline_did: ln_pop is intentionally not the default
+        # control. Entity FE absorb time-invariant size differences;
+        # adding log-pop on top would condition on a post-treatment
+        # variable.
+        controls = []
 
     panel = _prepare_panel(df)
 
@@ -1269,9 +1279,11 @@ def run_robustness(
     pd.DataFrame with columns: Specification, Coefficient, SE, p_value, N, N_counties
     """
     if controls is None:
-        # See note in run_baseline_did: infant_mortality_rate has a 1875
-        # definition break and is unsafe as a panel-wide control.
-        controls = ["ln_pop"]
+        # See run_baseline_did: ln_pop is intentionally not the default
+        # control. Entity FE absorb time-invariant size differences;
+        # adding log-pop on top would condition on a post-treatment
+        # variable.
+        controls = []
 
     results = []
     

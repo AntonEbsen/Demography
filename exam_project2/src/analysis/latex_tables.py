@@ -627,9 +627,6 @@ def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
         "coef": res.params["cath_share_x_post"],
         "se": res.std_errors["cath_share_x_post"],
         "p": res.pvalues["cath_share_x_post"],
-        "ln_pop_coef": res.params.get("ln_pop", np.nan),
-        "ln_pop_se": res.std_errors.get("ln_pop", np.nan),
-        "ln_pop_p": res.pvalues.get("ln_pop", np.nan),
         "n": int(res.nobs),
         "r2": float(res.rsquared_within),
     }
@@ -738,18 +735,6 @@ def baseline_did_table(
         + " & ".join(_fmt_se(c["se"]) for c in cols)
         + r" \\"
     )
-    lnpop_coef = (
-        _label("ln_pop")
-        + " & "
-        + " & ".join(_fmt_coef(c["ln_pop_coef"], c["ln_pop_p"]) for c in cols)
-        + r" \\"
-    )
-    lnpop_se = (
-        " & "
-        + " & ".join(_fmt_se(c["ln_pop_se"]) for c in cols)
-        + r" \\"
-    )
-
     yes_twfe = " & ".join("Yes" for _ in cols_twfe)
     yes_strict = " & ".join("Yes" for _ in cols_strict)
     no_strict = " & ".join("--" for _ in cols_strict)
@@ -799,9 +784,7 @@ def baseline_did_table(
         + col_nums + "\n"
         + "\\midrule\n"
         + coef_row + "\n"
-        + se_row + "\n\\addlinespace\n"
-        + lnpop_coef + "\n"
-        + lnpop_se + "\n"
+        + se_row + "\n"
         "\\midrule\n"
         + f"County FE & {yes_twfe} & {yes_strict} \\\\\n"
         + f"Year FE & {yes_twfe} & {no_strict} \\\\\n"
@@ -905,11 +888,11 @@ def channels_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
     """Mechanisms: illegitimacy + infant mortality."""
     out_path = out_path or TABLES_DIR / "channels.tex"
 
-    illeg = safe_panel_ols(panel, "illegitimacy_ratio", ["cath_share_x_post", "ln_pop"])
+    illeg = safe_panel_ols(panel, "illegitimacy_ratio", ["cath_share_x_post"])
     mort_panel = panel[panel["Year"] >= 1875].copy()
     mort_panel["post_rollback"] = (mort_panel["Year"] >= 1880).astype(int)
     mort_panel["cath_x_rollback"] = mort_panel["cath_share"] * mort_panel["post_rollback"]
-    mort = safe_panel_ols(mort_panel, "infant_mortality_rate", ["cath_x_rollback", "ln_pop"])
+    mort = safe_panel_ols(mort_panel, "infant_mortality_rate", ["cath_x_rollback"])
 
     cols = [
         {
@@ -918,9 +901,6 @@ def channels_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
             "treat_coef": illeg.params["cath_share_x_post"],
             "treat_se": illeg.std_errors["cath_share_x_post"],
             "treat_p": illeg.pvalues["cath_share_x_post"],
-            "ln_pop_coef": illeg.params["ln_pop"],
-            "ln_pop_se": illeg.std_errors["ln_pop"],
-            "ln_pop_p": illeg.pvalues["ln_pop"],
             "n": int(illeg.nobs),
             "r2": float(illeg.rsquared_within),
             "sample": "Full panel",
@@ -931,9 +911,6 @@ def channels_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
             "treat_coef": mort.params["cath_x_rollback"],
             "treat_se": mort.std_errors["cath_x_rollback"],
             "treat_p": mort.pvalues["cath_x_rollback"],
-            "ln_pop_coef": mort.params["ln_pop"],
-            "ln_pop_se": mort.std_errors["ln_pop"],
-            "ln_pop_p": mort.pvalues["ln_pop"],
             "n": int(mort.nobs),
             "r2": float(mort.rsquared_within),
             "sample": "1875+ (def.\\ change)",
@@ -969,14 +946,7 @@ def channels_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
         body += r"\\" + "\n\\addlinespace\n"
 
     body += (
-        _label("ln_pop")
-        + " & "
-        + " & ".join(_fmt_coef(c["ln_pop_coef"], c["ln_pop_p"]) for c in cols)
-        + r" \\"
-        + "\n & "
-        + " & ".join(_fmt_se(c["ln_pop_se"]) for c in cols)
-        + r" \\"
-        + "\n\\midrule\n"
+        "\\midrule\n"
         + f"Sample & {' & '.join(c['sample'] for c in cols)} \\\\\n"
         + f"County FE & {' & '.join('Yes' for _ in cols)} \\\\\n"
         + f"Year FE & {' & '.join('Yes' for _ in cols)} \\\\\n"

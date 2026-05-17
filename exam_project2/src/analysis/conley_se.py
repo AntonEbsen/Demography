@@ -24,7 +24,7 @@ therefore directly comparable to the entity-clustered SEs reported as the
 default — pick the larger of the two for inference.
 
 Public API:
-    spatial_did_se(panel, outcome="cbr", cutoff_km=200, controls=("ln_pop",))
+    spatial_did_se(panel, outcome="cbr", cutoff_km=200, controls=())
         -> dict with coef, conley_se, cluster_se, n
 """
 
@@ -70,7 +70,7 @@ def spatial_did_se(
     panel: pd.DataFrame,
     outcome: str = "cbr",
     cutoff_km: float = 200.0,
-    controls: Sequence[str] = ("ln_pop",),
+    controls: Sequence[str] = (),
     treatment: str = "cath_share_x_post",
 ) -> dict:
     """Run the baseline DiD and return cluster + Conley spatial HAC SEs."""
