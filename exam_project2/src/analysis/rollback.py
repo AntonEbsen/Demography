@@ -37,7 +37,7 @@ def rollback_event_study(
     """
     df = df.copy()
 
-    cols_needed = ["Code", "Year", outcome, treatment_var, "ln_pop"]
+    cols_needed = ["Code", "Year", outcome, treatment_var]
     sub = df[cols_needed].drop_duplicates(subset=["Code", "Year"]).dropna().copy()
     sub = sub.set_index(["Code", "Year"])
 
@@ -49,7 +49,7 @@ def rollback_event_study(
         sub[f"treat_x_{yr}"] = year_dummy * sub[treatment_var].values
 
     interact_cols = [f"treat_x_{yr}" for yr in interact_years]
-    exog = interact_cols + ["ln_pop"]
+    exog = list(interact_cols)
 
     y = sub[outcome]
     X = sub[exog]

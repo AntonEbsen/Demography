@@ -48,7 +48,7 @@ def heterogeneity_by_urbanization(df: pd.DataFrame, outcome: str = "cbr"):
     
     for label, mask in [("Urban", df["urban"] == 1), ("Rural", df["urban"] == 0)]:
         sub = df[mask].copy()
-        res = _safe_panel_ols(sub, outcome, ["cath_share_x_post", "ln_pop"])
+        res = _safe_panel_ols(sub, outcome, ["cath_share_x_post"])
         
         results[label] = {
             "coef": res.params["cath_share_x_post"],
@@ -63,7 +63,7 @@ def heterogeneity_by_urbanization(df: pd.DataFrame, outcome: str = "cbr"):
     df["cath_x_post_x_urban"] = df["cath_share"] * df["post_kulturkampf"] * df["urban"]
     df["post_x_urban"] = df["post_kulturkampf"] * df["urban"]
     
-    exog = ["cath_share_x_post", "cath_x_post_x_urban", "post_x_urban", "ln_pop"]
+    exog = ["cath_share_x_post", "cath_x_post_x_urban", "post_x_urban"]
     res = _safe_panel_ols(df, outcome, exog)
     
     print(f"\nTriple difference (CathShare × Post × Urban):")
@@ -100,7 +100,7 @@ def polish_vs_german_catholics(df: pd.DataFrame, outcome: str = "cbr"):
             print(f"{label}: too few counties ({sub['Code'].nunique()}), skipping")
             continue
         
-        res = _safe_panel_ols(sub, outcome, ["cath_share_x_post", "ln_pop"])
+        res = _safe_panel_ols(sub, outcome, ["cath_share_x_post"])
         
         results[label] = {
             "coef": res.params["cath_share_x_post"],
@@ -183,7 +183,7 @@ def marriage_to_birth_pipeline(df: pd.DataFrame):
         ("cath_x_post_lag1", "1-year lag"),
         ("cath_x_post_lag2", "2-year lag"),
     ]:
-        res = _safe_panel_ols(df, "cbr", [lag_var, "ln_pop"])
+        res = _safe_panel_ols(df, "cbr", [lag_var])
         
         results[label] = {
             "coef": res.params[lag_var],
@@ -276,7 +276,7 @@ def infant_mortality_did(df: pd.DataFrame):
     """
     Run the baseline DiD with infant mortality rate as outcome.
     """
-    res = _safe_panel_ols(df, "infant_mortality_rate", ["cath_share_x_post", "ln_pop"])
+    res = _safe_panel_ols(df, "infant_mortality_rate", ["cath_share_x_post"])
     
     print("DiD: Infant Mortality Rate ~ CathShare × Post")
     print(f"  β = {res.params['cath_share_x_post']:.4f} "

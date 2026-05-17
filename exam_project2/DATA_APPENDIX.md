@@ -405,7 +405,7 @@ These approximations affect the *level* of the indices but **not** the within-co
 
 | Variable | Definition | Formula | Unit | Built at |
 |---|---|---|---|---|
-| `ln_pop` | Log mid-year population (county-size control) | $\ln(\texttt{Poptot\_midyear})$ — uses the same mid-year denominator as the headline rates so the regression does not mix conventions | log persons | [`build_dataset.py:178–181`](src/data/build_dataset.py:178) |
+| `ln_pop` | Log mid-year population. **No longer a default control** (see §8 caveat below): every rate outcome already has mid-year population in its denominator, so adding $\ln(\text{Pop})$ on the right-hand side is mechanically correlated with the LHS and risks "bad-control" bias. Kept in the panel and as one of the tested specifications in the population/migration robustness table. | $\ln(\texttt{Poptot\_midyear})$ | log persons | [`build_dataset.py:178–181`](src/data/build_dataset.py:178) |
 | `cbr_flag` | CBR outlier flag (catches extremes under either mid-year or Galloway carry-forward denominator) | $\mathbb{1}[\texttt{cbr}\notin[15,70]\,\text{or}\,\texttt{cbr\_carryforward}\notin[15,70]]$ | bool; **6 obs = TRUE** | [`build_dataset.py:222–230`](src/data/build_dataset.py:222) |
 | `gfr_flag` | GFR outlier flag | $\mathbb{1}[\texttt{gfr\_static\_1871}>400]$ | bool; **10 obs = TRUE** (mostly 1869–1872 boundary-reform artefacts) | [`build_dataset.py:264–266`](src/data/build_dataset.py:264) |
 
@@ -645,7 +645,7 @@ This is the textbook Princeton EFP / Galloway demographic-transition result: **t
 
 Defined in [`channels.py`](src/analysis/channels.py):
 
-- **Illegitimacy** ([`illegitimacy_analysis()`](src/analysis/channels.py:17)): baseline DiD on `illegitimacy_ratio` with `cath_share_x_post + ln_pop`.
+- **Illegitimacy** ([`illegitimacy_analysis()`](src/analysis/channels.py:17)): baseline DiD on `illegitimacy_ratio` with `cath_share_x_post` (no $\ln(\text{Pop})$ control — see §6.7/§8 caveat).
 - **Infant mortality** ([`infant_mortality_analysis()`](src/analysis/channels.py:73)): restricts to **1875+** (because of the Galloway definition change at 1875, see §4.1) and re-bases the post indicator at the **rollback** start: `cath_x_rollback = cath_share × 1[Year ≥ 1880]`.
 
 ---

@@ -83,21 +83,25 @@ def run_baseline_did(
         'continuous' → uses cath_share_x_post (Catholic share × Post)
         'binary' → uses treat_x_post (HighCath × Post)
     controls : list, optional
-        Additional time-varying controls. Default: ['ln_pop'].
+        Additional time-varying controls. Default: ``[]`` (no controls).
+        ``ln_pop`` was previously the default but is now opt-in: since
+        every rate outcome (CBR, marriage rate, IMR, etc.) uses
+        mid-year population as its denominator, adding $\\ln(\\text{Pop})$
+        as a control on the right-hand side is mechanically correlated
+        with the LHS and risks "bad-control" bias. Pass
+        ``controls=["ln_pop"]`` explicitly to recover the old behaviour
+        for sensitivity checks; the population/migration robustness
+        table in ``run_pop_robustness`` still uses ``ln_pop`` as one of
+        its tested specifications.
     cluster : str
         Cluster variable for standard errors. Default: 'Code' (county).
-    
+
     Returns
     -------
     dict with keys: 'result' (PanelOLS result), 'summary' (string)
     """
     if controls is None:
-        # NOTE: infant_mortality_rate intentionally excluded — Galloway's
-        # definition changes in 1875, which would make a control conditioned
-        # on a variable that does not have a constant meaning across the
-        # sample. See channels.py for the 1875+ restriction we apply when
-        # infant mortality is the *outcome*.
-        controls = ["ln_pop"]
+        controls = []
 
     panel = _prepare_panel(df)
 
@@ -258,7 +262,7 @@ def run_iv_did_multi(
     is consistent with all instruments being exogenous.
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = []
     missing = [z for z in instruments if z not in df.columns]
     if missing:
         raise KeyError(
@@ -359,7 +363,7 @@ def run_long_difference(
     treatment) and to autocorrelation in the panel residuals.
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = []
 
     pre_a, pre_b = pre_years
     post_a, post_b = post_years
@@ -477,7 +481,7 @@ def run_heterogeneity_did(
         )
 
     sub = df[["Code", "Year", outcome, "cath_share", "post_kulturkampf",
-              moderator, "ln_pop"]].dropna().copy()
+              moderator]].dropna().copy()
     # Center the moderator so the main CathShare x Post coefficient is the
     # effect at the moderator's mean.
     mod_centered = sub[moderator] - sub[moderator].mean()
@@ -487,7 +491,7 @@ def run_heterogeneity_did(
     sub = sub.set_index(["Code", "Year"])
 
     y = sub[outcome]
-    X = sub[["cath_x_post", "mod_x_post", "triple", "ln_pop"]]
+    X = sub[["cath_x_post", "mod_x_post", "triple"]]
     valid = y.notna() & X.notna().all(axis=1)
     y, X = y[valid], X[valid]
 
@@ -620,7 +624,7 @@ def run_rb_specific_did(
         )
         treat_cols.append(col)
 
-    exog_vars = treat_cols + ["ln_pop"]
+    exog_vars = treat_cols
     y = panel[outcome]
     X = panel[exog_vars]
     valid = y.notna() & X.notna().all(axis=1)
@@ -921,7 +925,7 @@ def run_jewish_placebo(
     Jewish-share interactions with Post should show null effects.
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = []
     if "f_jew" not in df.columns:
         raise KeyError(
             "f_jew not in panel — rebuild via `dvc repro build` so iPEHD merge runs."
@@ -968,10 +972,10 @@ def run_fake_treatment_placebo(
     sub["cath_share_x_fake_post"] = sub["cath_share"] * sub["fake_post"]
 
     for outcome in outcomes:
-        s = sub[["Code", "Year", outcome, "cath_share_x_fake_post", "ln_pop"]].dropna().copy()
+        s = sub[["Code", "Year", outcome, "cath_share_x_fake_post"]].dropna().copy()
         s = s.set_index(["Code", "Year"])
         y = s[outcome]
-        X = s[["cath_share_x_fake_post", "ln_pop"]]
+        X = s[["cath_share_x_fake_post"]]
         valid = y.notna() & X.notna().all(axis=1)
         y, X = y[valid], X[valid]
         if len(y) < 100:
@@ -1002,7 +1006,7 @@ def run_triple_difference_polish(
     counties, on top of the main cath_share x Post coefficient.
     """
     sub = df[["Code", "Year", outcome, "cath_share", "post_kulturkampf",
-              "Rb", "ln_pop"]].dropna().copy()
+              "Rb"]].dropna().copy()
     sub["polish"] = sub["Rb"].isin(polish_rbs).astype(int)
     sub["cath_share_x_post"] = sub["cath_share"] * sub["post_kulturkampf"]
     sub["polish_x_post"] = sub["polish"] * sub["post_kulturkampf"]
@@ -1012,7 +1016,7 @@ def run_triple_difference_polish(
 
     y = sub[outcome]
     # polish (level) and cath_share_x_polish are absorbed by entity FE; drop them.
-    X = sub[["cath_share_x_post", "polish_x_post", "triple", "ln_pop"]]
+    X = sub[["cath_share_x_post", "polish_x_post", "triple"]]
     valid = y.notna() & X.notna().all(axis=1)
     y, X = y[valid], X[valid]
 
@@ -1052,7 +1056,7 @@ def run_iv_did(
     the excluded instrument, and the OLS comparison coefficient.
     """
     if controls is None:
-        controls = ["ln_pop"]
+        controls = []
     if instrument not in df.columns:
         raise KeyError(
             f"Instrument column {instrument!r} not in panel — rebuild via "
@@ -1154,9 +1158,7 @@ def run_event_study(
                     (for plotting)
     """
     if controls is None:
-        # See note in run_baseline_did: infant_mortality_rate has a 1875
-        # definition break and is unsafe as a panel-wide control.
-        controls = ["ln_pop"]
+        controls = []
 
     panel = _prepare_panel(df)
 
@@ -1263,15 +1265,13 @@ def run_robustness(
     5. Alternative Catholic threshold: 75% instead of 50%
     6. Excluding Polish-majority counties (Posen, Bromberg provinces)
     7. Only rural counties (excluding Berlin and very large cities)
-    
+
     Returns
     -------
     pd.DataFrame with columns: Specification, Coefficient, SE, p_value, N, N_counties
     """
     if controls is None:
-        # See note in run_baseline_did: infant_mortality_rate has a 1875
-        # definition break and is unsafe as a panel-wide control.
-        controls = ["ln_pop"]
+        controls = []
 
     results = []
     

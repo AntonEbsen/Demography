@@ -40,7 +40,7 @@ def polish_german_rollback(
         sub = df[mask].copy()
         if sub["Code"].nunique() < 10:
             continue
-        exog = ["cath_x_enforcement", "cath_x_rollback", "cath_x_postrollback", "ln_pop"]
+        exog = ["cath_x_enforcement", "cath_x_rollback", "cath_x_postrollback"]
         res = safe_panel_ols(sub, outcome, exog)
         sub_results[label] = {
             "enforcement": {"coef": res.params["cath_x_enforcement"], "se": res.std_errors["cath_x_enforcement"], "p": res.pvalues["cath_x_enforcement"]},

@@ -28,9 +28,9 @@ def trend_adjusted_did(
     df["trend"] = df["Year"] - trend_base_year
     df["cath_x_trend"] = df["cath_share"] * df["trend"]
 
-    exog = ["cath_share_x_post", "cath_x_trend", "ln_pop"]
+    exog = ["cath_share_x_post", "cath_x_trend"]
     res = safe_panel_ols(df, outcome, exog)
-    res_baseline = safe_panel_ols(df, outcome, ["cath_share_x_post", "ln_pop"])
+    res_baseline = safe_panel_ols(df, outcome, ["cath_share_x_post"])
 
     b_base = res_baseline.params["cath_share_x_post"]
     b_adj = res.params["cath_share_x_post"]
@@ -69,7 +69,7 @@ def placebo_test(
         if df_pl["post_placebo"].var() == 0:
             continue
         try:
-            res = safe_panel_ols(df_pl, outcome, ["cath_x_post_placebo", "ln_pop"])
+            res = safe_panel_ols(df_pl, outcome, ["cath_x_post_placebo"])
             coef = res.params["cath_x_post_placebo"]
             se = res.std_errors["cath_x_post_placebo"]
             p = res.pvalues["cath_x_post_placebo"]
