@@ -301,15 +301,21 @@ def descriptive_statistics_table(
     df["period_lbl"] = np.where(df["Year"] >= 1873, "Post", "Pre")
     df["group_lbl"] = np.where(df["high_cath"] == 1, "HighCath", "LowCath")
 
-    # The outcomes we want as rows. I_g is included because it is the
-    # Galloway, Hammel & Lee (1994) headline marital-fertility outcome;
-    # this is what a demography-aware reader will look for first.
+    # The outcomes we want as rows. The four Coale indices give the
+    # demography-aware reader the full Princeton EFP decomposition:
+    # I_f decomposes into I_g (marital fertility) and I_m (nuptiality)
+    # via I_f = I_g * I_m + I_h * (1 - I_m). Reporting all four at the
+    # descriptive stage lets the reader see immediately which component
+    # moves around the Kulturkampf treatment.
     row_specs: list[tuple[str, str, bool, bool]] = [
         # (column, label, show_in_panel_A, show_in_panel_B)
         ("cbr", "Crude Birth Rate (CBR)", True, True),
         ("legitimate_br", "Legitimate Birth Rate", True, True),
         ("marriage_rate", "Marriage Rate", True, True),
+        ("I_f", "Overall Fertility ($I_f$)", True, True),
         ("I_g", "Marital Fertility ($I_g$)", True, True),
+        ("I_m", "Nuptiality ($I_m$)", True, True),
+        ("I_h", "Illegitimate Fertility ($I_h$)", True, True),
         ("cath_share", "Share Catholic (\\%)", False, True),
     ]
 
@@ -368,11 +374,16 @@ def descriptive_statistics_table(
         "shift around the 1873 May Laws (full panel of 392 counties, "
         "Pre-1873 vs Post-1873). Panel~B shows the baseline cross-sectional "
         "differences across the entire 1862--1890 sample period. Birth and "
-        "marriage rates are per 1{,}000 \\emph{mid-year} population; $I_g$ is "
-        "Coale's Hutterite-normalised marital-fertility index (Princeton EFP "
-        "convention, headline outcome in Galloway, Hammel \\& Lee 1994). "
-        "Share Catholic is time-invariant (1871 census) and is therefore "
-        "omitted from Panel~A.\n"
+        "marriage rates are per 1{,}000 \\emph{mid-year} population. The four "
+        "Princeton EFP / Coale--Watkins indices are Hutterite-normalised and "
+        "satisfy the identity $I_f \\approx I_g \\cdot I_m + I_h \\cdot (1 - I_m)$: "
+        "$I_f$ is overall fertility, $I_g$ is marital fertility (the headline "
+        "outcome in Galloway, Hammel \\& Lee 1994), $I_m$ is the Hutterite-"
+        "weighted proportion of women 15--49 who are married, and $I_h$ is "
+        "illegitimate fertility. Married-women and women 15--49 denominators "
+        "are time-varying, piecewise-linearly interpolated between Galloway's "
+        "STA1871, AGE1882, and AGE1890 anchors. Share Catholic is time-"
+        "invariant (1871 census) and is therefore omitted from Panel~A.\n"
         "\\item \\textit{Source:} Author's calculations from the Galloway "
         "Prussia Database \\citep{Galloway2007}; mid-year population "
         "constructed via linear interpolation between consecutive December "
