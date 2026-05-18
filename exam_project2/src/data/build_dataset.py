@@ -658,6 +658,68 @@ def build_analysis_panel(
         )
 
     # ------------------------------------------------------------------
+    # General marriage rate (Newell 1988 / standard demographic
+    # textbook): marriages per 1,000 mid-year population aged 15+. The
+    # 15+ denominator strips out the (very large) under-15 population
+    # which cannot legally marry, giving a "marriageable-age" rate
+    # rather than the crude rate (per total population). Built as a
+    # time-varying quantity from the 1871 (STA1871, exact) and 1890
+    # (AGE1890, approximation -- 5/6 of Age14-19 to extract the 15-19
+    # portion) anchors, with piecewise-linear interpolation in between
+    # and pop-scaling pre-1871 (analogous to women_15_49 and
+    # married_women_15_49). Compatible with the `marriage_rate`
+    # (crude per Poptot_midyear) which we keep alongside.
+    # ------------------------------------------------------------------
+    if {"pop_15plus_1871", "pop_15plus_1890",
+            "pop_total_1871"}.issubset(panel.columns):
+        # Build a per-Kreis 15+ share at 1871 and 1890, then linearly
+        # interpolate the share in year and apply to Poptot_midyear so
+        # the resulting count scales with population growth.
+        share_15plus_1871 = (
+            panel["pop_15plus_1871"]
+            / panel["pop_total_1871"].replace(0, np.nan)
+        ).clip(lower=0.40, upper=0.80)
+        # 1890 share: we don't have a direct Pop1890 total per Kreis,
+        # but we can recover it cheaply: pop_total_1890 ~ Poptot at
+        # year 1890. Build via merge on Code.
+        pop_1890_by_code = (
+            panel.loc[panel["Year"] == 1890, ["Code", "Poptot_midyear"]]
+            .dropna()
+            .drop_duplicates(subset="Code")
+            .set_index("Code")["Poptot_midyear"]
+        )
+        panel["_pop_1890_total"] = panel["Code"].map(pop_1890_by_code)
+        share_15plus_1890 = (
+            panel["pop_15plus_1890"]
+            / panel["_pop_1890_total"].replace(0, np.nan)
+        ).clip(lower=0.40, upper=0.80)
+
+        # Interpolate the 15+ share linearly in year (1871 anchor -> 1890
+        # anchor); clamp outside [1871, 1890] to the nearest anchor.
+        weight = ((panel["Year"] - 1871) / 19.0).clip(lower=0.0, upper=1.0)
+        share_t = share_15plus_1871 * (1 - weight) + share_15plus_1890 * weight
+        # Fall back to the 1871 share if either anchor is missing for
+        # that Kreis (some Kreise are not in AGE1890).
+        share_t = share_t.where(
+            share_15plus_1890.notna(), share_15plus_1871
+        )
+
+        panel["pop_15plus"] = share_t * panel["Poptot_midyear"]
+        panel["general_marriage_rate"] = np.where(
+            panel["pop_15plus"].notna() & (panel["pop_15plus"] > 0),
+            panel["Martot"] / panel["pop_15plus"] * 1000.0, np.nan,
+        )
+        panel = panel.drop(columns=["_pop_1890_total"])
+        n_have = panel.dropna(subset=["general_marriage_rate"])["Code"].nunique()
+        logger.info(
+            "General marriage rate (Newell 1988) materialised: %d Kreise. "
+            "1871 share-15+ mean = %.3f, 1890 share-15+ mean = %.3f.",
+            n_have,
+            float(share_15plus_1871.dropna().mean()),
+            float(share_15plus_1890.dropna().mean()),
+        )
+
+    # ------------------------------------------------------------------
     # 6c-quinquies. iPEHD 1849 covariates via kreiskey1849 crosswalk.
     # Brings in pre-Kulturkampf religious infrastructure (Catholic /
     # Protestant priests, churches), schooling (students by gender and

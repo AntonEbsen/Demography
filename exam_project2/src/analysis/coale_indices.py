@@ -466,7 +466,11 @@ def aggregate_by_group_period(
     )
     df = df[df["period"] != "Other"]
     df["group"] = np.where(df["high_cath"] == 1, "High Cath", "Low Cath")
-    cols = [c for c in ["I_f", "I_g", "I_h", "marriage_rate"] if c in df.columns]
+    cols = [
+        c for c in
+        ["I_f", "I_g", "I_h", "marriage_rate", "general_marriage_rate"]
+        if c in df.columns
+    ]
     return (
         df.groupby(["group", "period"], observed=True)[cols]
         .mean()
@@ -476,7 +480,9 @@ def aggregate_by_group_period(
 
 def did_on_indices(
     panel_with_indices: pd.DataFrame,
-    indices: Sequence[str] = ("I_f", "I_g", "I_h", "marriage_rate"),
+    indices: Sequence[str] = (
+        "I_f", "I_g", "I_h", "marriage_rate", "general_marriage_rate",
+    ),
 ) -> pd.DataFrame:
     """
     DiD coefficient on cath_share x post for each Coale index. Reports the

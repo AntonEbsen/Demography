@@ -161,6 +161,25 @@ PANEL_SCHEMA = DataFrameSchema(
         "married_share_15_49_f_1882": Column(
             float, Check.in_range(0, 1), nullable=True
         ),
+        # Pop 15+ anchors and the time-varying derived series.
+        # `pop_15plus_1871` is exact (STA1871's Popover15m+f);
+        # `pop_15plus_1890` uses 5/6 of AGE1890's Age14-19 plus
+        # Age20-49 / Age50-69 / Age70+ (within-bin approximation for
+        # ages 15-19). `pop_15plus` is the per-Kreis-per-year derived
+        # count, anchored at the two cross-sections with linear
+        # interpolation between and pop-scaled extrapolation pre-1871.
+        "pop_15plus_1871": Column(float, Check.gt(0), nullable=True),
+        "pop_15plus_1890": Column(float, Check.gt(0), nullable=True),
+        "pop_15plus": Column(float, Check.gt(0), nullable=True),
+        # General marriage rate (Newell 1988): marriages per 1,000 mid-
+        # year population aged 15+. Strips out under-15 population from
+        # the crude marriage rate's denominator -- a "marriageable-age"
+        # rate. Generous upper bound: extreme single-year boundary-
+        # reform spikes can push the rate well above the typical
+        # 15-25 per 1k.
+        "general_marriage_rate": Column(
+            float, Check.in_range(0, 200), nullable=True
+        ),
         # Legitimate general fertility rate (legitimate births per
         # 1,000 women 15-49). Marital-style headline rate using the
         # proper age-restricted denominator; complements CBR.
