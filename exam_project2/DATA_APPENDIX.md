@@ -396,48 +396,45 @@ with the identity $I_f \approx I_g \cdot I_m + I_h(1 - I_m)$, where $I_m = \sum_
 
 1. **Hutterite ASFR** from Coale (1969), 7 age bands × natural-fertility max.
 2. **Coale–Demeny "West" Level 7** female age distribution within 15–49 (typical for $e_0 \approx 35$ Prussia 1860–90).
-3. **Time-varying age × marital counts (3-anchor interpolation).** The headline 2026 calibration uses Galloway's AGE files as direct anchors for the two denominators that matter — count of women 15–49 and count of married women 15–49 — at three Prussian census years inside our panel:
+3. **Two denominators are computed; the headline uses the time-invariant one.**
 
-    | Year | Source | Notes |
-    |---|---|---|
-    | **1871** | POP1871 (`women_15_49_1871`) + STA1871 (`Marriedover15f / Popover15f`) | $W_{1871}$ direct; $M_{1871} = W_{1871} \cdot \mu_i^{\text{STA1871}}$ using the over-15 marriage prevalence as a 15-49 approximation. The Prussia means are 0.516 (over-15) vs 0.528 (15-49 in 1890), within 2 pp — close enough that the level mismatch is empirically negligible. |
-    | **1882** | AGE1882 totals × AGE1890 per-Kreis ratios | AGE1882 has only coarse 0-19 / 20-69 / 70+ bins, so $W_{1882}^i = \text{Pop1882f}^i \cdot (\text{Age15-49f}/\text{Popf})_{1890}^i$ and $M_{1882}^i = \text{Marriedf}_{1882}^i \cdot (\text{Age15-49marriedf}/\text{Marriedf})_{1890}^i$. 1 of 381 Kreise (KLEVE) is nulled as a transcription error; the remaining 380 are kept. |
-    | **1890** | AGE1890 (`Age15-49f`, `Age15-49marriedf`) | Direct Galloway counts. |
+#### The two constructions
 
-    For 1871 ≤ year ≤ 1890, $W_t$ and $M_t$ are **piecewise-linearly interpolated** between these anchors (per Kreis; missing per-Kreis anchors are skipped). For year < 1871, the 1871 anchor is pop-scaled by $\text{Poptot}_t / \text{pop\_total}_{1871}$ as before.
+For the Coale indices, the key choice is *what to use as the denominator* (women 15–49 and married women 15–49). Both are computed and stored on the panel.
 
-    **Validation.** Projecting the 1871 → 1890 linear trend forward to 1895 predicts a Prussia-wide marriage prevalence of 0.5262; the AGE1895 actual is 0.5267 (difference < 0.001). The trend continues plausibly through 1900 (actual 0.537) and 1905 (actual 0.541).
+**Headline (time-invariant, STA1871 county shifter, pop-scaled).** The denominators are anchored at the 1871 STA1871 cross-section per Kreis and scaled forward by mid-year total population for all panel years. This is the standard Princeton-EFP / Coale–Watkins construction. The denominator is **pre-treatment** and therefore exogenous to the Kulturkampf shock — $I_g$ under this construction is a clean measure of *within-marriage* fertility, uncontaminated by the marriage-rate channel that the law itself affects. Implemented via `compute_coale_indices(..., use_age1890=False)`. Stored on the panel as `I_f`, `I_g`, `I_m`, `I_h`, `gmfr`, `lgfr`, `women_15_49`, `married_women_15_49`.
 
-4. **Women 15–49 share** of total population: county-specific value from POP1871 (`women_15_49_1871 / pop_total_1871`, mean ≈ 24.9%, sd ≈ 0.85). Used for pre-1871 pop-scaling; in 1871-1890 the direct count is preferred (via the AGE anchors).
+**Robustness (time-varying, AGE1890 + AGE1882 + STA1871 piecewise-linear interpolation).** The denominators are interpolated between three Galloway anchors:
 
-These approximations affect the *level* of the indices and, critically, the *within-county time profile* of $W_t$ and $M_t$. The pre-2026 build held $\mu_i$ constant within county across 1862-1890, which mechanically forced $I_g$ to inherit the marriage-rate signal in the same direction. With AGE1890 + AGE1882 letting $M_t$ vary in real time, the **Princeton EFP identity** $I_f \approx I_g \cdot I_m + I_h(1-I_m)$ now decomposes the Kulturkampf shock cleanly: marriage rate ($\approx I_m$) falls in Catholic counties, $I_f$ is essentially unchanged, and $I_g$ rises to balance the identity.
+| Year | Source | Notes |
+|---|---|---|
+| **1871** | POP1871 (`women_15_49_1871`) + STA1871 (`Marriedover15f / Popover15f`) | $W_{1871}$ direct; $M_{1871} = W_{1871} \cdot \mu_i^{\text{STA1871}}$ |
+| **1882** | AGE1882 totals × AGE1890 per-Kreis ratios | $W_{1882}^i = \text{Pop1882f}^i \cdot (\text{Age15-49f}/\text{Popf})_{1890}^i$; $M_{1882}^i = \text{Marriedf}_{1882}^i \cdot (\text{Age15-49marriedf}/\text{Marriedf})_{1890}^i$. 1 of 381 Kreise (KLEVE) is nulled as a transcription error. |
+| **1890** | AGE1890 (`Age15-49f`, `Age15-49marriedf`) | Direct Galloway counts. |
 
-**Empirical levels** (current build, post-AGE1890+AGE1882-anchoring): $I_f \approx 0.42$, $I_g$ panel mean 0.74 with year-specific values 0.66 (1871) → 0.78 (1875 baby catch-up) → 0.74 (1882) → 0.72 (1890), all within the Princeton EFP target band 0.65-0.79. gmfr panel mean 282 per 1,000 married women 15-49. $I_h$ panel mean 0.08.
+For 1871 ≤ year ≤ 1890, $W_t$ and $M_t$ are piecewise-linearly interpolated between these anchors per Kreis. Implemented via `compute_coale_indices(..., use_age1890=True)`. Stored on the panel under a `_tv` suffix: `I_f_tv`, `I_g_tv`, `I_m_tv`, `I_h_tv`, `gmfr_tv`, `lgfr_tv`.
+
+#### Why the headline is time-invariant
+
+The time-varying construction is *more accurate as a contemporaneous measure* of marital fertility but introduces a **bad-control problem** in the DiD framework. Married women 15–49 is itself an outcome the Kulturkampf affects (because the *Personenstandsgesetz* reduced marriage formation). Letting the denominator of $I_g$ move with the treatment forces a mechanical positive bias on $I_g$: when the numerator (legitimate births) falls less than proportionally to the denominator (married women), $I_g$ rises *by construction* without any change in within-marriage fertility behaviour.
+
+Princeton-EFP / Coale–Watkins practice (Coale & Watkins 1986; Galloway, Hammel & Lee 1994) uses a fixed pre-treatment census denominator specifically to avoid this artefact. We follow that convention for the headline and report the time-varying construction as robustness, with the gap between the two coefficients exactly quantifying the mechanical bias.
+
+4. **Women 15–49 share** of total population: county-specific value from POP1871 (`women_15_49_1871 / pop_total_1871`, mean ≈ 24.9%, sd ≈ 0.85). Used to scale forward across the panel under the headline construction.
 
 **Empirical DiD coefficients on `cath_share × Post`** (county + year FE, cluster SE):
 
-| Outcome | β | p | Reading |
-|---|---|---|---|
-| CBR | −0.004 | 0.22 | n.s. |
-| Marriage rate (annual flow) | −0.0042 | <0.001 | Falls in Catholic counties |
-| **$I_m$ (Coale nuptiality)** | **−0.00024** | **<0.001** | **Falls — direct census measure** |
-| $I_f$ (overall fertility) | −0.00002 | 0.61 | Unchanged |
-| **$I_g$ (marital fertility)** | **+0.00037** | **<0.001** | **Rises (Princeton compensation)** |
-| gmfr (Galloway headline) | +0.141 | <0.001 | Same as $I_g$ |
-| $I_h$ (illegitimate) | −0.00010 | <0.001 | Small negative |
-| `lgfr` (legitimate per women 15-49) | +0.003 | 0.84 | Unchanged |
+| Outcome | Headline (time-invariant) β | p | Robustness (time-varying) β | p | Reading |
+|---|---|---|---|---|---|
+| Marriage rate (annual flow) | **−0.0042** | **<0.001** | — | — | Falls in Catholic counties |
+| $I_f$ (overall fertility) | −0.00004 | 0.26 | −0.00002 | 0.61 | No effect under either construction |
+| **$I_g$ (marital fertility)** | **≈ 0** | **0.998** | **+0.00037** | **<0.001** | **Time-invariant null is the clean result; time-varying rise is a bad-control artefact** |
+| $I_m$ (nuptiality, index) | −0.000007 | 0.38 | −0.00024 | <0.001 | Time-invariant index has no within-county variation (entity FE absorb it); look at marriage_rate for the actual nuptiality shock |
+| $I_h$ (illegitimate fertility) | −0.00004*** | 0.004 | −0.00010*** | <0.001 | Catholic counties did not substitute into out-of-wedlock fertility |
 
-This is the textbook Coale-Watkins decomposition for an institutional nuptiality shock: $I_m$ falls, $I_f$ doesn't move, $I_g$ rises mechanically because surviving marriages remain fertile.
+**The headline reading** is a *pure nuptiality shock*: marriage rate falls (−0.0042***), within-marriage fertility doesn't change ($I_g \approx 0$), illegitimate fertility falls (no substitution). The earlier appearance of "$I_g$ rises" under the time-varying construction was the mechanical effect of the falling-marriage-stock denominator, not a behavioural counter-mobilisation.
 
-**Construction of $I_m$.** $I_m = \sum_a M_a F^H_a / \sum_a W_a F^H_a$ is the Hutterite-weighted Coale nuptiality index. Implemented in `compute_coale_indices` as
-
-$$
-I_m^{it} \;=\; k_{it} \cdot \frac{\bar F^H_{\mathrm{mar}}}{\bar F^H_{\mathrm{all}}}
-\quad\text{where}\quad
-k_{it} \;=\; \frac{M_{it}/W_{it}}{\bar\mu^{\text{Princeton}}}
-$$
-
-The time-varying $k_{it}$ shifter inherits its variation from the AGE1890 + AGE1882 + STA1871 anchored interpolation of $M_t$ and $W_t$ documented above. Cross-validation against the directly-observed AGE1890 proportion married 15-49 gives a county-level correlation of ~0.83. Mean $I_m$ on the current build is 0.52, range [0.39, 0.69] across county-years — consistent with Princeton EFP estimates for eastern-Hajnal-line Prussia. The DiD identifies $I_m$ off within-county year-to-year movement between 1871 and 1890, which exists because $M_t$ and $W_t$ are anchored at non-degenerate per-county census values at both 1871 and 1890.
+**Construction of $I_m$.** $I_m = \sum_a M_a F^H_a / \sum_a W_a F^H_a$. Under the headline (time-invariant) construction the M/W ratio is pinned at the 1871 cross-section per Kreis, so entity fixed effects absorb $I_m$ entirely (β ≈ 0 by design). The cleanly-identified nuptiality measure in the DiD is therefore the **marriage-rate flow** (annual marriages per 1,000 mid-year pop), which is what the headline coefficient table reports. The time-varying $I_m_tv$ is included for completeness in the robustness row of Table~\ref{tab:baseline_did_indices} and shows the expected ~−3.5 % differential, consistent with the marriage-rate flow.
 
 ### 6.7 Other constructed variables
 

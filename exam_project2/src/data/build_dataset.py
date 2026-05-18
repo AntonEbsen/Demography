@@ -727,36 +727,83 @@ def build_analysis_panel(
         logger.warning("1849 iPEHD merge failed: %s", exc)
 
     # ------------------------------------------------------------------
-    # 6d. Princeton EFP Coale indices (I_f, I_g, I_h) and the Galloway-
-    # tradition GMFR (legitimate births per 1,000 married women aged
-    # 15-49). I_g is the central marital-fertility outcome in Galloway,
-    # Hammel & Lee (1994); we report it alongside CBR throughout the
-    # paper. See coale_indices.py docstring for the approximation
-    # assumptions (Hutterite ASFR, Coale-Demeny "West" age distribution,
-    # county-specific 1871 women-15-49 share scaled to mid-year pop).
+    # 6d. Princeton EFP Coale indices (I_f, I_g, I_h, I_m) and the
+    # Galloway-tradition GMFR. Two constructions are computed:
+    #
+    #   - HEADLINE (time-invariant, STA1871 1871 cross-section anchor
+    #     pop-scaled across the panel). Columns: I_f, I_g, I_m, I_h,
+    #     gmfr, lgfr, women_15_49, married_women_15_49. This is the
+    #     standard Princeton-EFP / Coale-Watkins construction: the
+    #     denominator (married women 15-49) is held fixed at its
+    #     1871 pre-treatment census value, scaled forward by population
+    #     growth. Cleanly identifies I_g as a measure of *within-marriage
+    #     fertility* without contamination from the marriage-rate
+    #     channel that the Kulturkampf itself plausibly affects.
+    #
+    #   - ROBUSTNESS (time-varying, AGE1890 + AGE1882 + STA1871
+    #     piecewise-linear interpolation of the denominator). Columns
+    #     have a `_tv` suffix: I_f_tv, I_g_tv, I_m_tv, I_h_tv,
+    #     gmfr_tv, lgfr_tv. Used as a robustness check in the paper;
+    #     because the denominator co-moves with the marriage rate
+    #     (which the Kulturkampf affects), the I_g_tv coefficient
+    #     contains a mechanical component and is documented in the
+    #     methods discussion alongside the headline.
+    #
+    # I_g is the central marital-fertility outcome in Galloway, Hammel
+    # & Lee (1994); both Princeton-EFP convention and our identification
+    # design favour the time-invariant headline.
     # ------------------------------------------------------------------
+    INDEX_COLS = ("I_f", "I_g", "I_h", "I_m", "gmfr", "lgfr",
+                  "women_15_49", "married_women_15_49")
     try:
         from src.analysis.coale_indices import compute_coale_indices
+
+        # --- Robustness pass: time-varying (AGE-anchored) ---
+        panel_tv = compute_coale_indices(
+            panel.copy(),
+            pop_col="Poptot_midyear",
+            use_county_specific_share=True,
+            use_age1890=True,
+        )
+        # --- Headline pass: time-invariant (STA1871 only, pop-scaled) ---
         panel = compute_coale_indices(
             panel,
             pop_col="Poptot_midyear",
             use_county_specific_share=True,
+            use_age1890=False,
         )
-        # Mirror the cbr_flag null-out: the Coale indices share Birtot /
-        # Birlegtot / Birbastot in their numerators, so an extreme CBR
-        # signals contaminated index values for the same row.
+        # Attach the time-varying robustness columns under a _tv suffix.
+        for col in INDEX_COLS:
+            if col in panel_tv.columns:
+                panel[f"{col}_tv"] = panel_tv[col].to_numpy()
+
+        # Mirror the cbr_flag null-out across both constructions: the Coale
+        # indices share Birtot / Birlegtot / Birbastot in their numerators,
+        # so an extreme CBR signals contaminated index values for the same
+        # row.
         if "cbr_flag" in panel.columns:
-            for col in ("I_f", "I_g", "I_h", "gmfr", "lgfr"):
+            for col in INDEX_COLS:
                 if col in panel.columns:
                     panel.loc[panel["cbr_flag"].fillna(False), col] = np.nan
-        # Light flag for demographically implausible I_g (>1.0 means
+                tv_col = f"{col}_tv"
+                if tv_col in panel.columns:
+                    panel.loc[panel["cbr_flag"].fillna(False), tv_col] = np.nan
+        # Light flag for demographically implausible I_g (>1.2 means
         # marital fertility above the Hutterite maximum -- a measurement
-        # artefact). Also flag I_g > 1 from boundary-reform residuals.
+        # artefact). Apply to both constructions.
         n_ig_extreme = int((panel["I_g"] > 1.2).sum())
         if n_ig_extreme > 0:
             logger.warning("%d obs with I_g > 1.2 (Hutterite max); set to NaN", n_ig_extreme)
             panel.loc[panel["I_g"] > 1.2, ["I_g", "gmfr"]] = np.nan
-        logger.info("Coale indices computed: I_f, I_g, I_h, gmfr")
+        if "I_g_tv" in panel.columns:
+            n_ig_tv_extreme = int((panel["I_g_tv"] > 1.2).sum())
+            if n_ig_tv_extreme > 0:
+                panel.loc[panel["I_g_tv"] > 1.2, ["I_g_tv", "gmfr_tv"]] = np.nan
+        logger.info(
+            "Coale indices computed: HEADLINE (time-invariant, STA1871) "
+            "in I_f/I_g/I_m/I_h/gmfr; ROBUSTNESS (time-varying, "
+            "AGE1890+AGE1882 anchored) in *_tv columns."
+        )
     except Exception as exc:
         logger.warning("Coale-indices computation skipped: %s", exc)
 
