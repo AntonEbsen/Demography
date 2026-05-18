@@ -1172,6 +1172,14 @@ def load_sta1871(path: Optional[Path] = None) -> pd.DataFrame:
         "hh_avg_size_1871": df["Hhfamily"].astype(float) / (
             (pop_m + pop_f).replace(0, np.nan)
         ),
+        # Pop 15+ at 1871: exact (STA1871's Popover15 sum across sexes).
+        # Anchor for the general marriage rate denominator (= marriages /
+        # mid-year pop 15+, the "marriageable age" rate from Newell 1988
+        # / standard demographic textbooks).
+        "pop_15plus_1871": (
+            df["Popover15m"].astype(float).fillna(0)
+            + df["Popover15f"].astype(float).fillna(0)
+        ),
     })
     return out.reset_index(drop=True)
 
@@ -1223,6 +1231,25 @@ def load_age1890(path: Optional[Path] = None) -> pd.DataFrame:
     )
     marriedf_1890 = df["Marriedf"].astype(float)
 
+    # Pop 15+ at 1890: sum the bins covering ages 15+. The 14-19 bin
+    # includes 14-year-olds; we take 5/6 of it as a within-bin
+    # approximation for the 15-19 portion (5 years out of 6). Bins
+    # 20-49, 50-69, 70+ are fully within the 15+ range. Done for both
+    # sexes.
+    pop_14_19_total = (
+        df["Age14-19m"].astype(float).fillna(0)
+        + df["Age14-19f"].astype(float).fillna(0)
+    )
+    pop_15plus_1890 = (
+        (5.0 / 6.0) * pop_14_19_total
+        + df["Age20-49m"].astype(float).fillna(0)
+        + df["Age20-49f"].astype(float).fillna(0)
+        + df["Age50-69m"].astype(float).fillna(0)
+        + df["Age50-69f"].astype(float).fillna(0)
+        + df["Age70andoverm"].astype(float).fillna(0)
+        + df["Age70andoverf"].astype(float).fillna(0)
+    )
+
     out = pd.DataFrame({
         "Code": df["Code"].astype(int),
         "women_15_49_1890": w,
@@ -1231,6 +1258,8 @@ def load_age1890(path: Optional[Path] = None) -> pd.DataFrame:
         "r_w_15_49_in_popf_1890": w / popf_1890.replace(0, np.nan),
         "r_m_15_49_in_marriedf_1890":
             m / marriedf_1890.replace(0, np.nan),
+        # Pop 15+ at 1890: anchor for the general marriage rate.
+        "pop_15plus_1890": pop_15plus_1890,
     })
     return out.reset_index(drop=True)
 
