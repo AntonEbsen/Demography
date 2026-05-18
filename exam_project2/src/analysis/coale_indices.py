@@ -408,6 +408,14 @@ def compute_coale_indices(
         np.nan,
     )
     df["gmfr"] = np.where(M > 0, df["Birlegtot"] / M * 1000.0, np.nan)
+    # General fertility rate (GFR): total births per 1,000 women aged
+    # 15-49 mid-year. The standard demographic textbook fertility
+    # measure (Newell 1988): strips out the under-15 / over-49 / male
+    # portion of the population that CBR's denominator includes. Uses
+    # the *time-varying* W_t from the AGE1890+AGE1882+STA1871 anchored
+    # interpolation, not the static 1871 cross-section (which is the
+    # deprecated `gfr_static_1871` column).
+    df["gfr"] = np.where(W > 0, df["Birtot"] / W * 1000.0, np.nan)
     # Legitimate general fertility rate: legitimate births per 1{,}000
     # *women* aged 15-49 (NOT per married woman). The natural
     # marital-style counterpart to CBR -- uses the proper age-restricted

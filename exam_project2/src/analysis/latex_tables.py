@@ -84,6 +84,8 @@ OUTCOME_LABELS: dict[str, str] = {
     "illegitimacy_ratio": "Illegitimacy ratio",
     "marriage_rate": "Marriage rate",
     "general_marriage_rate": "Gen.\\ marriage rate",
+    "gfr": "GFR (per 1k women 15--49)",
+    "lgfr": "Legit.\\ GFR (per 1k women 15--49)",
     "infant_mortality_rate": "Infant mortality",
     "cath_marriage_share": "Catholic marriage share",
     # Princeton EFP / Coale indices. I_g is the Galloway-tradition
@@ -649,7 +651,7 @@ def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
 def baseline_did_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
-        "cbr", "legitimate_br", "illegitimacy_ratio",
+        "cbr", "gfr", "legitimate_br", "illegitimacy_ratio",
         "marriage_rate", "general_marriage_rate", "gmfr",
     ),
     out_path: Path | None = None,
