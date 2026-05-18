@@ -83,6 +83,9 @@ OUTCOME_LABELS: dict[str, str] = {
     "illegitimate_br": "Illegit.\\ birth rate",
     "illegitimacy_ratio": "Illegitimacy ratio",
     "marriage_rate": "Marriage rate",
+    "general_marriage_rate": "Gen.\\ marriage rate",
+    "gfr": "GFR (per 1k women 15--49)",
+    "lgfr": "Legit.\\ GFR (per 1k women 15--49)",
     "infant_mortality_rate": "Infant mortality",
     "cath_marriage_share": "Catholic marriage share",
     # Princeton EFP / Coale indices. I_g is the Galloway-tradition
@@ -648,7 +651,8 @@ def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
 def baseline_did_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
-        "cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate",
+        "cbr", "gfr", "legitimate_br", "illegitimacy_ratio",
+        "marriage_rate", "general_marriage_rate", "gmfr",
     ),
     out_path: Path | None = None,
     *,
@@ -2350,7 +2354,9 @@ def coale_decomposition_table(
         "I_f": "$I_f$ (overall fertility)",
         "I_g": "$I_g$ (marital fertility)",
         "I_h": "$I_h$ (illegitimate fertility)",
-        "marriage_rate": "Marriage rate (per 1{,}000)",
+        "marriage_rate": "Marriage rate (per 1{,}000 pop)",
+        "general_marriage_rate":
+            "Gen.\\ marriage rate (per 1{,}000 pop 15+)",
     }
 
     # Panel A: pre/post means by group
@@ -2380,7 +2386,7 @@ def coale_decomposition_table(
         if idx_name not in did.index:
             continue
         r = did.loc[idx_name]
-        digits = 3 if idx_name == "marriage_rate" else 5
+        digits = 3 if idx_name in ("marriage_rate", "general_marriage_rate") else 5
         coef_str = _fmt_small(r["coef"], r["p"], digits=digits)
         se_str = (f"({r['se']:.{digits}f})" if not pd.isna(r["se"]) else "")
         panel_b_rows.append(
@@ -2558,15 +2564,17 @@ def pretreatment_trends_table(
     """
     out_path = out_path or TABLES_DIR / "pretreatment_trends.tex"
 
-    outcome_keys = ("cbr", "marriage_rate", "I_g", "gmfr")
+    outcome_keys = (
+        "cbr", "marriage_rate", "general_marriage_rate", "I_g", "gmfr",
+    )
     df = run_pretreatment_trends_robustness(
         panel, outcomes=outcome_keys, form="linear",
     )
 
     def _digits(o):
         # I_g coefficients are O(1e-4); gmfr is O(1e-1); CBR /
-        # marriage_rate are O(1e-3). Use 5 digits for I_g so non-zero
-        # values are visible, 3 for gmfr, 4 for the rest.
+        # marriage_rate / general_marriage_rate are O(1e-3). Use 5 digits
+        # for I_g, 3 for gmfr, 4 for the rest.
         if o == "I_g":
             return 5
         if o == "gmfr":
@@ -2601,10 +2609,11 @@ def pretreatment_trends_table(
         rows.append(" & " + " & ".join(ses) + r" & \\")
 
     body = (
-        "\\begin{tabular}{lccccc}\n"
+        "\\begin{tabular}{lcccccc}\n"
         "\\toprule\n"
-        " & CBR & Marriage rate & $I_g$ & GMFR & $N$ \\\\\n"
-        " & (1) & (2) & (3) & (4) & \\\\\n"
+        " & CBR & Marriage rate & Gen.\\ marriage rate "
+        "& $I_g$ & GMFR & $N$ \\\\\n"
+        " & (1) & (2) & (3) & (4) & (5) & \\\\\n"
         "\\midrule\n"
         + "\n".join(rows) + "\n"
         + "\\bottomrule\n"
@@ -2618,7 +2627,7 @@ def pretreatment_trends_table(
             "(Bai 2009; Hsiao 2014)"
         ),
         label="tab:pretreatment_trends",
-        n_cols=6,
+        n_cols=7,
         notes=(
             "Each row is a separate two-way fixed-effects regression of the "
             "outcome on $\\mathrm{CathShare} \\times \\mathrm{Post}$ and the "
