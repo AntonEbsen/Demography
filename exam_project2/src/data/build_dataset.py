@@ -808,7 +808,7 @@ def build_analysis_panel(
         # Birlegtot / Birbastot in their numerators, so an extreme CBR
         # signals contaminated index values for the same row.
         if "cbr_flag" in panel.columns:
-            for col in ("I_f", "I_g", "I_h", "gmfr", "lgfr"):
+            for col in ("I_f", "I_g", "I_h", "gmfr", "lgfr", "gfr"):
                 if col in panel.columns:
                     panel.loc[panel["cbr_flag"].fillna(False), col] = np.nan
         # Light flag for demographically implausible I_g (>1.0 means

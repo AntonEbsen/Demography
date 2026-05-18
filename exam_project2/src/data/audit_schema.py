@@ -184,6 +184,13 @@ PANEL_SCHEMA = DataFrameSchema(
         # 1,000 women 15-49). Marital-style headline rate using the
         # proper age-restricted denominator; complements CBR.
         "lgfr": Column(float, Check.in_range(0, 600), nullable=True),
+        # General fertility rate (Newell 1988): TOTAL births per 1,000
+        # women 15-49 mid-year. Standard demographic textbook fertility
+        # rate -- strips out the non-fertile portion of the population
+        # that CBR's denominator includes. Uses time-varying W_t from
+        # the AGE1890 + AGE1882 + STA1871 anchored interpolation
+        # (not the deprecated static `gfr_static_1871`).
+        "gfr": Column(float, Check.in_range(0, 600), nullable=True),
     },
     strict=False,
     unique=["Code", "Year"],
