@@ -608,6 +608,18 @@ def build_analysis_panel(
         except Exception as exc:
             logger.warning("%s merge failed: %s", label, exc)
 
+    # Note: the previous ``compute_galloway_gmfr()`` loop over census
+    # transcription templates has been superseded by the AGE1890 +
+    # AGE1882 loaders above. Time-varying women_15_49 and
+    # married_women_15_49 series are now built inside
+    # compute_coale_indices via the piecewise-linear interpolation
+    # documented in src/analysis/coale_indices.py. The transcription
+    # templates and CLI helper in
+    # ``data/raw/transcribed_marital_status/`` remain in the repo as
+    # an opt-in path for any 1895/1900/1905/1910 census years where
+    # the user wants to add ground-truth cells later, but are not
+    # auto-merged into the headline panel.
+
     # ------------------------------------------------------------------
     # AGE1882 has only coarse 0-19 / 20-69 / 70+ marital bins, so we
     # derive approximate 15-49 counts by applying the AGE1890 within-
