@@ -1250,6 +1250,21 @@ def load_age1890(path: Optional[Path] = None) -> pd.DataFrame:
         + df["Age70andoverf"].astype(float).fillna(0)
     )
 
+    # Within-bin ratio (15-19) / (0-19) at 1890, both sexes combined.
+    # Used to recover the 15-19 share of AGE1882's coarse 0-19 bin so a
+    # third (1882) anchor can be added to the pop_15+ interpolation
+    # without assuming the 1871 -> 1890 share trajectory is linear.
+    pop_0_19_total_1890 = (
+        df["Age0"].astype(float).fillna(0)
+        + df["Age1-5"].astype(float).fillna(0)
+        + df["Age6-13"].astype(float).fillna(0)
+        + pop_14_19_total
+    )
+    pop_15_19_total_1890 = (5.0 / 6.0) * pop_14_19_total
+    r_15to19_in_0to19_1890 = (
+        pop_15_19_total_1890 / pop_0_19_total_1890.replace(0, np.nan)
+    ).clip(lower=0.05, upper=0.40)
+
     out = pd.DataFrame({
         "Code": df["Code"].astype(int),
         "women_15_49_1890": w,
@@ -1260,6 +1275,9 @@ def load_age1890(path: Optional[Path] = None) -> pd.DataFrame:
             m / marriedf_1890.replace(0, np.nan),
         # Pop 15+ at 1890: anchor for the general marriage rate.
         "pop_15plus_1890": pop_15plus_1890,
+        # Within-bin (15-19)/(0-19) ratio at 1890 -- used to extract
+        # the 15-19 portion of AGE1882's 0-19 marital-status bin.
+        "r_15to19_in_0to19_1890": r_15to19_in_0to19_1890,
     })
     return out.reset_index(drop=True)
 
@@ -1289,13 +1307,46 @@ def load_age1882(path: Optional[Path] = None) -> pd.DataFrame:
     df = pd.read_excel(path)
     df = df[(df["Code"] < 900) & (df["Type"] == 0)].copy()
 
+    # Reconstruct coarse age bin totals (both sexes) by summing across
+    # marital-status columns. AGE1882 does not report a direct
+    # ``Pop0-19`` column, so totals are derived from the marital-status
+    # breakdown which exhausts the population by construction.
+    def _bin_total(bin_label: str) -> pd.Series:
+        cols = [
+            f"Single{bin_label}m", f"Married{bin_label}m", f"Widow{bin_label}m",
+            f"Single{bin_label}f", f"Married{bin_label}f",
+        ]
+        # The female widow column for the 70+ bin has a stray '>' in
+        # AGE1882.XLS ("Widow>70andoverf"); pick whichever spelling is
+        # in the workbook.
+        widow_f = f"Widow{bin_label}f"
+        if widow_f in df.columns:
+            cols.append(widow_f)
+        else:
+            alt = f"Widow>{bin_label}f"
+            if alt in df.columns:
+                cols.append(alt)
+        return sum(
+            df[c].astype(float).fillna(0) for c in cols if c in df.columns
+        )
+
+    pop_0to19_1882 = _bin_total("0-19")
+    pop_20to69_1882 = _bin_total("20-69")
+    pop_70plus_1882 = _bin_total("70andover")
+
     out = pd.DataFrame({
         "Code": df["Code"].astype(int),
+        "pop_1882": df["Pop1882"].astype(float),
         "pop_1882f": df["Pop1882f"].astype(float),
         "marriedf_1882": (
             df["Married0-19f"].astype(float).fillna(0)
             + df["Married20-69f"].astype(float).fillna(0)
             + df["Married70andoverf"].astype(float).fillna(0)
         ),
+        # Coarse 1882 age-bin totals (both sexes), used to build the
+        # pop_15+ third anchor inside :func:`build_analysis_panel`.
+        "pop_0to19_1882": pop_0to19_1882,
+        "pop_20to69_1882": pop_20to69_1882,
+        "pop_70plus_1882": pop_70plus_1882,
     })
     return out.reset_index(drop=True)
