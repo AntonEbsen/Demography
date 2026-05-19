@@ -11,20 +11,24 @@
  & $I_f$ (overall fertility) & $I_g$ (marital fertility) & $I_m$ (nuptiality) & $I_h$ (illegitimate fertility) & $I_f$ (overall fertility) & $I_g$ (marital fertility) & $I_m$ (nuptiality) & $I_h$ (illegitimate fertility) \\
  & (1) & (2) & (3) & (4) & (5) & (6) & (7) & (8) \\
 \midrule
-CathShare $\times$ Post & -0.00002 & 0.00037$^{***}$ & -0.00023$^{***}$ & -0.00010$^{***}$ & 0.00002 & 0.00030$^{***}$ & -0.00016$^{***}$ & -0.00003 \\
- & (0.00004) & (0.00006) & (0.00002) & (0.00001) & (0.00006) & (0.00009) & (0.00003) & (0.00002) \\
+CathShare $\times$ Post & -0.00004 & -0.00000 & -0.00001 & -0.00004$^{***}$ & 0.00000 & 0.00003 & 0.00000 & -0.00000 \\
+ & (0.00003) & (0.00007) & (0.00001) & (0.00002) & (0.00005) & (0.00010) & (0.00001) & (0.00002) \\
 \midrule
 County FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
 Year FE & Yes & Yes & Yes & Yes & -- & -- & -- & -- \\
 Year $\times$ Rb FE & -- & -- & -- & -- & Yes & Yes & Yes & Yes \\
-Observations & 10,777 & 10,776 & 10,783 & 10,777 & 10,777 & 10,776 & 10,783 & 10,777 \\
-Within $R^{2}$ & -0.005 & 0.046 & -0.188 & -0.018 & 0.004 & 0.042 & -0.072 & 0.005 \\
+Observations & 10,777 & 10,775 & 10,777 & 10,777 & 10,777 & 10,775 & 10,777 & 10,777 \\
+Within $R^{2}$ & -0.002 & -0.000 & -0.001 & 0.010 & 0.000 & 0.001 & 0.000 & 0.001 \\
 \midrule
-Pre-trends $\chi^{2}$ $p$ & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\
+\multicolumn{9}{l}{\textit{Robustness: time-varying denominator (STA1871 + AGE1882 + AGE1890 anchors)}} \\
+\quad CathShare $\times$ Post & -0.00002 & 0.00037$^{***}$ & -0.00023$^{***}$ & -0.00010$^{***}$ & 0.00002 & 0.00030$^{***}$ & -0.00016$^{***}$ & -0.00003 \\
+ & (0.00004) & (0.00006) & (0.00002) & (0.00001) & (0.00006) & (0.00009) & (0.00003) & (0.00002) \\
+\midrule
+Pre-trends $\chi^{2}$ $p$ & 0.000 & 0.000 & 0.612 & 0.000 & 0.000 & 0.000 & 0.612 & 0.000 \\
 \bottomrule
 \end{tabular}
 \begin{minipage}{\linewidth}
 \vspace{0.5em}
-\footnotesize \textit{Notes:} Two-way fixed-effects estimates of equation $Y_{it} = \beta\,(\mathrm{CathShare}_i \times \mathrm{Post}_t) + \alpha_i + \delta_t + \gamma X_{it} + \varepsilon_{it}$, with $\delta_t$ replaced by year~$\times$~Regierungsbezirk fixed effects in Panel~B. Post is an indicator for $t \geq 1873$. Standard errors clustered at the county level in parentheses. Birth and marriage rates per 1{,}000 \emph{mid-year} population; illegitimacy ratio in percent. Mid-year population is constructed by linearly interpolating between consecutive December census anchors and evaluating at July 1 of each calendar year (standard demographic convention). The ``Pre-trends $\chi^{2}$ $p$'' row reports the joint Wald test that all event-study coefficients in the pre-1872 period equal zero (estimated separately on the TWFE event-study; identical $p$-value applies under both FE designs). $I_f$, $I_g$, $I_m$, $I_h$ are the four Princeton EFP / Coale--Watkins indices. They satisfy the identity $I_f \approx I_g \cdot I_m + I_h \cdot (1 - I_m)$: a fall in overall fertility ($I_f$) can be decomposed into a fall in within-marriage fertility ($I_g$), a fall in the Hutterite-weighted proportion married ($I_m$), or a fall in illegitimate fertility ($I_h$). The denominators of $I_g$ and $I_m$ -- count of women aged 15--49 and count of married women aged 15--49 -- are piecewise-linearly interpolated between Galloway's STA1871 (1871), AGE1882 (1882), and AGE1890 (1890) Kreis-level anchors. The companion crude-rates table is Table~\ref{tab:baseline_did}. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
+\footnotesize \textit{Notes:} Two-way fixed-effects estimates of equation $Y_{it} = \beta\,(\mathrm{CathShare}_i \times \mathrm{Post}_t) + \alpha_i + \delta_t + \gamma X_{it} + \varepsilon_{it}$, with $\delta_t$ replaced by year~$\times$~Regierungsbezirk fixed effects in Panel~B. Post is an indicator for $t \geq 1873$. Standard errors clustered at the county level in parentheses. Birth and marriage rates per 1{,}000 \emph{mid-year} population; illegitimacy ratio in percent. Mid-year population is constructed by linearly interpolating between consecutive December census anchors and evaluating at July 1 of each calendar year (standard demographic convention). The ``Pre-trends $\chi^{2}$ $p$'' row reports the joint Wald test that all event-study coefficients in the pre-1872 period equal zero (estimated separately on the TWFE event-study; identical $p$-value applies under both FE designs). $I_f$, $I_g$, $I_m$, $I_h$ are the four Princeton EFP / Coale--Watkins indices. They satisfy the identity $I_f \approx I_g \cdot I_m + I_h \cdot (1 - I_m)$. \emph{Headline rows} hold the denominators (women aged 15--49 and married women 15--49) fixed at their STA1871 (1871) Kreis-level cross-section, pop-scaled forward by mid-year total population -- the standard Princeton-EFP / Coale--Watkins construction, with a pre-treatment denominator that is exogenous to the Kulturkampf shock. \emph{Robustness rows} use a piecewise-linear interpolation of the same denominators between Galloway's STA1871 (1871), AGE1882 (1882, via AGE1890 ratios) and AGE1890 (1890) anchors. The time-varying construction is a bad control in the DiD sense -- the marriage-rate denominator co-moves with the post-1873 marriage shock -- and is reported only for transparency: the apparent $+0.0004$ on $I_g$ under the time-varying construction is the mechanical artifact of shrinking the denominator. The companion crude-rates table is Table~\ref{tab:baseline_did}. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
 \end{minipage}
 \end{table}

@@ -660,6 +660,7 @@ def baseline_did_table(
     show_ig_pretrends_line: bool = True,
     digits_coef: int = 3,
     digits_se: int = 3,
+    extra_robustness_rows: Sequence[tuple[str, Sequence[str], str]] = (),
     caption: str = (
         "Baseline difference-in-differences: Kulturkampf and "
         "conventional demographic rates"
@@ -868,6 +869,33 @@ def baseline_did_table(
         + ("\\addlinespace\n" + pretrends_ig_row + "\n" if show_ig_pretrends_line else "")
     )
 
+    # Optional extra robustness rows: each tuple is
+    # (row_label, alt_outcomes, note_text). The DiD is re-run on
+    # alt_outcomes (which must be the same length as the headline
+    # outcomes) and the coefficient/SE rows are appended underneath the
+    # headline coefficient. Used for the time-varying _tv robustness
+    # row in the Coale-indices table.
+    extra_blocks: list[str] = []
+    for row_label, alt_outcomes, _note in extra_robustness_rows:
+        if len(alt_outcomes) != n_out:
+            continue
+        alt_twfe = [_did_column(panel, o, "twfe") for o in alt_outcomes]
+        alt_strict = [_did_column(panel, o, "year_x_rb") for o in alt_outcomes]
+        alt_cols = alt_twfe + alt_strict
+        block = (
+            "\\midrule\n"
+            f"\\multicolumn{{{n + 1}}}{{l}}{{\\textit{{{row_label}}}}} \\\\\n"
+            + "\\quad CathShare $\\times$ Post & "
+            + " & ".join(
+                _fmt_coef(c["coef"], c["p"], digits=digits_coef) for c in alt_cols
+            )
+            + " \\\\\n"
+            + " & "
+            + " & ".join(_fmt_se(c["se"], digits=digits_se) for c in alt_cols)
+            + " \\\\\n"
+        )
+        extra_blocks.append(block)
+
     tabular = (
         f"\\begin{{tabular}}{{l*{{{n}}}{{c}}}}\n"
         "\\toprule\n"
@@ -880,6 +908,7 @@ def baseline_did_table(
         "\\midrule\n"
         + fe_block
         + carryforward_block
+        + "".join(extra_blocks)
         + pretrends_block
         + "\\bottomrule\n"
         "\\end{tabular}\n"
@@ -969,6 +998,7 @@ def baseline_did_indices_table(
     interpolated mid-year denominators throughout, and the $I_g$ line
     because $I_g$ is now one of the columns.
     """
+    tv_outcomes = tuple(f"{o}_tv" for o in outcomes)
     return baseline_did_table(
         panel,
         outcomes=outcomes,
@@ -977,6 +1007,14 @@ def baseline_did_indices_table(
         show_ig_pretrends_line=False,
         digits_coef=5,
         digits_se=5,
+        extra_robustness_rows=(
+            (
+                "Robustness: time-varying denominator "
+                "(STA1871 + AGE1882 + AGE1890 anchors)",
+                tv_outcomes,
+                "",
+            ),
+        ),
         caption=(
             "Baseline difference-in-differences: Coale--Watkins "
             "fertility and nuptiality indices"
@@ -985,15 +1023,22 @@ def baseline_did_indices_table(
         extra_note=(
             "$I_f$, $I_g$, $I_m$, $I_h$ are the four Princeton EFP / "
             "Coale--Watkins indices. They satisfy the identity "
-            "$I_f \\approx I_g \\cdot I_m + I_h \\cdot (1 - I_m)$: a "
-            "fall in overall fertility ($I_f$) can be decomposed into a "
-            "fall in within-marriage fertility ($I_g$), a fall in the "
-            "Hutterite-weighted proportion married ($I_m$), or a fall "
-            "in illegitimate fertility ($I_h$). The denominators of "
-            "$I_g$ and $I_m$ -- count of women aged 15--49 and count of "
-            "married women aged 15--49 -- are piecewise-linearly "
-            "interpolated between Galloway's STA1871 (1871), AGE1882 "
-            "(1882), and AGE1890 (1890) Kreis-level anchors. The "
+            "$I_f \\approx I_g \\cdot I_m + I_h \\cdot (1 - I_m)$. "
+            "\\emph{Headline rows} hold the denominators (women aged "
+            "15--49 and married women 15--49) fixed at their STA1871 "
+            "(1871) Kreis-level cross-section, pop-scaled forward by "
+            "mid-year total population -- the standard Princeton-EFP / "
+            "Coale--Watkins construction, with a pre-treatment "
+            "denominator that is exogenous to the Kulturkampf shock. "
+            "\\emph{Robustness rows} use a piecewise-linear "
+            "interpolation of the same denominators between Galloway's "
+            "STA1871 (1871), AGE1882 (1882, via AGE1890 ratios) and "
+            "AGE1890 (1890) anchors. The time-varying construction is a "
+            "bad control in the DiD sense -- the marriage-rate "
+            "denominator co-moves with the post-1873 marriage shock -- "
+            "and is reported only for transparency: the apparent "
+            "$+0.0004$ on $I_g$ under the time-varying construction is "
+            "the mechanical artifact of shrinking the denominator. The "
             "companion crude-rates table is "
             "Table~\\ref{tab:baseline_did}."
         ),
