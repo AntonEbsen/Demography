@@ -47,6 +47,15 @@ PANEL_SCHEMA = DataFrameSchema(
         "I_f": Column(float, Check.in_range(0, 1.2), nullable=True),
         "I_g": Column(float, Check.in_range(0, 1.5), nullable=True),
         "gmfr": Column(float, Check.in_range(0, 600), nullable=True),
+        # Static-1871-prevalence variants of I_g and the GMFR.
+        # Lock the marriage prevalence to its 1871 county-specific
+        # baseline (mu_i,1871 = Marriedover15f / Popover15f from
+        # STA1871) and apply it to the time-varying W_t (women 15-49
+        # from the AGE1882+AGE1890+POP1871 three-anchor interpolation).
+        # Purges the bad-control bias from contemporaneous M_t
+        # responding to the Kulturkampf marriage-formation shock.
+        "Ig_static_1871": Column(float, Check.in_range(0, 1.5), nullable=True),
+        "gmfr_static_1871": Column(float, Check.in_range(0, 600), nullable=True),
         # Headline IMR: total infant deaths / total live births x 1000.
         # 1875+ only (Galloway's Dth<1bas column starts in 1875).
         "infant_mortality_rate": Column(

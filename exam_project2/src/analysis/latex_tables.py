@@ -101,6 +101,14 @@ OUTCOME_LABELS: dict[str, str] = {
     "I_h": "$I_h$ (illegitimate fertility)",
     "I_m": "$I_m$ (nuptiality)",
     "gmfr": "GMFR (per 1k married women)",
+    # Static-1871-prevalence variants: marriage prevalence frozen at the
+    # 1871 county-specific baseline so the denominator is purged of the
+    # Kulturkampf bad-control channel (treatment-induced changes in
+    # contemporaneous M_t inflate the rate mechanically). The
+    # fertile-age female count W_t remains time-varying so the rate
+    # still scales with population growth.
+    "Ig_static_1871": "$I_g^{1871}$ (static prev.)",
+    "gmfr_static_1871": "GMFR$^{1871}$ (per 1k mar.\\ women, static prev.)",
     "prop_married_15_49": "Prop.\\ married 15--49",
     # Deprecated -- kept for back-compat. Static-1871 GFR is superseded
     # by I_g for marital-fertility analysis.

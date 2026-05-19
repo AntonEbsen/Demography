@@ -868,7 +868,10 @@ def build_analysis_panel(
         # Birlegtot / Birbastot in their numerators, so an extreme CBR
         # signals contaminated index values for the same row.
         if "cbr_flag" in panel.columns:
-            for col in ("I_f", "I_g", "I_h", "gmfr", "lgfr", "gfr"):
+            for col in (
+                "I_f", "I_g", "I_h", "gmfr", "lgfr", "gfr",
+                "Ig_static_1871", "gmfr_static_1871",
+            ):
                 if col in panel.columns:
                     panel.loc[panel["cbr_flag"].fillna(False), col] = np.nan
         # Light flag for demographically implausible I_g (>1.0 means
@@ -878,7 +881,18 @@ def build_analysis_panel(
         if n_ig_extreme > 0:
             logger.warning("%d obs with I_g > 1.2 (Hutterite max); set to NaN", n_ig_extreme)
             panel.loc[panel["I_g"] > 1.2, ["I_g", "gmfr"]] = np.nan
-        logger.info("Coale indices computed: I_f, I_g, I_h, gmfr")
+        if "Ig_static_1871" in panel.columns:
+            n_ig_static_extreme = int((panel["Ig_static_1871"] > 1.2).sum())
+            if n_ig_static_extreme > 0:
+                logger.warning(
+                    "%d obs with Ig_static_1871 > 1.2 (Hutterite max); set to NaN",
+                    n_ig_static_extreme,
+                )
+                panel.loc[
+                    panel["Ig_static_1871"] > 1.2,
+                    ["Ig_static_1871", "gmfr_static_1871"],
+                ] = np.nan
+        logger.info("Coale indices computed: I_f, I_g, I_h, gmfr, Ig_static_1871, gmfr_static_1871")
     except Exception as exc:
         logger.warning("Coale-indices computation skipped: %s", exc)
 
