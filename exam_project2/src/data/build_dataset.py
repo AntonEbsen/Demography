@@ -675,25 +675,32 @@ def build_analysis_panel(
     # 15+ denominator strips out the (very large) under-15 population
     # which cannot legally marry, giving a "marriageable-age" rate
     # rather than the crude rate (per total population). Built as a
-    # time-varying quantity from the 1871 (STA1871, exact) and 1890
-    # (AGE1890, approximation -- 5/6 of Age14-19 to extract the 15-19
-    # portion) anchors, with piecewise-linear interpolation in between
-    # and pop-scaling pre-1871 (analogous to women_15_49 and
-    # married_women_15_49). Compatible with the `marriage_rate`
-    # (crude per Poptot_midyear) which we keep alongside.
+    # time-varying quantity from three age-structured anchors:
+    #
+    #   1871  STA1871, exact (Popover15m + Popover15f).
+    #   1882  AGE1882 coarse bins (0-19, 20-69, 70+) with the 15-19
+    #         portion of the 0-19 bin recovered via the AGE1890
+    #         within-bin ratio r_15to19_in_0to19_1890 -- the same
+    #         calibration trick used for the Coale women_15_49 series.
+    #   1890  AGE1890, 5/6 of Age14-19 to extract the 15-19 portion
+    #         plus Age20+ bins.
+    #
+    # Piecewise-linear interpolation in year across the three anchors,
+    # with the share clamped outside [1871, 1890] and pop-scaled by
+    # Poptot_midyear so the resulting count tracks population growth.
+    # Compatible with the `marriage_rate` (crude per Poptot_midyear)
+    # which we keep alongside.
     # ------------------------------------------------------------------
     if {"pop_15plus_1871", "pop_15plus_1890",
             "pop_total_1871"}.issubset(panel.columns):
-        # Build a per-Kreis 15+ share at 1871 and 1890, then linearly
-        # interpolate the share in year and apply to Poptot_midyear so
-        # the resulting count scales with population growth.
+        # 1871 share: exact from STA1871.
         share_15plus_1871 = (
             panel["pop_15plus_1871"]
             / panel["pop_total_1871"].replace(0, np.nan)
         ).clip(lower=0.40, upper=0.80)
-        # 1890 share: we don't have a direct Pop1890 total per Kreis,
-        # but we can recover it cheaply: pop_total_1890 ~ Poptot at
-        # year 1890. Build via merge on Code.
+
+        # 1890 share: use AGE1890 pop_15plus_1890 over the Poptot_midyear
+        # at year 1890 (cheapest reliable total-population denominator).
         pop_1890_by_code = (
             panel.loc[panel["Year"] == 1890, ["Code", "Poptot_midyear"]]
             .dropna()
@@ -706,15 +713,60 @@ def build_analysis_panel(
             / panel["_pop_1890_total"].replace(0, np.nan)
         ).clip(lower=0.40, upper=0.80)
 
-        # Interpolate the 15+ share linearly in year (1871 anchor -> 1890
-        # anchor); clamp outside [1871, 1890] to the nearest anchor.
-        weight = ((panel["Year"] - 1871) / 19.0).clip(lower=0.0, upper=1.0)
-        share_t = share_15plus_1871 * (1 - weight) + share_15plus_1890 * weight
-        # Fall back to the 1871 share if either anchor is missing for
-        # that Kreis (some Kreise are not in AGE1890).
-        share_t = share_t.where(
-            share_15plus_1890.notna(), share_15plus_1871
-        )
+        # 1882 share: third anchor from AGE1882 coarse bins, using the
+        # AGE1890 within-bin (15-19)/(0-19) ratio to extract the 15-19
+        # portion of the 0-19 bin. The resulting pop_15plus_1882 is then
+        # divided by AGE1882's Pop1882 total to get the share. Computed
+        # only for Kreise that have all three AGE1882 bin totals plus
+        # the AGE1890 ratio (typically the full panel).
+        share_15plus_1882: pd.Series | None = None
+        if {"pop_0to19_1882", "pop_20to69_1882", "pop_70plus_1882",
+                "pop_1882", "r_15to19_in_0to19_1890"}.issubset(panel.columns):
+            pop_15plus_1882 = (
+                panel["r_15to19_in_0to19_1890"] * panel["pop_0to19_1882"]
+                + panel["pop_20to69_1882"]
+                + panel["pop_70plus_1882"]
+            )
+            share_15plus_1882 = (
+                pop_15plus_1882 / panel["pop_1882"].replace(0, np.nan)
+            ).clip(lower=0.40, upper=0.80)
+            # Store the 1882 anchor for the audit schema and the data
+            # appendix to reference (parallels pop_15plus_1871 /
+            # pop_15plus_1890).
+            panel["pop_15plus_1882"] = pop_15plus_1882
+
+        # Piecewise-linear interpolation of share_15+ across the three
+        # anchors. Pre-1871 and post-1890 clamp to the nearest anchor;
+        # 1871 <= t <= 1882 interpolates 1871 -> 1882; 1882 < t <= 1890
+        # interpolates 1882 -> 1890. If the 1882 anchor is unavailable,
+        # fall back to two-anchor linear (1871 -> 1890) for that Kreis.
+        years = panel["Year"].astype(float)
+
+        if share_15plus_1882 is not None:
+            w_a = ((years - 1871.0) / (1882.0 - 1871.0)).clip(0.0, 1.0)
+            w_b = ((years - 1882.0) / (1890.0 - 1882.0)).clip(0.0, 1.0)
+            seg_a = share_15plus_1871 * (1 - w_a) + share_15plus_1882 * w_a
+            seg_b = share_15plus_1882 * (1 - w_b) + share_15plus_1890 * w_b
+            share_t = np.where(years <= 1882.0, seg_a, seg_b)
+            share_t = pd.Series(share_t, index=panel.index)
+            # Two-anchor fallback where the 1882 anchor is missing.
+            missing_1882 = share_15plus_1882.isna()
+            if missing_1882.any():
+                weight = ((years - 1871) / 19.0).clip(0.0, 1.0)
+                fallback = (
+                    share_15plus_1871 * (1 - weight)
+                    + share_15plus_1890 * weight
+                )
+                share_t = share_t.where(~missing_1882, fallback)
+        else:
+            weight = ((years - 1871) / 19.0).clip(0.0, 1.0)
+            share_t = (
+                share_15plus_1871 * (1 - weight) + share_15plus_1890 * weight
+            )
+
+        # Final fallback: if AGE1890 is missing entirely for a Kreis,
+        # carry the 1871 share forward (matches previous behaviour).
+        share_t = share_t.where(share_15plus_1890.notna(), share_15plus_1871)
 
         panel["pop_15plus"] = share_t * panel["Poptot_midyear"]
         panel["general_marriage_rate"] = np.where(
@@ -722,12 +774,20 @@ def build_analysis_panel(
             panel["Martot"] / panel["pop_15plus"] * 1000.0, np.nan,
         )
         panel = panel.drop(columns=["_pop_1890_total"])
+
         n_have = panel.dropna(subset=["general_marriage_rate"])["Code"].nunique()
+        mean_1882 = (
+            float(share_15plus_1882.dropna().mean())
+            if share_15plus_1882 is not None and share_15plus_1882.notna().any()
+            else float("nan")
+        )
         logger.info(
             "General marriage rate (Newell 1988) materialised: %d Kreise. "
-            "1871 share-15+ mean = %.3f, 1890 share-15+ mean = %.3f.",
+            "1871 share-15+ mean = %.3f, 1882 share-15+ mean = %.3f, "
+            "1890 share-15+ mean = %.3f.",
             n_have,
             float(share_15plus_1871.dropna().mean()),
+            mean_1882,
             float(share_15plus_1890.dropna().mean()),
         )
 
@@ -808,7 +868,10 @@ def build_analysis_panel(
         # Birlegtot / Birbastot in their numerators, so an extreme CBR
         # signals contaminated index values for the same row.
         if "cbr_flag" in panel.columns:
-            for col in ("I_f", "I_g", "I_h", "gmfr", "lgfr", "gfr"):
+            for col in (
+                "I_f", "I_g", "I_h", "gmfr", "lgfr", "gfr",
+                "Ig_static_1871", "gmfr_static_1871",
+            ):
                 if col in panel.columns:
                     panel.loc[panel["cbr_flag"].fillna(False), col] = np.nan
         # Light flag for demographically implausible I_g (>1.0 means
@@ -818,7 +881,18 @@ def build_analysis_panel(
         if n_ig_extreme > 0:
             logger.warning("%d obs with I_g > 1.2 (Hutterite max); set to NaN", n_ig_extreme)
             panel.loc[panel["I_g"] > 1.2, ["I_g", "gmfr"]] = np.nan
-        logger.info("Coale indices computed: I_f, I_g, I_h, gmfr")
+        if "Ig_static_1871" in panel.columns:
+            n_ig_static_extreme = int((panel["Ig_static_1871"] > 1.2).sum())
+            if n_ig_static_extreme > 0:
+                logger.warning(
+                    "%d obs with Ig_static_1871 > 1.2 (Hutterite max); set to NaN",
+                    n_ig_static_extreme,
+                )
+                panel.loc[
+                    panel["Ig_static_1871"] > 1.2,
+                    ["Ig_static_1871", "gmfr_static_1871"],
+                ] = np.nan
+        logger.info("Coale indices computed: I_f, I_g, I_h, gmfr, Ig_static_1871, gmfr_static_1871")
     except Exception as exc:
         logger.warning("Coale-indices computation skipped: %s", exc)
 
