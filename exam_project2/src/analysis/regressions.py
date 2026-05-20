@@ -829,6 +829,15 @@ def run_emigration_robustness(
         result clearly is not just emigration mechanics.
     (4) Sample restricted to pre-1885, before the Bismarck-era
         Polenausweisungen and Settlement Commission. Cleanest cut.
+    (1') Baseline, no controls, restricted to the measured-migration
+        sub-sample (1862-1867 and 1872-1886 -- the years where Galloway
+        VIT records outmig_rate / net_mig_rate). Diagnostic row: the
+        difference between (1) and (1') is the *sample-composition*
+        effect of dropping war years and post-expulsion years; the
+        difference between (1') and (5)/(6) is the *migration-channel*
+        effect of conditioning on measured migration. Without this row,
+        readers naturally compare (1) to (5)/(6) directly and
+        mis-attribute the sample effect to the migration control.
     (5) + *measured* out-migration rate from Galloway VIT (annual,
         per 1,000 pop). Cleaner than the implied identity in (3) but only
         available for years with VIT migration columns (1862-1867 and
@@ -852,6 +861,8 @@ def run_emigration_robustness(
             ("(2) + pop growth rate",      ["pop_growth_rate"], None),
             ("(3) + implied migration",    ["migration_rate"], None),
             ("(4) Restrict to pre-1885",   [], lambda d: d["Year"] < 1885),
+            ("(1') Baseline, measured-mig sub-sample", [],
+                lambda d: d["outmig_rate"].notna() & d["net_mig_rate"].notna()),
             ("(5) + measured outmig rate", ["outmig_rate"], None),
             ("(6) + measured net mig rate", ["net_mig_rate"], None),
         ]:

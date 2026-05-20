@@ -18,6 +18,8 @@
  & (0.0032) & (0.0009) & \\
 (4) Restrict to pre-1885 & -0.0007 & -0.0034$^{***}$ & 8,482 \\
  & (0.0031) & (0.0009) & \\
+(1') Baseline, measured-mig sub-sample & 0.0048 & -0.0023$^{**}$ & 7,714 \\
+ & (0.0036) & (0.0010) & \\
 (5) + measured outmig rate & 0.0050 & -0.0023$^{**}$ & 7,714 \\
  & (0.0036) & (0.0010) & \\
 (6) + measured net mig rate & 0.0048 & -0.0023$^{**}$ & 7,714 \\
@@ -32,6 +34,8 @@
  & (0.0168) & (0.0051) & \\
 (4) Restrict to pre-1885 & -0.0543$^{***}$ & -0.0288$^{***}$ & 552 \\
  & (0.0138) & (0.0049) & \\
+(1') Baseline, measured-mig sub-sample & -0.0420$^{***}$ & -0.0267$^{***}$ & 504 \\
+ & (0.0131) & (0.0054) & \\
 (5) + measured outmig rate & -0.0377$^{**}$ & -0.0259$^{***}$ & 504 \\
  & (0.0150) & (0.0056) & \\
 (6) + measured net mig rate & -0.0377$^{**}$ & -0.0260$^{***}$ & 504 \\
@@ -46,6 +50,6 @@ Births per marriage & 0.0026$^{***}$ & (0.0004) & 10,783 \\
 \end{tabular}
 \begin{minipage}{\linewidth}
 \vspace{0.5em}
-\footnotesize \textit{Notes:} All entries are the DiD coefficient (and clustered SE in parentheses) on $\mathrm{CathShare} \times \mathrm{Post}$ from a county- and year-fixed-effects regression. Panel~A reports the headline specification on the full panel under four control sets: (1) baseline with $\ln(\mathrm{Pop})$ only; (2) adds the annual population growth rate; (3) adds an implied net migration rate (population change minus natural increase, per 1{,}000 population); (4) restricts the sample to $t < 1885$, before the Bismarck-era $\mathit{Polenausweisungen}$ and the 1886 Settlement Commission. Panel~B repeats the four specifications on the Polish sub-sample (Posen and Bromberg). Panel~C reports outcomes that do not depend on the population denominator and therefore cannot be mechanical artefacts of out-migration. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
+\footnotesize \textit{Notes:} All entries are the DiD coefficient (and clustered SE in parentheses) on $\mathrm{CathShare} \times \mathrm{Post}$ from a county- and year-fixed-effects regression. Panel~A reports the headline specification on the full panel under six specifications: (1) baseline TWFE, no migration controls; (2) adds the annual population growth rate; (3) adds the implied net migration rate (population change minus natural increase, per 1{,}000 population), which spans the full panel including the post-1885 expulsion years; (4) restricts the sample to $t < 1885$, before the Bismarck-era $\mathit{Polenausweisungen}$ and the 1886 Settlement Commission; (1$'$) baseline TWFE with no migration control but restricted to the 1862--1867 and 1872--1886 sub-sample on which Galloway VIT records measured migration; (5) adds measured out-migration rate on the (1$'$) sub-sample; (6) adds measured net migration rate on the (1$'$) sub-sample. Row (1$'$) is the appropriate baseline for interpreting (5)--(6): the difference between (1) and (1$'$) isolates the sample-composition effect of dropping war and post-expulsion years, while the difference between (1$'$) and (5)/(6) isolates the migration-channel effect of conditioning on measured migration. Panel~B repeats the six specifications on the Polish sub-sample (Posen and Bromberg). Panel~C reports outcomes that do not depend on the population denominator and therefore cannot be mechanical artefacts of out-migration. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
 \end{minipage}
 \end{table}
