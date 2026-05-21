@@ -28,7 +28,15 @@
       "Bash(python -m nbconvert --to notebook --execute notebooks/01_data_and_eda.ipynb --inplace --ExecutePreprocessor.timeout=600)",
       "Bash(python -m nbconvert --to notebook --execute notebooks/04_spatial_analysis.ipynb --inplace --ExecutePreprocessor.timeout=900 --ExecutePreprocessor.allow_errors=True)",
       "Bash(python scripts/export_notebooks_for_ai.py --format md)",
-      "Bash(grep -nE \"I_g \\\\\\\\\\(marital|Panel.*I_g\" outputs/tables/polish_german.tex)"
+      "Bash(grep -nE \"I_g \\\\\\\\\\(marital|Panel.*I_g\" outputs/tables/polish_german.tex)",
+      "Bash(python -m nbconvert --to notebook --execute notebooks/02_baseline_regressions.ipynb --inplace --ExecutePreprocessor.timeout=900)",
+      "Bash(grep -E \"I_g \\\\\\\\\\(marit|GMFR|Galloway-tradition|\\\\\\\\\\\\\\\\textit\\\\\\\\{Panel\" outputs/tables/baseline_did.tex)",
+      "Bash(git commit *)",
+      "Bash(grep -nA 1 \"def coale_decomposition_table\" src/analysis/latex_tables.py)",
+      "Bash(grep -nA 5 \"def did_on_indices\\\\|def aggregate_by_group_period\" src/analysis/coale_indices.py)",
+      "Bash(grep -nA 2 \"outcome_keys = \\(\" exam_project2/src/analysis/latex_tables.py)",
+      "Bash(python -c \"import pandas as pd; df=pd.read_parquet\\('data/processed/analysis_panel.parquet'\\); print\\([c for c in df.columns if 'cbr' in c.lower\\(\\) or 'marri' in c.lower\\(\\) or 'cath' in c.lower\\(\\) or c in \\('Code','Year','post'\\)]\\)\")",
+      "Bash(git rev-list *)"
     ]
   }
 }
