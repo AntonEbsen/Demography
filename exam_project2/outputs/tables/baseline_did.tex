@@ -8,17 +8,17 @@
 \toprule
  & \multicolumn{5}{c}{Panel A: County + Year FE} & \multicolumn{5}{c}{Panel B: County + (Year $\times$ Rb) FE} \\
 \cmidrule(lr){2-6}\cmidrule(lr){7-11}
- & Crude birth rate & Legit.\ birth rate & GMFR (per 1k married women, 1871 denom) & Illegitimacy ratio & Marriage rate & Crude birth rate & Legit.\ birth rate & GMFR (per 1k married women, 1871 denom) & Illegitimacy ratio & Marriage rate \\
+ & Crude birth rate & Legit.\ birth rate & GMFR$^{1871}$ (per 1k mar.\ women, static prev.) & Illegitimacy ratio & Marriage rate & Crude birth rate & Legit.\ birth rate & GMFR$^{1871}$ (per 1k mar.\ women, static prev.) & Illegitimacy ratio & Marriage rate \\
  & (1) & (2) & (3) & (4) & (5) & (6) & (7) & (8) & (9) & (10) \\
 \midrule
-CathShare $\times$ Post & -0.004 & -0.002 & 0.043 & -0.003 & -0.004$^{***}$ & 0.000 & 0.001 & -0.098 & 0.000 & -0.000 \\
- & (0.003) & (0.003) & (0.060) & (0.002) & (0.001) & (0.005) & (0.005) & (0.075) & (0.003) & (0.001) \\
+CathShare $\times$ Post & -0.004 & -0.002 & 0.023 & -0.003 & -0.004$^{***}$ & 0.000 & 0.001 & 0.034 & 0.000 & -0.000 \\
+ & (0.003) & (0.003) & (0.028) & (0.002) & (0.001) & (0.005) & (0.005) & (0.043) & (0.003) & (0.001) \\
 \midrule
 County FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
 Year FE & Yes & Yes & Yes & Yes & Yes & -- & -- & -- & -- & -- \\
 Year $\times$ Rb FE & -- & -- & -- & -- & -- & Yes & Yes & Yes & Yes & Yes \\
-Observations & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 & 10,777 \\
-Within $R^{2}$ & -0.002 & -0.001 & 0.009 & 0.010 & 0.028 & 0.000 & 0.000 & -0.030 & -0.002 & 0.002 \\
+Observations & 10,777 & 10,777 & 10,776 & 10,777 & 10,777 & 10,777 & 10,777 & 10,776 & 10,777 & 10,777 \\
+Within $R^{2}$ & -0.002 & -0.001 & 0.010 & 0.010 & 0.028 & 0.000 & 0.000 & 0.014 & -0.002 & 0.002 \\
 \midrule
 \multicolumn{11}{l}{\textit{Galloway carry-forward robustness} (rate $=$ count $/$ raw Galloway \texttt{Poptot}; previous Dec.\ census carried forward in inter-census years)} \\
 \quad CathShare $\times$ Post (Galloway carry-forward) & -0.000 & 0.002 & -- & -- & -0.004$^{***}$ & -0.000 & 0.000 & -- & -- & -0.000 \\

@@ -408,6 +408,47 @@ def compute_coale_indices(
         np.nan,
     )
     df["gmfr"] = np.where(M > 0, df["Birlegtot"] / M * 1000.0, np.nan)
+
+    # --- Static-1871 prevalence variants ------------------------------
+    # The contemporaneous M_t and Fbar_mar_eff are mechanically affected
+    # by the Kulturkampf, which directly regulates marriage formation
+    # (Notzivilehe 1874, Personenstandsgesetz 1875). A treatment-induced
+    # drop in M_t inflates the GMFR and I_g denominators are "bad
+    # controls" in the Pearl/Angrist sense. The static-1871 variants
+    # freeze the marriage *prevalence* mu_1871 = M_1871 / W_1871 to its
+    # pre-Kulturkampf county-specific baseline while keeping the
+    # fertile-age female population W_t time-varying (so the rate still
+    # scales with population growth):
+    #
+    #   M_static_t   = mu_1871 * W_t
+    #   GMFR_static  = B_leg / M_static_t * 1000
+    #   I_g_static   = B_leg / (W_t * k_1871 * Fbar_mar)
+    #
+    # where k_1871 = mu_1871 / married_share_overall_const is the
+    # county-specific 1871 shifter. The construction inherits the
+    # Coale-Watkins (1986) decomposition logic: nuptiality (mu) is
+    # held analytically fixed while marital fertility (births per
+    # fixed-prevalence married woman) is the identified outcome.
+    if used_sta1871:
+        mu_1871_series = df[marriage_col].astype(float)
+        # Counties missing STA1871 fall back to the constant schedule,
+        # which by construction has zero static treatment-channel bias.
+        mu_1871_series = mu_1871_series.fillna(married_share_overall_const)
+        M_static_1871 = mu_1871_series * W
+        k_1871 = (mu_1871_series / married_share_overall_const).clip(
+            lower=0.5, upper=1.5
+        )
+        Fbar_mar_static = k_1871 * Fbar_mar
+        df["gmfr_static_1871"] = np.where(
+            M_static_1871 > 0,
+            df["Birlegtot"] / M_static_1871 * 1000.0,
+            np.nan,
+        )
+        df["Ig_static_1871"] = np.where(
+            (W > 0) & (Fbar_mar_static > 0),
+            df["Birlegtot"] / (W * Fbar_mar_static),
+            np.nan,
+        )
     # General fertility rate (GFR): total births per 1,000 women aged
     # 15-49 mid-year. The standard demographic textbook fertility
     # measure (Newell 1988): strips out the under-15 / over-49 / male

@@ -47,13 +47,15 @@ PANEL_SCHEMA = DataFrameSchema(
         "I_f": Column(float, Check.in_range(0, 1.2), nullable=True),
         "I_g": Column(float, Check.in_range(0, 1.5), nullable=True),
         "gmfr": Column(float, Check.in_range(0, 600), nullable=True),
-        # Static-1871-denominator counterpart of gmfr. Denominator is
-        # held at women_15_49_1871 x married_share_over15_f_1871, i.e.
-        # the count of married women 15-49 measured at the 1871 census,
-        # constant across years. Used in the baseline DiD table as the
-        # cleanly-identified marital-fertility outcome (numerator
-        # variation only).
-        "gmfr_static_1871": Column(float, Check.in_range(0, 1000), nullable=True),
+        # Static-1871-prevalence variants of I_g and the GMFR.
+        # Lock the marriage prevalence to its 1871 county-specific
+        # baseline (mu_i,1871 = Marriedover15f / Popover15f from
+        # STA1871) and apply it to the time-varying W_t (women 15-49
+        # from the AGE1882+AGE1890+POP1871 three-anchor interpolation).
+        # Purges the bad-control bias from contemporaneous M_t
+        # responding to the Kulturkampf marriage-formation shock.
+        "Ig_static_1871": Column(float, Check.in_range(0, 1.5), nullable=True),
+        "gmfr_static_1871": Column(float, Check.in_range(0, 600), nullable=True),
         # Headline IMR: total infant deaths / total live births x 1000.
         # 1875+ only (Galloway's Dth<1bas column starts in 1875).
         "infant_mortality_rate": Column(
@@ -170,12 +172,16 @@ PANEL_SCHEMA = DataFrameSchema(
         ),
         # Pop 15+ anchors and the time-varying derived series.
         # `pop_15plus_1871` is exact (STA1871's Popover15m+f);
-        # `pop_15plus_1890` uses 5/6 of AGE1890's Age14-19 plus
-        # Age20-49 / Age50-69 / Age70+ (within-bin approximation for
-        # ages 15-19). `pop_15plus` is the per-Kreis-per-year derived
-        # count, anchored at the two cross-sections with linear
-        # interpolation between and pop-scaled extrapolation pre-1871.
+        # `pop_15plus_1882` uses AGE1882's coarse 0-19 / 20-69 / 70+
+        # totals with the AGE1890 within-bin (15-19)/(0-19) ratio to
+        # extract the marriageable portion of the 0-19 bin;
+        # `pop_15plus_1890` uses 5/6 of AGE1890's Age14-19 plus the
+        # Age20+ bins (within-bin approximation for ages 15-19).
+        # `pop_15plus` is the per-Kreis-per-year derived count,
+        # anchored at the three cross-sections with piecewise-linear
+        # interpolation and pop-scaled by Poptot_midyear.
         "pop_15plus_1871": Column(float, Check.gt(0), nullable=True),
+        "pop_15plus_1882": Column(float, Check.gt(0), nullable=True),
         "pop_15plus_1890": Column(float, Check.gt(0), nullable=True),
         "pop_15plus": Column(float, Check.gt(0), nullable=True),
         # General marriage rate (Newell 1988): marriages per 1,000 mid-
