@@ -36,7 +36,8 @@
       "Bash(grep -nA 5 \"def did_on_indices\\\\|def aggregate_by_group_period\" src/analysis/coale_indices.py)",
       "Bash(grep -nA 2 \"outcome_keys = \\(\" exam_project2/src/analysis/latex_tables.py)",
       "Bash(python -c \"import pandas as pd; df=pd.read_parquet\\('data/processed/analysis_panel.parquet'\\); print\\([c for c in df.columns if 'cbr' in c.lower\\(\\) or 'marri' in c.lower\\(\\) or 'cath' in c.lower\\(\\) or c in \\('Code','Year','post'\\)]\\)\")",
-      "Bash(git rev-list *)"
+      "Bash(git rev-list *)",
+      "WebSearch"
     ]
   }
 }
