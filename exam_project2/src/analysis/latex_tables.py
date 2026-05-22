@@ -663,8 +663,8 @@ def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
 def baseline_did_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
-        "cbr", "gfr", "legitimate_br", "illegitimacy_ratio",
-        "marriage_rate", "general_marriage_rate", "gmfr",
+        "cbr", "legitimate_br", "gmfr_static_1871",
+        "illegitimacy_ratio", "marriage_rate",
     ),
     out_path: Path | None = None,
     *,
