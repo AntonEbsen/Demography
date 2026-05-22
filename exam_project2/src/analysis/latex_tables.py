@@ -96,7 +96,8 @@ OUTCOME_LABELS: dict[str, str] = {
     "I_g": "$I_g$ (marital fertility)",
     "I_h": "$I_h$ (illegitimate fertility)",
     "I_m": "$I_m$ (nuptiality)",
-    "gmfr": "GMFR (per 1k married women)",
+    "gmfr": "GMFR (per 1k married women, time-varying denom)",
+    "gmfr_static_1871": "GMFR (per 1k married women, 1871 denom)",
     "prop_married_15_49": "Prop.\\ married 15--49",
     # Deprecated -- kept for back-compat. Static-1871 GFR is superseded
     # by I_g for marital-fertility analysis.
@@ -651,8 +652,8 @@ def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
 def baseline_did_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
-        "cbr", "gfr", "legitimate_br", "illegitimacy_ratio",
-        "marriage_rate", "general_marriage_rate", "gmfr",
+        "cbr", "legitimate_br", "gmfr_static_1871",
+        "illegitimacy_ratio", "marriage_rate",
     ),
     out_path: Path | None = None,
     *,

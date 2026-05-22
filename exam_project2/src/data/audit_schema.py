@@ -47,6 +47,13 @@ PANEL_SCHEMA = DataFrameSchema(
         "I_f": Column(float, Check.in_range(0, 1.2), nullable=True),
         "I_g": Column(float, Check.in_range(0, 1.5), nullable=True),
         "gmfr": Column(float, Check.in_range(0, 600), nullable=True),
+        # Static-1871-denominator counterpart of gmfr. Denominator is
+        # held at women_15_49_1871 x married_share_over15_f_1871, i.e.
+        # the count of married women 15-49 measured at the 1871 census,
+        # constant across years. Used in the baseline DiD table as the
+        # cleanly-identified marital-fertility outcome (numerator
+        # variation only).
+        "gmfr_static_1871": Column(float, Check.in_range(0, 1000), nullable=True),
         # Headline IMR: total infant deaths / total live births x 1000.
         # 1875+ only (Galloway's Dth<1bas column starts in 1875).
         "infant_mortality_rate": Column(

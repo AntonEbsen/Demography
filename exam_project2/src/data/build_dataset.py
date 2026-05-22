@@ -819,6 +819,48 @@ def build_analysis_panel(
             logger.warning("%d obs with I_g > 1.2 (Hutterite max); set to NaN", n_ig_extreme)
             panel.loc[panel["I_g"] > 1.2, ["I_g", "gmfr"]] = np.nan
         logger.info("Coale indices computed: I_f, I_g, I_h, gmfr")
+
+        # ------------------------------------------------------------------
+        # Static-1871 GMFR. Same numerator as the headline `gmfr`
+        # (Birlegtot), but the denominator is the 1871 count of married
+        # women 15-49 held FIXED across all years, computed as
+        #
+        #   M^{1871}_i = women_15_49_1871_i x married_share_over15_f_1871_i
+        #
+        # i.e. the 1871 anchor count from POP1871 + STA1871, without the
+        # piecewise-linear interpolation against AGE1890 that the
+        # time-varying `gmfr` uses. This is the analogue of
+        # `gfr_static_1871` for marital fertility: it strips out any
+        # time-varying movement in the denominator (1871-1890 changes
+        # in the prevalence or age structure of married women) so the
+        # variation in the rate comes purely from variation in
+        # legitimate births. Useful as a robustness column in the
+        # baseline DiD because it isolates the numerator response from
+        # the (Coale-index-style) denominator-anchor response.
+        # ------------------------------------------------------------------
+        if (
+            "women_15_49_1871" in panel.columns
+            and "married_share_over15_f_1871" in panel.columns
+        ):
+            mw_1871 = (
+                panel["women_15_49_1871"].astype(float)
+                * panel["married_share_over15_f_1871"].astype(float)
+            )
+            panel["gmfr_static_1871"] = np.where(
+                mw_1871.fillna(0) > 0,
+                panel["Birlegtot"] / mw_1871 * 1000.0,
+                np.nan,
+            )
+            # Mirror cbr_flag null-out: an extreme CBR signals contamination
+            # of Birlegtot or denominator for the same row.
+            if "cbr_flag" in panel.columns:
+                panel.loc[
+                    panel["cbr_flag"].fillna(False), "gmfr_static_1871"
+                ] = np.nan
+            logger.info(
+                "gmfr_static_1871 computed: Birlegtot / "
+                "(women_15_49_1871 x married_share_over15_f_1871) x 1000"
+            )
     except Exception as exc:
         logger.warning("Coale-indices computation skipped: %s", exc)
 
