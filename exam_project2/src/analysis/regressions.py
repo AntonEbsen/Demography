@@ -245,6 +245,160 @@ def run_start_year_sensitivity(
     return pd.DataFrame(rows)
 
 
+# Mapping of cutoff years to the headline Kulturkampf legislation that
+# took effect in that year. Used by `run_kulturkampf_phase_sensitivity`
+# below and rendered into the LaTeX table's column headers.
+KULTURKAMPF_PHASE_LABELS: dict[int, str] = {
+    1871: "Pre-Kulturkampf (placebo)",
+    1872: "Jesuits Law / school inspection",
+    1873: "May Laws (Maigesetze)",
+    1874: "Civil Marriage Act (Prussia)",
+    1875: "Brotkorb / Congregations Law / Reichszivilehe",
+    1876: "Bishop expulsions / sede vacante",
+}
+
+
+def run_kulturkampf_phase_sensitivity(
+    df: pd.DataFrame,
+    outcomes: Sequence[str] = (
+        "cbr", "legitimate_br", "gmfr_static_1871",
+        "illegitimacy_ratio", "marriage_rate", "I_g",
+    ),
+    cutoffs: Sequence[int] = (1872, 1873, 1874, 1875, 1876),
+    treatment: str = "continuous",
+    fe_design: str = "twfe",
+    placebo_cutoff: int | None = 1871,
+) -> pd.DataFrame:
+    """
+    Treatment-cutoff sensitivity by Kulturkampf legislative phase.
+
+    The headline ``post_kulturkampf`` indicator is defined at 1873 (May
+    Laws). The Kulturkampf however unfolded across at least five
+    distinct phases:
+
+      * **1872** -- *Jesuitengesetz* (July 4, 1872) expels the Society
+        of Jesus; the *Schulaufsichtsgesetz* (March 11, 1872) transfers
+        school inspection to the state.
+      * **1873** -- the *Maigesetze* (May 11-14, 1873) regulate
+        Catholic clerical training, appointments and discipline; the
+        *Kulturexamen* requires state certification of clergy.
+      * **1874** -- the *preussisches Zivilehegesetz* (March 9, 1874)
+        introduces mandatory state civil marriage in Prussia for the
+        first time, *before* the Reich-wide law of 1875.
+      * **1875** -- the *Personenstandsgesetz* (February 6, 1875)
+        nationalises civil marriage and birth/death registration;
+        the *Brotkorbgesetz* (April 22, 1875) suspends state subsidies
+        to disobedient bishops; the *Klostergesetz* (May 31, 1875)
+        dissolves most Catholic religious orders.
+      * **1876** -- mass episcopal expulsions; by year-end nine of
+        twelve Prussian bishoprics are *sede vacante*.
+
+    For each outcome and each candidate cutoff this routine re-fits the
+    baseline DiD ``Y = beta(CathShare x 1[Year >= cutoff]) + alpha_i +
+    delta_t + epsilon`` and returns the coefficient, standard error,
+    p-value, sample size and within R^2. The 1871 row is a placebo: a
+    pre-Kulturkampf cutoff that should yield zero loading if the
+    apparent post-1873 effect is not a continuation of a pre-existing
+    trend.
+
+    Interpretation. A reader wanting to know whether the marriage-rate
+    effect is specifically about the 1874 Civil Marriage Act -- as
+    opposed to the broader 1873 May Laws shock -- can read off the
+    1874 column of the marriage_rate row and compare it to 1873. If
+    the marriage effect peaks at 1874 (or strengthens monotonically
+    from 1873 to 1874), that is direct evidence for the Civil Marriage
+    Act as the operative channel. The other rows let a reader inspect
+    whether the fertility outcomes co-move with the same cutoff or
+    pick up a different phase (e.g. 1875 Brotkorbgesetz for legitimate
+    BR, since this is when clerical authority over baptismal
+    registration was disrupted).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Analysis panel (with `Year`, `Code`, `cath_share`, the chosen
+        outcomes already constructed).
+    outcomes : Sequence[str]
+        Outcomes to test. Default covers the five headline rates plus
+        the Hutterite-normalised marital-fertility index $I_g$.
+    cutoffs : Sequence[int]
+        Candidate post-treatment cutoff years. ``post_t = 1[Year >=
+        cutoff]`` is rebuilt for each cutoff.
+    treatment : str
+        Passed through to ``run_baseline_did``. ``"continuous"`` (the
+        default) reports the coefficient on ``cath_share * post`` --
+        the headline DiD parameter.
+    fe_design : str
+        ``"twfe"`` (county + year FE) or ``"year_x_rb"`` (county + year
+        x Regierungsbezirk FE). Default is the headline TWFE.
+    placebo_cutoff : int or None
+        If set (default 1871), an additional pre-Kulturkampf placebo
+        row is appended for diagnostic purposes.
+
+    Returns
+    -------
+    pd.DataFrame with one row per (outcome, cutoff) combination and
+    columns ``outcome``, ``cutoff``, ``phase_label``, ``coef``, ``se``,
+    ``p``, ``n``, ``r2_within``, ``placebo`` (bool).
+    """
+    if placebo_cutoff is not None and placebo_cutoff not in cutoffs:
+        cutoffs = (placebo_cutoff,) + tuple(cutoffs)
+
+    rows: list[dict] = []
+    for cutoff in cutoffs:
+        sub = df.copy()
+        sub["post_kulturkampf"] = (sub["Year"] >= cutoff).astype(int)
+        sub["cath_share_x_post"] = (
+            sub["cath_share"] * sub["post_kulturkampf"]
+        )
+        # The binary treatment interaction is regenerated too so a
+        # downstream caller that chose ``treatment="binary"`` gets the
+        # right cutoff applied to the high_cath dummy.
+        if "high_cath" in sub.columns:
+            sub["treat_x_post"] = (
+                sub["high_cath"] * sub["post_kulturkampf"]
+            )
+
+        for outcome in outcomes:
+            if outcome not in sub.columns:
+                logger.warning(
+                    "outcome %r not on panel -- skipping cutoff=%s",
+                    outcome, cutoff,
+                )
+                continue
+            try:
+                res = run_baseline_did(
+                    sub, outcome=outcome, treatment=treatment,
+                    fe_design=fe_design,
+                )["result"]
+                param = (
+                    "cath_share_x_post"
+                    if treatment == "continuous" else "treat_x_post"
+                )
+                rows.append({
+                    "outcome": outcome,
+                    "cutoff": int(cutoff),
+                    "phase_label": KULTURKAMPF_PHASE_LABELS.get(
+                        int(cutoff), f"Cutoff {cutoff}"
+                    ),
+                    "coef": float(res.params[param]),
+                    "se": float(res.std_errors[param]),
+                    "p": float(res.pvalues[param]),
+                    "n": int(res.nobs),
+                    "r2_within": float(res.rsquared_within),
+                    "placebo": bool(
+                        placebo_cutoff is not None
+                        and cutoff == placebo_cutoff
+                    ),
+                })
+            except Exception as exc:
+                logger.error(
+                    "cutoff=%s outcome=%s failed: %s",
+                    cutoff, outcome, exc,
+                )
+    return pd.DataFrame(rows)
+
+
 def run_iv_did_multi(
     df: pd.DataFrame,
     outcome: str = "cbr",

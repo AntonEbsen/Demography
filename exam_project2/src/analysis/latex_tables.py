@@ -58,6 +58,8 @@ from src.analysis.regressions import (
     run_start_year_sensitivity,
     run_subsample_decomposition,
     run_triple_difference_polish,
+    run_kulturkampf_phase_sensitivity,
+    KULTURKAMPF_PHASE_LABELS,
 )
 from src.analysis.rollback import rollback_event_study
 from src.analysis.synthetic_did import (
@@ -1010,6 +1012,211 @@ def baseline_did_indices_table(
             "Table~\\ref{tab:baseline_did}."
         ),
     )
+
+
+def kulturkampf_phase_sensitivity_table(
+    panel: pd.DataFrame,
+    outcomes: Sequence[str] = (
+        "cbr", "legitimate_br", "gmfr_static_1871",
+        "illegitimacy_ratio", "marriage_rate", "I_g",
+    ),
+    cutoffs: Sequence[int] = (1872, 1873, 1874, 1875, 1876),
+    placebo_cutoff: int | None = 1871,
+    out_path: Path | None = None,
+    digits_coef: int = 4,
+    digits_se: int = 4,
+) -> str:
+    """
+    Treatment-cutoff sensitivity by Kulturkampf legislative phase.
+
+    Renders the output of
+    :func:`regressions.run_kulturkampf_phase_sensitivity` as a
+    cross-tabulated LaTeX table: rows are outcomes (default = the five
+    headline conventional rates plus the Hutterite-normalised $I_g$),
+    columns are alternative cutoff years corresponding to the five
+    distinct Kulturkampf phases plus a 1871 placebo. Each cell reports
+    the coefficient on $\\texttt{cath\\_share} \\times \\mathbb{1}[
+    \\text{Year} \\geq \\text{cutoff}]$ with the clustered standard
+    error in parentheses and significance stars.
+
+    Reading the table.
+
+    - Whether the marriage-rate effect is specifically about the 1874
+      Civil Marriage Act (vs the broader 1873 May Laws): compare the
+      ``marriage_rate`` row's 1873 column to its 1874 column. A sharp
+      strengthening at 1874 (and only at 1874) points to the Civil
+      Marriage Act as the operative channel; flat or monotonic-from-
+      1873 patterns indicate the marriage response is part of the
+      broader May-Laws-era shock.
+    - Whether fertility effects pick up a different phase from
+      marriage (e.g.\\ 1876 episcopal expulsions for ``cbr`` vs 1874
+      for ``marriage_rate``): rows should be read independently.
+    - The 1871 placebo column should yield small / insignificant
+      coefficients for outcomes where the post-1873 effect is causal;
+      a significant placebo coefficient is a pre-trends signal
+      (already documented for $I_g$ in
+      Table~\\ref{tab:pretreatment_trends}).
+    """
+    out_path = out_path or TABLES_DIR / "phase_sensitivity.tex"
+
+    res = run_kulturkampf_phase_sensitivity(
+        panel,
+        outcomes=outcomes,
+        cutoffs=cutoffs,
+        placebo_cutoff=placebo_cutoff,
+    )
+    if res.empty:
+        raise RuntimeError(
+            "run_kulturkampf_phase_sensitivity returned no rows -- check that "
+            "the requested outcomes are on the panel."
+        )
+
+    ordered_cutoffs = sorted(res["cutoff"].unique().tolist())
+    placebo = (
+        int(placebo_cutoff)
+        if placebo_cutoff is not None
+        else None
+    )
+
+    def _fmt_coef(row: pd.Series) -> str:
+        stars = (
+            "$^{***}$" if row["p"] < 0.01
+            else "$^{**}$" if row["p"] < 0.05
+            else "$^{*}$" if row["p"] < 0.10
+            else ""
+        )
+        return f"{row['coef']:+.{digits_coef}f}{stars}"
+
+    def _fmt_se(row: pd.Series) -> str:
+        return f"({row['se']:.{digits_se}f})"
+
+    # Header
+    n_cols = len(ordered_cutoffs)
+    col_spec = "l" + "S" * n_cols
+    head_year = " & ".join(
+        f"{{{int(c)}{'$^{P}$' if c == placebo else ''}}}"
+        for c in ordered_cutoffs
+    )
+    # Subheader: short phase tags. Use \makecell so long labels wrap.
+    short_phase = {
+        1871: "(placebo)",
+        1872: "Jesuits Law / school",
+        1873: "May Laws",
+        1874: "Civ.\\ Marriage Act (PR)",
+        1875: "Brotkorb / Reichszivilehe",
+        1876: "Bishop expulsions",
+    }
+    head_phase = " & ".join(
+        f"{{\\footnotesize {short_phase.get(int(c), str(c))}}}"
+        for c in ordered_cutoffs
+    )
+
+    # Sample-size and within-R^2 footer rows (per cutoff, pooled
+    # across outcomes -- they are identical within a cutoff column
+    # because the same panel is used).
+    pivot = res.pivot(index="outcome", columns="cutoff", values=["coef", "se", "p", "n", "r2_within"])
+
+    body_lines: list[str] = []
+    for outcome in outcomes:
+        if outcome not in pivot.index:
+            continue
+        label = _outcome_label(outcome)
+        cells: list[str] = []
+        for c in ordered_cutoffs:
+            sub = res[(res["outcome"] == outcome) & (res["cutoff"] == c)]
+            if sub.empty:
+                cells.append(r"\multicolumn{1}{c}{--}")
+                continue
+            row = sub.iloc[0]
+            cells.append(_fmt_coef(row))
+        body_lines.append(f"{label} & " + " & ".join(cells) + r" \\")
+
+        # SE row
+        se_cells: list[str] = []
+        for c in ordered_cutoffs:
+            sub = res[(res["outcome"] == outcome) & (res["cutoff"] == c)]
+            if sub.empty:
+                se_cells.append("")
+                continue
+            row = sub.iloc[0]
+            se_cells.append(_fmt_se(row))
+        body_lines.append(" & " + " & ".join(se_cells) + r" \\")
+
+    # Sample-size footer (cutoff-invariant in the balanced panel, but
+    # not literally identical because the post indicator changes
+    # affects which years are "treated"; we report the marriage_rate
+    # row's N as a representative figure since the n is identical
+    # across cutoffs within an outcome).
+    n_row_outcome = (
+        "marriage_rate" if "marriage_rate" in pivot.index else outcomes[0]
+    )
+    n_cells = []
+    for c in ordered_cutoffs:
+        sub = res[(res["outcome"] == n_row_outcome) & (res["cutoff"] == c)]
+        n_cells.append(f"{{{int(sub.iloc[0]['n']):,}}}" if not sub.empty else "")
+    n_footer = "Observations & " + " & ".join(n_cells) + r" \\"
+
+    body = "\n".join(body_lines)
+
+    note = (
+        r"\textit{Notes:} Two-way fixed-effects estimates of "
+        r"$Y_{it} = \beta\,(\text{cath\_share}_i \times \mathbb{1}["
+        r"\text{Year} \geq c]) + \alpha_i + \delta_t + \varepsilon_{it}$ "
+        r"for each candidate cutoff $c$. County and year fixed effects "
+        r"throughout; standard errors clustered at the county level in "
+        r"parentheses. The five non-placebo cutoffs correspond to "
+        r"distinct legislative phases of the Kulturkampf: \textbf{1872} "
+        r"\emph{Jesuitengesetz} (July 4) expels the Society of Jesus "
+        r"and the \emph{Schulaufsichtsgesetz} (March 11) transfers "
+        r"school inspection to the state; \textbf{1873} the "
+        r"\emph{Maigesetze} (May 11--14) regulate Catholic clerical "
+        r"training, appointment and discipline; \textbf{1874} the "
+        r"Prussian \emph{Zivilehegesetz} (March 9) introduces "
+        r"mandatory state civil marriage in Prussia for the first time; "
+        r"\textbf{1875} the \emph{Personenstandsgesetz} (Feb 6) "
+        r"nationalises civil marriage and birth/death registration "
+        r"alongside the \emph{Brotkorbgesetz} (Apr 22) and the "
+        r"\emph{Klostergesetz} (May 31); \textbf{1876} mass episcopal "
+        r"expulsions leave nine of twelve Prussian bishoprics "
+        r"\emph{sede vacante}. The 1871$^{P}$ column is a "
+        r"pre-Kulturkampf placebo cutoff: a significant coefficient "
+        r"there is a pre-trends signal (see "
+        r"Table~\ref{tab:pretreatment_trends} and "
+        r"\texttt{pretreatment\_trends.tex} for the formal Wald test). "
+        r"$^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$."
+    )
+
+    out = (
+        "% Auto-generated by src/analysis/latex_tables.py -- do not edit by hand.\n"
+        "% LaTeX preamble required: \\usepackage{booktabs, threeparttable, siunitx}\n"
+        "\\begin{table}[htbp]\n"
+        "\\centering\n"
+        "\\footnotesize\n"
+        "\\begin{threeparttable}\n"
+        "\\caption{Treatment-cutoff sensitivity: DiD coefficient "
+        "on $\\text{cath\\_share} \\times \\mathbb{1}["
+        "\\text{Year} \\geq c]$ for $c \\in \\{1871, 1872, 1873, "
+        "1874, 1875, 1876\\}$}\n"
+        f"\\label{{tab:phase_sensitivity}}\n"
+        f"\\begin{{tabular}}{{{col_spec}}}\n"
+        "\\toprule\n"
+        " & " + head_year + r" \\" + "\n"
+        " & " + head_phase + r" \\" + "\n"
+        "\\midrule\n"
+        + body + "\n"
+        "\\midrule\n"
+        + n_footer + "\n"
+        "\\bottomrule\n"
+        "\\end{tabular}\n"
+        "\\begin{tablenotes}\n"
+        "\\footnotesize\n"
+        f"\\item {note}\n"
+        "\\end{tablenotes}\n"
+        "\\end{threeparttable}\n"
+        "\\end{table}\n"
+    )
+    _write(out_path, out)
+    return out
 
 
 def robustness_table(robustness_df: pd.DataFrame, out_path: Path | None = None) -> str:
@@ -2203,7 +2410,9 @@ def iv_overid_table(
 
 def wild_bootstrap_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "marriage_rate", "I_g"),
+    outcomes: Sequence[str] = (
+        "cbr", "marriage_rate", "I_g", "gmfr_static_1871",
+    ),
     out_path: Path | None = None,
 ) -> str:
     """Wild cluster bootstrap p-values across full panel and key sub-samples.
@@ -2211,10 +2420,24 @@ def wild_bootstrap_table(
     The $I_g$ column (Coale's marital fertility index, Hutterite-
     normalised; the Galloway, Hammel & Lee 1994 tradition outcome) tests
     whether the small-cluster sub-region results survive when fertility
-    is measured net of nuptiality. Because $I_g$ is dimensionless, its
-    coefficients are not directly comparable to the per-1{,}000 CBR /
-    marriage-rate columns; what *is* comparable across columns is the
-    sign and the wild-bootstrap $p$-value.
+    is measured net of nuptiality. The companion ``gmfr_static_1871``
+    column tests the same marital-fertility outcome with the
+    *static-1871-prevalence* denominator -- nuptiality is held at its
+    pre-Kulturkampf county-specific baseline ($\\mu_{i,1871}$ applied
+    to the time-varying $W_t$), purging the bad-control bias in which
+    contemporaneous $M_t$ responds to the marriage-formation shock
+    itself. Reading the two marital-fertility columns side by side
+    isolates which of the headline $I_g$ result survives once the
+    denominator-response channel is removed: in the full panel the
+    headline $I_g$ effect dissolves under ``gmfr_static_1871``,
+    consistent with the interpretation that the apparent marital-
+    fertility response is the nuptiality (denominator) channel rather
+    than within-marriage behaviour.
+
+    Because $I_g$ is dimensionless, its coefficients are not directly
+    comparable to the per-1{,}000 CBR / marriage-rate / GMFR columns;
+    what *is* comparable across columns is the sign and the wild-
+    bootstrap $p$-value.
     """
     out_path = out_path or TABLES_DIR / "wild_bootstrap.tex"
 
@@ -2285,13 +2508,19 @@ def wild_bootstrap_table(
             "brackets. Wild bootstrap delivers reliable inference even when the "
             "number of clusters $G$ is small (e.g.\\ the 24 Polish-province "
             "counties) where conventional cluster-robust standard errors are "
-            "unreliable. The GFR column uses the General Fertility Rate "
-            "(births per 1{,}000 women aged 15--49 in 1871) and addresses the "
-            "standard demographic critique that CBR is mechanically affected by "
-            "age structure. Because GFR has higher residual variance, the "
-            "wild-bootstrap and asymptotic $p$-values diverge in the "
-            "small-cluster sub-regions; the wild-bootstrap value is the correct "
-            "small-sample inference. "
+            "unreliable. The two marital-fertility columns are paired by "
+            "design: $I_g$ uses the time-varying Hutterite-normalised "
+            "marital-fertility denominator (the Galloway, Hammel \\& Lee 1994 "
+            "headline), while $\\mathrm{GMFR}^{1871}$ holds the marriage "
+            "prevalence $\\mu_{i}$ at its 1871 county-specific baseline and "
+            "applies it to the time-varying women-15--49 count. The "
+            "comparison purges the bad-control channel in which the "
+            "Kulturkampf-induced drop in $M_t$ mechanically inflates "
+            "$B_\\mathrm{leg}/M_t$ even absent any within-marriage fertility "
+            "response. Because $I_g$ is dimensionless and $\\mathrm{GMFR}^{1871}$ "
+            "is per 1{,}000 married women, the two columns' coefficient "
+            "magnitudes are not directly comparable; the wild-bootstrap "
+            "$p$-values are. "
             "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$ "
             "stars are based on the wild bootstrap $p$-value."
         ),
@@ -3045,6 +3274,9 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "baseline_did_indices.tex")
     baseline_did_indices_table(panel, out_path=written[-1])
+
+    written.append(out_dir / "phase_sensitivity.tex")
+    kulturkampf_phase_sensitivity_table(panel, out_path=written[-1])
 
     written.append(out_dir / "robustness.tex")
     robustness_table(run_robustness(panel), out_path=written[-1])
