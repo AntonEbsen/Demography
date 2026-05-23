@@ -1007,6 +1007,17 @@ def run_emigration_robustness(
         1872-1886; ~21 of 29 panel years).
     (6) + *measured* net migration rate (in - out, per 1,000 pop). Same
         coverage caveat as (5).
+    (7) + time-varying married sex ratio (Galloway, Hammel & Lee 1994
+        control: 100 * MarriedM_t / MarriedF_t, interpolated between
+        1871 STA1871 and 1885 POP1885 anchors). Directly absorbs the
+        "spousal separation due to migration" channel that GHL 1994
+        argue is the mechanical pathway by which male migration
+        depresses period marital fertility. If the cath_share x post
+        coefficient shrinks substantially under this control, the
+        emigration channel operates via married-man departure; if it
+        barely moves, the operative channel is reduced marriage
+        formation (single-man emigration) or whole-family chain
+        migration instead.
     """
     work = df.copy().sort_values(["Code", "Year"])
     work["pop_change"] = work.groupby("Code")["Poptot"].diff()
@@ -1028,6 +1039,7 @@ def run_emigration_robustness(
                 lambda d: d["outmig_rate"].notna() & d["net_mig_rate"].notna()),
             ("(5) + measured outmig rate", ["outmig_rate"], None),
             ("(6) + measured net mig rate", ["net_mig_rate"], None),
+            ("(7) + married sex ratio (GHL 1994)", ["married_sex_ratio"], None),
         ]:
             sub = work if sample_filter is None else work[sample_filter(work)]
             try:

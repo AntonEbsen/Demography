@@ -24,6 +24,8 @@
  & (0.0036) & (0.0010) & \\
 (6) + measured net mig rate & 0.0048 & -0.0023$^{**}$ & 7,714 \\
  & (0.0036) & (0.0010) & \\
+(7) + married sex ratio (GHL 1994) & -0.0038 & -0.0041$^{***}$ & 10,777 \\
+ & (0.0032) & (0.0009) & \\
 \addlinespace
 \multicolumn{4}{l}{\textit{Panel B: Polish provinces (POS, BRO)}} \\
 (1) Baseline (no controls) & -0.0857$^{***}$ & -0.0284$^{***}$ & 696 \\
@@ -40,6 +42,8 @@
  & (0.0150) & (0.0056) & \\
 (6) + measured net mig rate & -0.0377$^{**}$ & -0.0260$^{***}$ & 504 \\
  & (0.0151) & (0.0056) & \\
+(7) + married sex ratio (GHL 1994) & -0.0775$^{***}$ & -0.0266$^{***}$ & 696 \\
+ & (0.0243) & (0.0060) & \\
 \midrule
 \multicolumn{4}{l}{\textit{Panel C: Population-free outcomes (one outcome per row)}} \\
  & Coefficient & SE & $N$ \\
@@ -50,6 +54,6 @@ Births per marriage & 0.0026$^{***}$ & (0.0004) & 10,783 \\
 \end{tabular}
 \begin{minipage}{\linewidth}
 \vspace{0.5em}
-\footnotesize \textit{Notes:} All entries are the DiD coefficient (and clustered SE in parentheses) on $\mathrm{CathShare} \times \mathrm{Post}$ from a county- and year-fixed-effects regression. Panel~A reports the headline specification on the full panel under six specifications: (1) baseline TWFE, no migration controls; (2) adds the annual population growth rate; (3) adds the implied net migration rate (population change minus natural increase, per 1{,}000 population), which spans the full panel including the post-1885 expulsion years; (4) restricts the sample to $t < 1885$, before the Bismarck-era $\mathit{Polenausweisungen}$ and the 1886 Settlement Commission; (1$'$) baseline TWFE with no migration control but restricted to the 1862--1867 and 1872--1886 sub-sample on which Galloway VIT records measured migration; (5) adds measured out-migration rate on the (1$'$) sub-sample; (6) adds measured net migration rate on the (1$'$) sub-sample. Row (1$'$) is the appropriate baseline for interpreting (5)--(6): the difference between (1) and (1$'$) isolates the sample-composition effect of dropping war and post-expulsion years, while the difference between (1$'$) and (5)/(6) isolates the migration-channel effect of conditioning on measured migration. Panel~B repeats the six specifications on the Polish sub-sample (Posen and Bromberg). Panel~C reports outcomes that do not depend on the population denominator and therefore cannot be mechanical artefacts of out-migration. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
+\footnotesize \textit{Notes:} All entries are the DiD coefficient (and clustered SE in parentheses) on $\mathrm{CathShare} \times \mathrm{Post}$ from a county- and year-fixed-effects regression. Panel~A reports the headline specification on the full panel under seven specifications: (1) baseline TWFE, no migration controls; (2) adds the annual population growth rate; (3) adds the implied net migration rate (population change minus natural increase, per 1{,}000 population), which spans the full panel including the post-1885 expulsion years; (4) restricts the sample to $t < 1885$, before the Bismarck-era $\mathit{Polenausweisungen}$ and the 1886 Settlement Commission; (1$'$) baseline TWFE with no migration control but restricted to the 1862--1867 and 1872--1886 sub-sample on which Galloway VIT records measured migration; (5) adds measured out-migration rate on the (1$'$) sub-sample; (6) adds measured net migration rate on the (1$'$) sub-sample; (7) adds the time-varying married sex ratio (Galloway, Hammel \& Lee 1994: $100 \times \mathrm{MarriedM}_t / \mathrm{MarriedF}_t$, piecewise-linearly interpolated between the 1871 STA1871 and 1885 POP1885 anchors). Specification (7) is the canonical Princeton-EFP control for ``spousal separation due to migration or military service'' -- the mechanical channel by which male relocation depresses period marital fertility without any behavioural change. If the $\mathrm{cath\_share} \times \mathrm{Post}$ coefficient shrinks substantially under (7), the emigration channel operates via married-man departure from married women; if it barely moves, the operative channel is reduced marriage formation (single-man emigration) or whole-family chain migration -- neither of which moves the married sex ratio. Row (1$'$) is the appropriate baseline for interpreting (5)--(6): the difference between (1) and (1$'$) isolates the sample-composition effect of dropping war and post-expulsion years, while the difference between (1$'$) and (5)/(6) isolates the migration-channel effect of conditioning on measured migration. Panel~B repeats the seven specifications on the Polish sub-sample (Posen and Bromberg). Panel~C reports outcomes that do not depend on the population denominator and therefore cannot be mechanical artefacts of out-migration. Standard errors clustered at the county level. $^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$.
 \end{minipage}
 \end{table}
