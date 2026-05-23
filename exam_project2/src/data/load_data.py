@@ -118,7 +118,8 @@ def load_pop_census(data_dir: Optional[Path] = None, years: Optional[List[int]] 
     if data_dir is None:
         data_dir = DATA_RAW
     if years is None:
-        years = [1861, 1864, 1867, 1871, 1875, 1880, 1885, 1890]
+        years = [1861, 1864, 1867, 1871, 1875, 1880, 1885, 1890,
+                 1895, 1900, 1905, 1910]
     
     frames = []
     for yr in years:
@@ -510,7 +511,8 @@ def load_pop1871_age_structure(path: Optional[Path] = None) -> pd.DataFrame:
 # with Zentrum being the political expression of Catholic identity.
 
 
-ELECTION_YEARS = (1871, 1874, 1878, 1881, 1884, 1887, 1890)
+ELECTION_YEARS = (1871, 1874, 1878, 1881, 1884, 1887, 1890,
+                  1893, 1898, 1903, 1907, 1912)
 
 
 def _build_wahlkreis_crosswalk(
@@ -574,7 +576,7 @@ def _build_wahlkreis_crosswalk(
 # `channels.schooling_channel`) is defined further down in this module.
 
 
-URB_YEARS = (1875, 1880, 1885, 1890)
+URB_YEARS = (1875, 1880, 1885, 1890, 1895, 1900, 1905, 1910)
 
 
 def load_urb_panel(

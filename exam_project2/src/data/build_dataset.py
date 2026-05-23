@@ -49,7 +49,7 @@ from src.data.merge_ipehd import (
 def build_analysis_panel(
     data_dir: Optional[Path] = None,
     year_start: int = 1862,
-    year_end: int = 1890,
+    year_end: int = 1910,
     save: bool = True,
 ) -> pd.DataFrame:
     """
