@@ -32,6 +32,7 @@ from src.data.load_data import (
     load_gel1882,
     load_edu1886,
     load_sta1871,
+    load_pop1885_marital_status,
     load_age1882,
     load_age1890,
     _find_file,
@@ -582,6 +583,10 @@ def build_analysis_panel(
         (load_gel1882, "GEL1882"),
         (load_edu1886, "EDU1886"),
         (load_sta1871, "STA1871"),
+        # POP1885: married_men_1885, married_women_1885,
+        # married_sex_ratio_1885. Second anchor for the time-varying
+        # married_sex_ratio series built post-merge below.
+        (load_pop1885_marital_status, "POP1885 marital"),
         # AGE1890: actual count of women 15-49 and married women 15-49
         # per Kreis from Galloway's own age-by-marital tabulation. Acts
         # as the 1890 anchor for the time-varying marriage-prevalence
@@ -789,6 +794,58 @@ def build_analysis_panel(
             float(share_15plus_1871.dropna().mean()),
             mean_1882,
             float(share_15plus_1890.dropna().mean()),
+        )
+
+    # ------------------------------------------------------------------
+    # 6c-sexies. Time-varying married sex ratio (Galloway, Hammel & Lee
+    # 1994 control). Constructed as
+    #
+    #   married_sex_ratio_t = 100 * MarriedM_t / MarriedF_t
+    #
+    # from two anchor cross-sections: 1871 STA1871 (over-15) and 1885
+    # POP1885 (all ages; under-15 marriage is negligible so the
+    # definitional mismatch is empirically tiny -- see
+    # load_pop1885_marital_status docstring). Piecewise-linear
+    # interpolation in Year between 1871 and 1885; clamps to the
+    # nearest anchor outside that window (i.e. constant at the 1871
+    # value for 1862-1870, constant at the 1885 value for 1886-1890).
+    # If the 1885 anchor is missing for a Kreis, carry the 1871 value
+    # forward (and vice versa). Galloway, Hammel & Lee (1994) include
+    # this variable as a control "to measure the separation of spouses
+    # due to temporary or permanent relocation of the husband or wife"
+    # -- the mechanical channel by which migration / military service
+    # depresses period marital fertility without a behavioural
+    # response. In the Kulturkampf panel this is the natural
+    # bad-control test for whether the Polish-province CBR /
+    # marriage-rate effects are driven by men leaving Posen / Bromberg
+    # for Pittsburgh / the Ruhr, rather than by an institutional shock
+    # to Catholic family formation.
+    # ------------------------------------------------------------------
+    if {"married_sex_ratio_1871", "married_sex_ratio_1885"}.issubset(
+        panel.columns
+    ):
+        years = panel["Year"].astype(float)
+        a71 = panel["married_sex_ratio_1871"].astype(float)
+        a85 = panel["married_sex_ratio_1885"].astype(float)
+        # Linear interpolation 1871 <= t <= 1885; clamp outside.
+        w = ((years - 1871.0) / (1885.0 - 1871.0)).clip(0.0, 1.0)
+        msr = a71 * (1 - w) + a85 * w
+        # If either anchor is missing for a Kreis, fall back to the
+        # available one; if both missing, leave NaN.
+        msr = msr.where(a71.notna() & a85.notna(), a71.fillna(a85))
+        # Clip to a plausible historical range: 19th-century county
+        # populations had married_sex_ratio in [70, 105] with the
+        # great majority in [85, 100]. Values <70 or >110 are almost
+        # certainly mis-transcribed or boundary-reform artefacts.
+        panel["married_sex_ratio"] = msr.clip(lower=70, upper=110)
+
+        n_have = panel["married_sex_ratio"].notna().sum()
+        mean_71 = float(a71.dropna().mean()) if a71.notna().any() else float("nan")
+        mean_85 = float(a85.dropna().mean()) if a85.notna().any() else float("nan")
+        logger.info(
+            "married_sex_ratio (Galloway, Hammel & Lee 1994) materialised: "
+            "%d / %d obs non-null. 1871 mean = %.2f, 1885 mean = %.2f.",
+            n_have, len(panel), mean_71, mean_85,
         )
 
     # ------------------------------------------------------------------
