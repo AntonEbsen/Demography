@@ -1020,8 +1020,8 @@ def kulturkampf_phase_sensitivity_table(
         "cbr", "legitimate_br", "gmfr_static_1871",
         "illegitimacy_ratio", "marriage_rate", "I_g",
     ),
-    cutoffs: Sequence[int] = (1872, 1873, 1874, 1875, 1876),
-    placebo_cutoff: int | None = 1871,
+    cutoffs: Sequence[int] = (1871, 1872, 1873, 1874, 1875, 1876),
+    placebo_cutoff: int | None = 1870,
     out_path: Path | None = None,
     digits_coef: int = 4,
     digits_se: int = 4,
@@ -1099,7 +1099,8 @@ def kulturkampf_phase_sensitivity_table(
     )
     # Subheader: short phase tags. Use \makecell so long labels wrap.
     short_phase = {
-        1871: "(placebo)",
+        1870: "(placebo)",
+        1871: "Kanzelparagraph",
         1872: "Jesuits Law / school",
         1873: "May Laws",
         1874: "Civ.\\ Marriage Act (PR)",
@@ -1164,10 +1165,13 @@ def kulturkampf_phase_sensitivity_table(
         r"\text{Year} \geq c]) + \alpha_i + \delta_t + \varepsilon_{it}$ "
         r"for each candidate cutoff $c$. County and year fixed effects "
         r"throughout; standard errors clustered at the county level in "
-        r"parentheses. The five non-placebo cutoffs correspond to "
-        r"distinct legislative phases of the Kulturkampf: \textbf{1872} "
-        r"\emph{Jesuitengesetz} (July 4) expels the Society of Jesus "
-        r"and the \emph{Schulaufsichtsgesetz} (March 11) transfers "
+        r"parentheses. The six non-placebo cutoffs correspond to "
+        r"distinct legislative phases of the Kulturkampf: \textbf{1871} "
+        r"the \emph{Kanzelparagraph} (\S 130a Reich Penal Code, Dec 10) "
+        r"criminalises politically charged statements by Catholic "
+        r"clergy and is the first Kulturkampf statute; \textbf{1872} "
+        r"the \emph{Jesuitengesetz} (July 4) expels the Society of "
+        r"Jesus and the \emph{Schulaufsichtsgesetz} (March 11) transfers "
         r"school inspection to the state; \textbf{1873} the "
         r"\emph{Maigesetze} (May 11--14) regulate Catholic clerical "
         r"training, appointment and discipline; \textbf{1874} the "
@@ -1178,9 +1182,10 @@ def kulturkampf_phase_sensitivity_table(
         r"alongside the \emph{Brotkorbgesetz} (Apr 22) and the "
         r"\emph{Klostergesetz} (May 31); \textbf{1876} mass episcopal "
         r"expulsions leave nine of twelve Prussian bishoprics "
-        r"\emph{sede vacante}. The 1871$^{P}$ column is a "
-        r"pre-Kulturkampf placebo cutoff: a significant coefficient "
-        r"there is a pre-trends signal (see "
+        r"\emph{sede vacante}. The 1870$^{P}$ column is the true "
+        r"pre-Kulturkampf placebo cutoff (the Kanzelparagraph passed "
+        r"in late 1871 puts that year inside the treatment window). A "
+        r"significant coefficient at 1870 is a pre-trends signal (see "
         r"Table~\ref{tab:pretreatment_trends} and "
         r"\texttt{pretreatment\_trends.tex} for the formal Wald test). "
         r"$^{*}\,p<0.10$, $^{**}\,p<0.05$, $^{***}\,p<0.01$."
@@ -1195,7 +1200,7 @@ def kulturkampf_phase_sensitivity_table(
         "\\begin{threeparttable}\n"
         "\\caption{Treatment-cutoff sensitivity: DiD coefficient "
         "on $\\text{cath\\_share} \\times \\mathbb{1}["
-        "\\text{Year} \\geq c]$ for $c \\in \\{1871, 1872, 1873, "
+        "\\text{Year} \\geq c]$ for $c \\in \\{1870, 1871, 1872, 1873, "
         "1874, 1875, 1876\\}$}\n"
         f"\\label{{tab:phase_sensitivity}}\n"
         f"\\begin{{tabular}}{{{col_spec}}}\n"

@@ -249,7 +249,8 @@ def run_start_year_sensitivity(
 # took effect in that year. Used by `run_kulturkampf_phase_sensitivity`
 # below and rendered into the LaTeX table's column headers.
 KULTURKAMPF_PHASE_LABELS: dict[int, str] = {
-    1871: "Pre-Kulturkampf (placebo)",
+    1870: "Pre-Kulturkampf (placebo)",
+    1871: "Kanzelparagraph (Pulpit Paragraph)",
     1872: "Jesuits Law / school inspection",
     1873: "May Laws (Maigesetze)",
     1874: "Civil Marriage Act (Prussia)",
@@ -264,18 +265,24 @@ def run_kulturkampf_phase_sensitivity(
         "cbr", "legitimate_br", "gmfr_static_1871",
         "illegitimacy_ratio", "marriage_rate", "I_g",
     ),
-    cutoffs: Sequence[int] = (1872, 1873, 1874, 1875, 1876),
+    cutoffs: Sequence[int] = (1871, 1872, 1873, 1874, 1875, 1876),
     treatment: str = "continuous",
     fe_design: str = "twfe",
-    placebo_cutoff: int | None = 1871,
+    placebo_cutoff: int | None = 1870,
 ) -> pd.DataFrame:
     """
     Treatment-cutoff sensitivity by Kulturkampf legislative phase.
 
     The headline ``post_kulturkampf`` indicator is defined at 1873 (May
-    Laws). The Kulturkampf however unfolded across at least five
+    Laws). The Kulturkampf however unfolded across at least six
     distinct phases:
 
+      * **1871** -- the *Kanzelparagraph* (\\S 130a of the Reich Penal
+        Code, December 10, 1871) makes it a criminal offence for
+        Catholic clergy to discuss state affairs in a manner that
+        threatens public peace. This is the first legislative act of
+        the Kulturkampf and the reason 1870 -- not 1871 -- is the
+        correct pre-Kulturkampf placebo.
       * **1872** -- *Jesuitengesetz* (July 4, 1872) expels the Society
         of Jesus; the *Schulaufsichtsgesetz* (March 11, 1872) transfers
         school inspection to the state.
@@ -296,10 +303,12 @@ def run_kulturkampf_phase_sensitivity(
     For each outcome and each candidate cutoff this routine re-fits the
     baseline DiD ``Y = beta(CathShare x 1[Year >= cutoff]) + alpha_i +
     delta_t + epsilon`` and returns the coefficient, standard error,
-    p-value, sample size and within R^2. The 1871 row is a placebo: a
-    pre-Kulturkampf cutoff that should yield zero loading if the
-    apparent post-1873 effect is not a continuation of a pre-existing
-    trend.
+    p-value, sample size and within R^2. The 1870 row is the *true*
+    placebo: a genuinely pre-Kulturkampf cutoff (the Kanzelparagraph
+    was passed in late 1871, so a 1871 cutoff already loads partial
+    treatment). A non-zero loading at 1870 is a pre-trends signal; a
+    larger loading at 1871 than at 1870 indicates that the
+    Kanzelparagraph already moved the outcome.
 
     Interpretation. A reader wanting to know whether the marriage-rate
     effect is specifically about the 1874 Civil Marriage Act -- as
