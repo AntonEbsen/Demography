@@ -1,10 +1,10 @@
 # Data Appendix
 
-*The Kulturkampf and Catholic Fertility in Prussia, 1862–1890*
+*The Kulturkampf and Catholic Fertility in Prussia, 1862–1910*
 
 This appendix documents every variable, data source, sample-construction rule, and estimation specification used in the empirical analysis. It is written so a reader can answer the three transparency questions for any number that appears in the paper: **what is it**, **how is it computed**, and **where does it come from?**
 
-The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **10,783 county-year observations** spanning **392 Prussian counties** over **29 years (1862–1890)**, with **103 columns**.
+The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **18,192 county-year observations** spanning **392 Prussian counties** over **49 years (1862–1910)**, with **~110 columns**. The default window was extended from 1862–1890 to 1862–1910 in order to address the secular-fertility-transition critique: if Protestant counties entered the European fertility transition during the original 1862–1890 window (as documented in Galloway, Hammel \& Lee 1994 and Knodel 1974), the post-1873 differential identified by the headline DiD could partly reflect differential transition timing rather than the Kulturkampf institutional shock. The long window lets the post-1890 trajectory distinguish the two interpretations. Headline regressions still anchor on the 1862–1890 sub-sample for clean Kulturkampf identification; the 1891–1910 extension is used for the long-run / secular-transition robustness analyses documented in §8.
 
 ---
 
@@ -39,7 +39,7 @@ The build pipeline entry point is [`build_analysis_panel()`](src/data/build_data
 
 | Source | Provider | URL | Coverage | Files (under `data/raw/`) |
 |---|---|---|---|---|
-| **Galloway Prussia Database** — Vital Statistics (VIT) | Patrick Galloway / *Population Past* (CAMPOP, Cambridge) | <https://www.populationspast.org/> | Annual county-level vital statistics, 1862–1914 (we use 1862–1890) | `galloway_data/VIT{1862…1914}.{xls,xlsx,XLS}` |
+| **Galloway Prussia Database** — Vital Statistics (VIT) | Patrick Galloway / *Population Past* (CAMPOP, Cambridge) | <https://www.populationspast.org/> | Annual county-level vital statistics, 1862–1914 (we use 1862–1910) | `galloway_data/VIT{1862…1914}.{xls,xlsx,XLS}` |
 | **Galloway** — Population Census (POP) | Galloway / *Population Past* | <https://www.populationspast.org/> | Census-year population by county (1861, 1864, 1867, 1871, 1875, 1880, 1885, 1890, …) | `galloway_data/POP{1861,…,1890}.xls` |
 | **Galloway** — Religion Census (REL1871) | Galloway / *Population Past* | <https://www.populationspast.org/> | Cross-sectional 1871 population by denomination | `galloway_data/REL1871.xlsx` |
 | **iPEHD** — Integrated Population-Economic-Historical Database | Sascha Becker & Ludger Woessmann, replication for *QJE* (2009) | <https://www.cesifo.org/en/ipehd> | 452 county cross-section, 1871 Prussian census variables | `ipehd_data/ipehd_qje2009_master.dta` |

@@ -118,7 +118,8 @@ def load_pop_census(data_dir: Optional[Path] = None, years: Optional[List[int]] 
     if data_dir is None:
         data_dir = DATA_RAW
     if years is None:
-        years = [1861, 1864, 1867, 1871, 1875, 1880, 1885, 1890]
+        years = [1861, 1864, 1867, 1871, 1875, 1880, 1885, 1890,
+                 1895, 1900, 1905, 1910]
     
     frames = []
     for yr in years:
@@ -510,7 +511,8 @@ def load_pop1871_age_structure(path: Optional[Path] = None) -> pd.DataFrame:
 # with Zentrum being the political expression of Catholic identity.
 
 
-ELECTION_YEARS = (1871, 1874, 1878, 1881, 1884, 1887, 1890)
+ELECTION_YEARS = (1871, 1874, 1878, 1881, 1884, 1887, 1890,
+                  1893, 1898, 1903, 1907, 1912)
 
 
 def _build_wahlkreis_crosswalk(
@@ -574,7 +576,7 @@ def _build_wahlkreis_crosswalk(
 # `channels.schooling_channel`) is defined further down in this module.
 
 
-URB_YEARS = (1875, 1880, 1885, 1890)
+URB_YEARS = (1875, 1880, 1885, 1890, 1895, 1900, 1905, 1910)
 
 
 def load_urb_panel(
@@ -1162,13 +1164,15 @@ def load_sta1871(path: Optional[Path] = None) -> pd.DataFrame:
     pop_m = df["Popover15m"].astype(float).replace(0, np.nan)
     pop_f = df["Popover15f"].astype(float).replace(0, np.nan)
 
+    married_m = df["Marriedover15m"].astype(float)
+    married_f = df["Marriedover15f"].astype(float)
+
     out = pd.DataFrame({
         "Code": df["Code"].astype(int),
         "pct_never_married_m_1871": df["Singleover15m"].astype(float) / pop_m,
         "pct_never_married_f_1871": df["Singleover15f"].astype(float) / pop_f,
         "pct_widowed_f_1871": df["Widowover15f"].astype(float) / pop_f,
-        "married_share_over15_f_1871":
-            df["Marriedover15f"].astype(float) / pop_f,
+        "married_share_over15_f_1871": married_f / pop_f,
         "hh_avg_size_1871": df["Hhfamily"].astype(float) / (
             (pop_m + pop_f).replace(0, np.nan)
         ),
@@ -1180,6 +1184,61 @@ def load_sta1871(path: Optional[Path] = None) -> pd.DataFrame:
             df["Popover15m"].astype(float).fillna(0)
             + df["Popover15f"].astype(float).fillna(0)
         ),
+        # Married men / women counts at 1871 -- 1871 anchor for the
+        # time-varying `married_sex_ratio` series built in
+        # build_dataset.py (paired with the 1885 anchor from
+        # load_pop1885_marital_status). Galloway, Hammel & Lee (1994)
+        # include married_sex_ratio = 100 * MarriedM / MarriedF as a
+        # control for "separation of spouses due to temporary or
+        # permanent relocation of the husband or wife" -- i.e.\ the
+        # mechanical channel by which migration / military service
+        # depresses period marital fertility without any behavioural
+        # change.
+        "married_men_15plus_1871": married_m,
+        "married_women_15plus_1871": married_f,
+        "married_sex_ratio_1871": 100.0 * married_m / married_f.replace(0, np.nan),
+    })
+    return out.reset_index(drop=True)
+
+
+def load_pop1885_marital_status(path: Optional[Path] = None) -> pd.DataFrame:
+    """
+    Load POP1885 marital-status cross-section.
+
+    POP1885 reports `MARRIEDM` and `MARRIEDF` per Kreis -- the count of
+    married men and married women (all ages). Together with the 1871
+    counts from STA1871 (over-15), these are the two anchor cross-
+    sections used to build the time-varying `married_sex_ratio` series
+    in build_dataset.py.
+
+    Note on definition mismatch: STA1871 reports MarriedOver15 (15+),
+    POP1885 reports MARRIED (all ages). For the sex ratio
+    (M_married / F_married), the under-15 married population is
+    negligible in both genders (legal marriage age was 14 / 16 in
+    19th-century Prussia and even ages 14-16 had near-zero marriage
+    rates), so the 1871-over-15 and 1885-all-ages ratios are
+    comparable to within ~0.1 percentage points.
+
+    Returns columns:
+        Code, married_men_1885, married_women_1885,
+        married_sex_ratio_1885.
+    """
+    if path is None:
+        path = _find_file(DATA_RAW, "POP1885")
+        if path is None:
+            raise FileNotFoundError("POP1885 not found in data/raw/")
+    df = pd.read_excel(path)
+    df.columns = [c.lower() for c in df.columns]
+    df = df[(df["code"] < 900) & (df["type"] == 0)].copy()
+
+    married_m = df["marriedm"].astype(float)
+    married_f = df["marriedf"].astype(float)
+
+    out = pd.DataFrame({
+        "Code": df["code"].astype(int),
+        "married_men_1885": married_m,
+        "married_women_1885": married_f,
+        "married_sex_ratio_1885": 100.0 * married_m / married_f.replace(0, np.nan),
     })
     return out.reset_index(drop=True)
 

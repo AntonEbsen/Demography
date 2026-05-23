@@ -386,6 +386,51 @@ def compute_coale_indices(
         # No STA1871 -- fall back to the constant Prussia-wide schedule.
         M = W * married_share_overall_const
 
+    # --- Post-1890 pop-scaled extrapolation --------------------------
+    # The 1871 -> 1882 -> 1890 piecewise interpolation clamps post-1890
+    # values to the 1890 anchor (constant per county). For the long
+    # window 1891-1910 this understates W and M in growing counties
+    # and overstates them in shrinking ones, biasing the marital-
+    # fertility rate denominator. Mirror the pre-1871 fallback by
+    # scaling the 1890 anchor proportionally to mid-year population:
+    #
+    #     W_t   = W_1890   * (Poptot_t / Poptot_1890)    for t > 1890
+    #     M_t   = M_1890   * (Poptot_t / Poptot_1890)    for t > 1890
+    #
+    # Implicitly assumes (a) the share of women 15-49 in total pop, and
+    # (b) the marriage prevalence among women 15-49, are constant from
+    # 1890 forward. Both assumptions are reasonable in the short run
+    # but become strained by 1910 as the secular fertility transition
+    # accelerates (Knodel 1974; Galloway, Hammel & Lee 1994). Treat
+    # post-1890 I_g and GMFR as approximate.
+    if have_age1890:
+        pop_1890_by_code = (
+            df.loc[df["Year"] == 1890, ["Code", pop_col]]
+            .drop_duplicates("Code").set_index("Code")[pop_col]
+        )
+        pop_1890_series = df["Code"].map(pop_1890_by_code)
+        post_mask = (year > 1890) & pop_1890_series.notna() & (pop_1890_series > 0)
+        if post_mask.any():
+            pop_ratio = (pop / pop_1890_series).clip(lower=0.5, upper=2.0)
+            W_post = df["women_15_49_1890"].astype(float) * pop_ratio
+            if used_age1890:
+                M_post = df["married_women_15_49_1890"].astype(float) * pop_ratio
+            else:
+                M_post = M  # leave M unchanged for fallback branches
+            W = pd.Series(
+                np.where(post_mask & W_post.notna(), W_post, W),
+                index=df.index, dtype=float,
+            )
+            M = pd.Series(
+                np.where(post_mask & M_post.notna(), M_post, M),
+                index=df.index, dtype=float,
+            )
+            logger.info(
+                "Post-1890 pop-scaled extrapolation applied to %d obs "
+                "(W and M scaled by Poptot_t / Poptot_1890)",
+                int(post_mask.sum()),
+            )
+
     # --- Effective Hutterite-weighted marital fertility maximum -------
     # Re-express the time-varying M as a county-year-specific k_t and
     # apply it to the Hutterite weights so the existing I_g formula

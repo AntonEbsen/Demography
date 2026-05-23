@@ -114,6 +114,16 @@ PANEL_SCHEMA = DataFrameSchema(
         "attend_rate_1849_baseline": Column(
             float, Check.in_range(0, 0.5), nullable=True
         ),
+        # Time-varying married sex ratio (Galloway, Hammel & Lee 1994
+        # control for spousal separation due to migration / military
+        # service). Built as 100 * MarriedM_t / MarriedF_t, linearly
+        # interpolated between 1871 (STA1871) and 1885 (POP1885)
+        # anchors; clamped to the nearest anchor outside [1871, 1885].
+        # Clipped to [70, 110] to remove transcription / boundary-
+        # reform artefacts. Mean ~95 in mid-19th-century Prussia.
+        "married_sex_ratio": Column(float, Check.in_range(70, 110), nullable=True),
+        "married_sex_ratio_1871": Column(float, Check.in_range(0, 200), nullable=True),
+        "married_sex_ratio_1885": Column(float, Check.in_range(0, 200), nullable=True),
         # STA1871 marriage prevalence (= Marriedover15f / Popover15f).
         # Feeds the proper Coale I_g recalibration in
         # compute_coale_indices(use_sta1871=True): the Princeton EFP
