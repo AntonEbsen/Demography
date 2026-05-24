@@ -71,8 +71,12 @@ def rollback_event_study(
 
     # Plot
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.axvspan(1872, 1878, alpha=0.15, color="#C0392B", label="Kulturkampf enforcement")
-    ax.axvspan(1880, 1887, alpha=0.15, color="#2471A3", label="Kulturkampf rollback")
+    ax.axvspan(1871, 1878, alpha=0.15, color="#C0392B",
+               label="Kulturkampf enforcement (1871-78)")
+    ax.axvspan(1880, 1887, alpha=0.15, color="#2471A3",
+               label="Kulturkampf rollback (1880-87)")
+    ax.axvline(1873, color="#7B1A1A", linestyle="--", linewidth=1.2, alpha=0.9,
+               label="May Laws (treatment year)")
     ax.axhline(0, color="black", linewidth=0.8)
     ax.fill_between(coefs["Year"], coefs["ci_lo"], coefs["ci_hi"], alpha=0.25, color="#555555")
     ax.plot(coefs["Year"], coefs["beta"], color="#333333", linewidth=2, marker="o", markersize=4)

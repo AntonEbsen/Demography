@@ -22,10 +22,31 @@ COLORS = {
     "kulturkampf": "#E8DAEF",
 }
 
+# Kulturkampf timing convention used across all figures:
+#   - The Kulturkampf legal episode runs 1871 (Pulpit Law / Kanzelparagraph)
+#     to 1878 (peak enforcement); cleavage rollback then begins in 1880.
+#   - The DiD treatment date is the May Laws of 1873, the largest discrete
+#     escalation. We mark this as a dashed vertical line on every figure
+#     that shades the enforcement band so the reader can distinguish the
+#     historical episode (the shaded band) from the empirical treatment
+#     date (the dashed line) at a glance.
+KULTURKAMPF_TREATMENT_YEAR = 1873
+
+
+def _add_treatment_year_line(ax, year: int = KULTURKAMPF_TREATMENT_YEAR,
+                             label: str | None = "May Laws (treatment year)",
+                             color: str = "#7B1A1A", linestyle: str = "--",
+                             linewidth: float = 1.2, alpha: float = 0.9):
+    """Add a vertical dashed line at the DiD treatment year. Pass
+    ``label=None`` to omit from the legend (e.g., when only one panel
+    in a multi-panel figure should carry the legend entry)."""
+    ax.axvline(year, color=color, linestyle=linestyle, linewidth=linewidth,
+               alpha=alpha, label=label, zorder=3)
+
 
 def plot_population_and_migration(
     panel: pd.DataFrame,
-    enforcement_years: tuple[int, int] = (1872, 1878),
+    enforcement_years: tuple[int, int] = (1871, 1878),
     rollback_years: tuple[int, int] = (1880, 1887),
     savepath: str | None = None,
 ):
@@ -77,6 +98,7 @@ def plot_population_and_migration(
                   linewidth=2, marker="o", markersize=3, label=region)
     ax_l.axvspan(*enforcement_years, alpha=0.15, color=COLORS["kulturkampf"])
     ax_l.axvspan(*rollback_years, alpha=0.12, color=COLORS["protestant"])
+    _add_treatment_year_line(ax_l, label=None)
     ax_l.axhline(100, color="black", linewidth=0.6, linestyle=":")
     ax_l.set_xlabel("Year", fontsize=11)
     ax_l.set_ylabel("Population index (1862 = 100)", fontsize=11)
@@ -99,6 +121,7 @@ def plot_population_and_migration(
                  label=f"Kulturkampf ({enforcement_years[0]}--{enforcement_years[1]})")
     ax_r.axvspan(*rollback_years, alpha=0.12, color=COLORS["protestant"],
                  label=f"Rollback ({rollback_years[0]}--{rollback_years[1]})")
+    _add_treatment_year_line(ax_r)
     ax_r.axhline(0, color="black", linewidth=0.6, linestyle="-")
     ax_r.set_xlabel("Year", fontsize=11)
     ax_r.set_ylabel("Implied net migration rate (per 1{,}000 pop)", fontsize=11)
@@ -116,7 +139,7 @@ def plot_lexis_diagram(
     year_range: tuple[int, int] = (1822, 1900),
     age_range: tuple[int, int] = (0, 50),
     repro_age_range: tuple[int, int] = (15, 49),
-    enforcement_years: tuple[int, int] = (1872, 1878),
+    enforcement_years: tuple[int, int] = (1871, 1878),
     rollback_years: tuple[int, int] = (1880, 1887),
     cohort_step: int = 5,
     savepath: str | None = None,
@@ -146,6 +169,7 @@ def plot_lexis_diagram(
                label=f"Kulturkampf enforcement ({enforcement_years[0]}–{enforcement_years[1]})")
     ax.axvspan(*rollback_years, alpha=0.18, color=COLORS["protestant"],
                label=f"Rollback ({rollback_years[0]}–{rollback_years[1]})")
+    _add_treatment_year_line(ax)
 
     # Cohort diagonal lines: a person born in year c is at age (year - c).
     cohort_first = year_range[0] - age_range[1]
@@ -273,9 +297,9 @@ def plot_counterfactual_paths(
                 linestyle="--", alpha=0.85,
                 label=f"{st['label_obs']}, counterfactual")
 
-    ax.axvspan(1872, 1878, alpha=0.15, color=COLORS["kulturkampf"],
-               label="Kulturkampf (1872--1878)")
-    ax.axvline(1873, color="grey", linestyle=":", linewidth=0.8, alpha=0.6)
+    ax.axvspan(1871, 1878, alpha=0.15, color=COLORS["kulturkampf"],
+               label="Kulturkampf (1871--1878)")
+    _add_treatment_year_line(ax)
 
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
@@ -297,7 +321,7 @@ def plot_fertility_trends(
 ):
     """
     Plot average fertility over time for high- vs low-Catholic counties.
-    Shades the Kulturkampf period (1872-1878).
+    Shades the Kulturkampf period (1871-1878) with the 1873 May Laws marked.
     """
     fig, ax = plt.subplots(figsize=(10, 6))
     
@@ -309,13 +333,11 @@ def plot_fertility_trends(
         ax.plot(group.index, group.values, color=color, linewidth=2, label=label)
     
     # Shade Kulturkampf period
-    ax.axvspan(1872, 1878, alpha=0.15, color=COLORS["kulturkampf"], 
-               label="Kulturkampf (1872–1878)")
-    
-    # Reference line for May Laws
-    ax.axvline(1873, color="grey", linestyle="--", linewidth=0.8, alpha=0.6)
-    ax.text(1873.2, ax.get_ylim()[1] * 0.98, "May Laws\n1873", 
-            fontsize=8, color="grey", va="top")
+    ax.axvspan(1871, 1878, alpha=0.15, color=COLORS["kulturkampf"],
+               label="Kulturkampf (1871–1878)")
+
+    # Treatment-year line for May Laws
+    _add_treatment_year_line(ax)
     
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
@@ -333,7 +355,7 @@ def plot_event_study(
     ref_year: int = 1872,
     title: str = "Event study: Catholic share × Year",
     ylabel: str = "Coefficient on CathShare × Year",
-    enforcement_years: tuple[int, int] = (1873, 1878),
+    enforcement_years: tuple[int, int] = (1871, 1878),
     rollback_years: tuple[int, int] = (1880, 1887),
     savepath: str = None,
 ):
@@ -369,6 +391,7 @@ def plot_event_study(
         alpha=0.18, color="#7F8C8D",
         label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
     )
+    _add_treatment_year_line(ax)
 
     # Zero line
     ax.axhline(0, color="black", linewidth=0.8, linestyle="-")
@@ -409,7 +432,7 @@ def plot_event_study_cbr_ig(
     pretrends_cbr: dict | None = None,
     pretrends_ig: dict | None = None,
     ref_year: int = 1872,
-    enforcement_years: tuple[int, int] = (1873, 1878),
+    enforcement_years: tuple[int, int] = (1871, 1878),
     rollback_years: tuple[int, int] = (1880, 1887),
     savepath: str | None = None,
 ):
@@ -467,8 +490,8 @@ def plot_event_study_cbr_ig(
     enf_color = "#9B59B6"   # light purple for enforcement
     roll_color = "#7F8C8D"  # neutral grey for rollback
 
-    for ax, coefs, pre, title, ylabel in panels:
-        # Enforcement shading (light purple, 1873-1878). Use axvspan from
+    for ax_idx, (ax, coefs, pre, title, ylabel) in enumerate(panels):
+        # Enforcement shading (light purple). Use axvspan from
         # enf_start - 0.5 to enf_end + 0.5 to align block edges with
         # year-tick centres.
         ax.axvspan(
@@ -482,6 +505,10 @@ def plot_event_study_cbr_ig(
             alpha=0.18, color=roll_color,
             label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
         )
+        # Treatment-year line; label only on the left panel to avoid
+        # duplicating the legend entry.
+        _add_treatment_year_line(ax, label=("May Laws (treatment year)"
+                                            if ax_idx == 0 else None))
 
         ax.axhline(0, color="black", linewidth=0.8, linestyle="-")
         ax.fill_between(
@@ -620,7 +647,7 @@ def plot_cbr_war_context(
 
 def plot_zentrum_event_study(
     coefs: pd.DataFrame,
-    enforcement_years: tuple[int, int] = (1873, 1878),
+    enforcement_years: tuple[int, int] = (1871, 1878),
     rollback_years: tuple[int, int] = (1880, 1887),
     title: str | None = None,
     ylabel: str | None = None,
@@ -665,6 +692,7 @@ def plot_zentrum_event_study(
         alpha=0.18, color="#7F8C8D",
         label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
     )
+    _add_treatment_year_line(ax)
 
     # Zero line.
     ax.axhline(0, color="black", linewidth=0.8, linestyle="-")
@@ -731,7 +759,7 @@ def plot_zentrum_event_study(
 def plot_zentrum_mobilization(
     panel: pd.DataFrame,
     election_years: tuple[int, ...] = (1871, 1874, 1878, 1881, 1884, 1887, 1890),
-    enforcement_years: tuple[int, int] = (1873, 1878),
+    enforcement_years: tuple[int, int] = (1871, 1878),
     rollback_years: tuple[int, int] = (1880, 1887),
     savepath: str | None = None,
 ):
@@ -778,6 +806,7 @@ def plot_zentrum_mobilization(
         alpha=0.18, color="#7F8C8D",
         label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
     )
+    _add_treatment_year_line(ax)
 
     # Reference line at the 1871 pre-Kulturkampf level for each group.
     for grp, color in [("High Catholic", COLORS["catholic"]),
@@ -897,7 +926,7 @@ def plot_imr_break(
 def plot_imr_by_group(
     panel: pd.DataFrame,
     break_year: int = 1875,
-    enforcement_years: tuple[int, int] = (1872, 1878),
+    enforcement_years: tuple[int, int] = (1871, 1878),
     rollback_years: tuple[int, int] = (1880, 1887),
     savepath: str | None = None,
 ):

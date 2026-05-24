@@ -52,7 +52,10 @@ def franco_prussian_war_analysis(df: pd.DataFrame):
         trend = df[(mask) & (df["Year"].between(1865, 1878))].groupby("Year")["cbr"].mean()
         ax.plot(trend.index, trend.values, color=color, linewidth=2, marker="o", markersize=5, label=label)
     ax.axvspan(1870, 1871, alpha=0.2, color="grey", label="Franco-Prussian War")
-    ax.axvspan(1872, 1878, alpha=0.15, color="#E8DAEF", label="Kulturkampf")
+    ax.axvspan(1871, 1878, alpha=0.15, color="#E8DAEF",
+               label="Kulturkampf (1871-78)")
+    ax.axvline(1873, color="#7B1A1A", linestyle="--", linewidth=1.2, alpha=0.9,
+               label="May Laws (treatment year)")
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel("Crude birth rate (per 1,000)", fontsize=11)
     ax.legend(fontsize=9)
@@ -180,8 +183,12 @@ def robustness_exclude_war(
     fig, ax = plt.subplots(figsize=(12, 6))
     for wy in war_years:
         ax.axvspan(wy - 0.4, wy + 0.4, alpha=0.1, color="grey")
-    ax.axvspan(1872, 1878, alpha=0.15, color="#C0392B", label="Kulturkampf enforcement")
-    ax.axvspan(1880, 1887, alpha=0.15, color="#2471A3", label="Kulturkampf rollback")
+    ax.axvspan(1871, 1878, alpha=0.15, color="#C0392B",
+               label="Kulturkampf enforcement (1871-78)")
+    ax.axvspan(1880, 1887, alpha=0.15, color="#2471A3",
+               label="Kulturkampf rollback (1880-87)")
+    ax.axvline(1873, color="#7B1A1A", linestyle="--", linewidth=1.2, alpha=0.9,
+               label="May Laws (treatment year)")
     ax.axhline(0, color="black", linewidth=0.8)
     ax.fill_between(coefs["Year"], coefs["ci_lo"], coefs["ci_hi"], alpha=0.25, color="#333333")
     ax.plot(coefs["Year"], coefs["beta"], color="#333333", linewidth=2, marker="o", markersize=5)
