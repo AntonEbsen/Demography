@@ -640,13 +640,8 @@ def plot_synthetic_vs_treated(
                 edgecolor="none", zorder=0,
             )
 
-    se = f"{res.se:.3f}" if res.se is not None else "n/a"
-    if title is None:
-        title = (
-            f"SDID — {res.outcome} | {res.treat_col} | "
-            f"τ̂={res.tau_hat:+.3f} (SE {se})"
-        )
-    ax.set_title(title)
+    if title is not None:
+        ax.set_title(title)
     ax.set_xlabel("Year")
     ax.set_ylabel(res.outcome)
     ax.legend(loc="best", frameon=False)
