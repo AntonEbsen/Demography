@@ -60,8 +60,10 @@ def illegitimacy_analysis(df: pd.DataFrame):
         trend = df[mask].groupby("Year")["illegitimacy_ratio"].mean()
         ax.plot(trend.index, trend.values, color=color, linewidth=2, label=label)
 
-    ax.axvspan(1872, 1878, alpha=0.15, color="#E8DAEF")
-    ax.axvline(1873, color="grey", linestyle="--", linewidth=0.8, alpha=0.6)
+    ax.axvspan(1871, 1878, alpha=0.15, color="#E8DAEF",
+               label="Kulturkampf (1871-78)")
+    ax.axvline(1873, color="#7B1A1A", linestyle="--", linewidth=1.2, alpha=0.9,
+               label="May Laws (treatment year)")
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel("Illegitimate births (% of total)", fontsize=11)
     ax.legend(fontsize=9)
@@ -131,7 +133,11 @@ def infant_mortality_analysis(df: pd.DataFrame):
         trend = df[mask].groupby("Year")["infant_mortality_rate"].mean()
         ax.plot(trend.index, trend.values, color=color, linewidth=2, marker="o", markersize=4, label=label)
 
-    ax.axvspan(1875, 1878, alpha=0.15, color="#C0392B", label="Enforcement")
+    # Kulturkampf enforcement 1871-78; IMR data only well-defined from 1875,
+    # so the visible portion of the band starts at 1875 and the May Laws
+    # vertical line (1873) is suppressed (off-screen).
+    ax.axvspan(1875, 1878, alpha=0.15, color="#C0392B",
+               label="Enforcement (1871-78, visible from 1875)")
     ax.axvspan(1880, 1887, alpha=0.15, color="#2471A3", label="Rollback")
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel("Infant mortality rate (per 1,000 legitimate live births)", fontsize=11)
@@ -472,7 +478,10 @@ def schooling_channel(df: pd.DataFrame):
             means.append(cs.loc[cs["cath_quartile"] == q, col].mean())
         ax.plot([1849, 1871, 1886], means, marker="o", linewidth=2,
                 color=color, label=f"Catholic share {q}")
-    ax.axvspan(1872, 1878, alpha=0.15, color="#E8DAEF", label="Kulturkampf")
+    ax.axvspan(1871, 1878, alpha=0.15, color="#E8DAEF",
+               label="Kulturkampf (1871-78)")
+    ax.axvline(1873, color="#7B1A1A", linestyle="--", linewidth=1.2, alpha=0.9,
+               label="May Laws (treatment year)")
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel("Schooling rate (varies by period)", fontsize=11)
     ax.legend(fontsize=9, loc="best")
