@@ -1706,6 +1706,190 @@ def religiosity_robustness_table(
     return out
 
 
+def protestant_religiosity_placebo_table(
+    panel: pd.DataFrame,
+    outcomes: Sequence[str] = (
+        "cbr", "legitimate_br", "illegitimacy_ratio",
+        "general_marriage_rate", "gmfr",
+    ),
+    out_path: Path | None = None,
+) -> str:
+    """Within-Protestant placebo: does Protestant religiosity predict
+    "Catholic-like" outcomes inside the Low-Catholic group?
+
+    Threat to the headline interpretation: the cross-sectional gap
+    between Low- and High-Catholic counties could reflect a generic
+    religiosity gradient (Catholics being more devout, Protestants more
+    secular) rather than Catholic doctrine. If that story is right, then
+    \\emph{within} Low-Catholic counties, those that are most
+    religiously Protestant (high clergy density, Pietist heartlands)
+    should look more "Catholic" on the fertility/marriage outcomes
+    -- lower illegitimacy ratio, higher legitimate birth rate, higher
+    GMFR, etc.
+
+    Design: cross-section across Low-Catholic counties only ($\\le 50\\%$
+    Catholic in 1871). The mean of each headline outcome over the
+    pre-treatment window (1862--1872) is regressed on Protestant clergy
+    density from the 1849 iPEHD merge ($\\mathrm{ProtPriest}_{1849}$ per
+    $1{,}000$ inhabitants), with and without Regierungsbezirk fixed
+    effects. The Rb-FE specification compares only counties within the
+    same Prussian administrative region, which absorbs broad regional
+    confounders (agrarian vs.\\ proto-industrial, eastern frontier vs.\\
+    western, etc.).
+
+    Interpretation: a negative coefficient on $\\mathrm{ProtPriest}_{1849}$
+    in the illegitimacy-ratio column would support the religiosity-
+    gradient story; a null is informative against it.
+    """
+    import statsmodels.formula.api as smf
+
+    out_path = out_path or TABLES_DIR / "protestant_religiosity_placebo.tex"
+
+    df = panel.copy()
+    # Build Protestant clergy density (per 1k inhabitants, 1849 base).
+    df["prot_priest_per_1k_1849"] = (
+        df["rel1849_pro_priest"]
+        / df["pop1849_tot"].replace(0, np.nan)
+        * 1000.0
+    )
+
+    # Restrict to Low-Catholic counties and the pre-treatment window.
+    pre = df[(df["cath_share"] <= 50) & (df["Year"].between(1862, 1872))].copy()
+
+    # Collapse to one observation per county: pre-treatment mean of each
+    # outcome, the time-invariant Protestant-religiosity proxy, and Rb.
+    keep = list(outcomes) + ["prot_priest_per_1k_1849", "Rb"]
+    keep = [c for c in keep if c in pre.columns]
+    cs = (
+        pre.groupby("Code")[keep]
+           .agg(lambda x: x.iloc[0] if x.dtype == object else x.mean())
+           .reset_index()
+    )
+    cs = cs.dropna(subset=["prot_priest_per_1k_1849", "Rb"])
+
+    cols: list[dict[str, float]] = []
+    for o in outcomes:
+        sub = cs.dropna(subset=[o])
+        # Spec 1: plain OLS, HC1.
+        m1 = smf.ols(f"{o} ~ prot_priest_per_1k_1849", data=sub).fit(cov_type="HC1")
+        # Spec 2: Rb fixed effects, HC1.
+        m2 = smf.ols(
+            f"{o} ~ prot_priest_per_1k_1849 + C(Rb)", data=sub
+        ).fit(cov_type="HC1")
+        cols.append({
+            "outcome": o,
+            "n": int(m1.nobs),
+            "ols_coef": float(m1.params["prot_priest_per_1k_1849"]),
+            "ols_se": float(m1.bse["prot_priest_per_1k_1849"]),
+            "ols_p": float(m1.pvalues["prot_priest_per_1k_1849"]),
+            "fe_coef": float(m2.params["prot_priest_per_1k_1849"]),
+            "fe_se": float(m2.bse["prot_priest_per_1k_1849"]),
+            "fe_p": float(m2.pvalues["prot_priest_per_1k_1849"]),
+            "fe_n": int(m2.nobs),
+            "n_rb": int(sub["Rb"].nunique()),
+        })
+
+    n = len(cols)
+
+    head = (
+        "Pre-1873 mean of: & "
+        + " & ".join(_outcome_label(o) for o in outcomes)
+        + r" \\"
+    )
+    nums = (
+        " & "
+        + " & ".join(f"({i + 1})" for i in range(n))
+        + r" \\"
+    )
+
+    panel_a_label = (
+        f"\\multicolumn{{{n + 1}}}{{l}}{{\\textit{{Panel A: Pooled OLS, no fixed effects}}}} \\\\"
+    )
+    a_coef = (
+        r"$\mathrm{ProtPriest}_{1849}$ per 1k pop & "
+        + " & ".join(_fmt_coef(c["ols_coef"], c["ols_p"], digits=3) for c in cols)
+        + r" \\"
+    )
+    a_se = (
+        " & "
+        + " & ".join(_fmt_se(c["ols_se"], digits=3) for c in cols)
+        + r" \\"
+    )
+
+    panel_b_label = (
+        f"\\multicolumn{{{n + 1}}}{{l}}{{\\textit{{Panel B: Regierungsbezirk fixed effects "
+        f"(within-region comparison)}}}} \\\\"
+    )
+    b_coef = (
+        r"$\mathrm{ProtPriest}_{1849}$ per 1k pop & "
+        + " & ".join(_fmt_coef(c["fe_coef"], c["fe_p"], digits=3) for c in cols)
+        + r" \\"
+    )
+    b_se = (
+        " & "
+        + " & ".join(_fmt_se(c["fe_se"], digits=3) for c in cols)
+        + r" \\"
+    )
+
+    tabular = (
+        f"\\begin{{tabular}}{{l*{{{n}}}{{c}}}}\n"
+        "\\toprule\n"
+        + head + "\n"
+        + nums + "\n"
+        "\\midrule\n"
+        + panel_a_label + "\n"
+        + a_coef + "\n"
+        + a_se + "\n"
+        "\\addlinespace\n"
+        + panel_b_label + "\n"
+        + b_coef + "\n"
+        + b_se + "\n"
+        "\\midrule\n"
+        + "Counties & "
+        + " & ".join(f"{c['n']:,}" for c in cols)
+        + r" \\" + "\n"
+        + "Regierungsbezirke & "
+        + " & ".join(f"{c['n_rb']:,}" for c in cols)
+        + r" \\" + "\n"
+        + "Rb FE & "
+        + " & ".join("Panel B only" for _ in cols)
+        + r" \\" + "\n"
+        + "\\bottomrule\n"
+        "\\end{tabular}\n"
+    )
+
+    out = _wrap_table(
+        tabular,
+        caption=(
+            "Protestant-religiosity placebo: within Low-Catholic counties, does "
+            "Protestant clergy density predict ``Catholic-like'' outcomes?"
+        ),
+        label="tab:protestant_religiosity_placebo",
+        n_cols=n + 1,
+        notes=(
+            "Cross-section across Low-Catholic counties only ($\\le 50\\%$ Catholic "
+            "in the 1871 census). Each column collapses the 1862--1872 county--year "
+            "panel to one observation per county by taking the pre-treatment mean "
+            "of the outcome. The regressor is Protestant clergy per $1{,}000$ "
+            "inhabitants in 1849 (the iPEHD merge column "
+            "``\\texttt{rel1849\\_pro\\_priest}/\\texttt{pop1849\\_tot}$\\times 1000$''), "
+            "a proxy for the institutional density of Protestant religious life "
+            "before any Kulturkampf treatment. Panel~A is pooled OLS; Panel~B "
+            "adds Regierungsbezirk (Prussian administrative-region) fixed effects, "
+            "which absorb broad regional confounders and identify the coefficient "
+            "off within-region variation in Protestant clergy density. "
+            "Heteroskedasticity-robust HC1 standard errors. If the headline "
+            "Catholic--Protestant gap were driven by a generic religiosity "
+            "gradient, then high-Protestant-clergy-density counties inside the "
+            "Low-Catholic group should look more ``Catholic'' on the fertility/ "
+            "marriage outcomes (lower illegitimacy ratio, higher legitimate birth "
+            "rate, higher GMFR). $^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
 def conley_robustness_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
@@ -3702,6 +3886,9 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "religiosity_robustness.tex")
     religiosity_robustness_table(panel, out_path=written[-1])
+
+    written.append(out_dir / "protestant_religiosity_placebo.tex")
+    protestant_religiosity_placebo_table(panel, out_path=written[-1])
 
     written.append(out_dir / "magnitudes.tex")
     magnitudes_table(panel, out_path=written[-1])
