@@ -1861,6 +1861,175 @@ def magnitudes_table(
     return out
 
 
+def back_of_envelope_table(
+    panel: pd.DataFrame,
+    outcome: str = "general_marriage_rate",
+    pre_year_start: int = 1862,
+    pre_year_end: int = 1872,
+    post_year_start: int = 1873,
+    post_year_end: int = 1890,
+    out_path: Path | None = None,
+) -> str:
+    """Reproducible back-of-envelope: marriages averted under the Kulturkampf.
+
+    Pulls every input directly from the panel so the cells stay
+    consistent with the headline DiD coefficient in
+    ``baseline_did_table`` (column 5 of the rates panel) and with
+    descriptive sample means.
+
+    The "absolute marriages averted" cell uses two variants:
+
+    - **Variant (a)** integrates over the actual joint distribution of
+      Catholic share and 15+ population across treated county-years.
+      This is the preferred figure for the abstract / introduction.
+    - **Variant (b)** rescales to the 25\\,\\%\\,\\(\\to\\)\\,75\\,\\%
+      Catholic-share contrast used elsewhere in the paper's magnitude
+      decomposition. Matches the cross-section identification thought
+      experiment but discards within-treated heterogeneity.
+    """
+    out_path = out_path or TABLES_DIR / "back_of_envelope.tex"
+
+    # Restrict to the regression window (mirrors run_baseline_did's slice).
+    sample = panel[
+        (panel["Year"] >= pre_year_start) & (panel["Year"] <= post_year_end)
+    ].copy()
+    sample["post"] = (sample["Year"] >= post_year_start).astype(int)
+
+    hi = sample[sample["high_cath"] == 1]
+    hi_pre = hi[hi["post"] == 0]
+    hi_post_all = hi[hi["post"] == 1]
+    hi_post = hi_post_all.dropna(
+        subset=["cath_share", "pop_15plus", outcome]
+    )
+
+    # DiD coefficient -- pull from the canonical baseline TWFE column so
+    # this table can never drift from baseline_did_table.
+    did = _did_column(sample, outcome, "twfe")
+    beta = did["coef"]
+
+    # Inputs.
+    mean_cath_share = float(hi_post["cath_share"].mean())
+    pre_outcome = float(hi_pre[outcome].mean())
+    post_outcome = float(hi_post[outcome].mean())
+    observed_change = post_outcome - pre_outcome
+    mean_pop_15plus = float(hi_post["pop_15plus"].mean())
+    n_counties = int(hi["Code"].nunique())
+    n_years_post = post_year_end - post_year_start + 1
+
+    # Implied magnitudes.
+    per_1k_per_year = beta * mean_cath_share
+    marriages_per_county_per_year = per_1k_per_year * mean_pop_15plus / 1_000.0
+    pct_of_baseline = per_1k_per_year / pre_outcome * 100.0
+    pct_of_observed = per_1k_per_year / observed_change * 100.0
+
+    # Variant (a): integrate over actual joint distribution.
+    contribs_a = beta * hi_post["cath_share"] * hi_post["pop_15plus"] / 1_000.0
+    total_a = float(contribs_a.sum())
+
+    # Variant (b): 50pp (25% -> 75%) shift x actual exposure.
+    pop_sum_k = float(hi_post["pop_15plus"].sum()) / 1_000.0
+    total_b = beta * 50.0 * pop_sum_k
+
+    def _fmt_int(x: float) -> str:
+        return f"{int(round(x)):,}".replace(",", "{,}")
+
+    panel_a_rows = [
+        f"DiD coefficient $\\hat{{\\beta}}$ on "
+        f"$\\mathrm{{CathShare}} \\times \\mathrm{{Post}}$ "
+        f"(GMR, per 1{{,}}000 pop.\\ 15+) "
+        f"& {beta:+.4f} & Table~\\ref{{tab:baseline_did}}, col.\\ (5) \\\\",
+        f"Mean Catholic share, high-Catholic counties (post-1873) & "
+        f"{mean_cath_share:.1f} & Sample mean \\\\",
+        f"Pre-Kulturkampf GMR, high-Catholic counties "
+        f"($\\overline{{Y}}_{{{pre_year_start}-{pre_year_end}}}$) "
+        f"& {pre_outcome:.3f} & Sample mean \\\\",
+        f"Post-Kulturkampf GMR, high-Catholic counties "
+        f"($\\overline{{Y}}_{{{post_year_start}-{post_year_end}}}$) "
+        f"& {post_outcome:.3f} & Sample mean \\\\",
+        f"Observed pre-to-post change in high-Catholic counties "
+        f"& {observed_change:+.3f} & post mean $-$ pre mean \\\\",
+        f"Mean population aged 15+, post-1873 (per county-year) & "
+        f"{_fmt_int(mean_pop_15plus)} & AGE1871/82/90 interp. \\\\",
+        f"Number of high-Catholic counties & {n_counties} & "
+        f"\\texttt{{high\\_cath}} indicator \\\\",
+        f"Years in post-treatment window & {n_years_post} & "
+        f"{post_year_start}--{post_year_end} \\\\",
+    ]
+
+    panel_b_rows = [
+        # Per-county-per-year intermediate
+        f"Per-1{{,}}000-pop.-15+ effect at mean Cath.\\ share: "
+        f"$\\hat{{\\beta}} \\times {mean_cath_share:.1f}$ "
+        f"& {per_1k_per_year:+.3f} \\\\",
+        f"\\quad converted to marriages per county per year: "
+        f"$\\times\\;{_fmt_int(mean_pop_15plus)} / 1{{,}}000$ "
+        f"& {marriages_per_county_per_year:+.1f} \\\\",
+        # % of baseline
+        f"Effect as share of pre-1873 baseline: "
+        f"$({per_1k_per_year:+.3f}) / {pre_outcome:.3f}$ "
+        f"& {pct_of_baseline:+.2f}\\,\\% \\\\",
+        # % of observed
+        f"Effect as share of observed pre-to-post decline: "
+        f"$({per_1k_per_year:+.3f}) / ({observed_change:+.3f})$ "
+        f"& {pct_of_observed:+.2f}\\,\\% \\\\",
+        "\\midrule",
+        # Variant (a)
+        f"\\textbf{{Total marriages averted, "
+        f"{post_year_start}--{post_year_end}, high-Catholic counties:}} & \\\\",
+        f"\\quad (a) $\\sum_{{i,t}} \\hat{{\\beta}} \\cdot "
+        f"\\mathrm{{CathShare}}_{{it}} \\cdot \\mathrm{{Pop15+}}_{{it}}/1{{,}}000$ "
+        f"& {_fmt_int(total_a)} \\\\",
+        # Variant (b)
+        f"\\quad (b) 50-pp contrast (25\\,\\% $\\to$ 75\\,\\%): "
+        f"$\\hat{{\\beta}} \\times 50 \\times \\sum_{{i,t}} "
+        f"\\mathrm{{Pop15+}}_{{it}}/1{{,}}000$ "
+        f"& {_fmt_int(total_b)} \\\\",
+    ]
+
+    tabular = (
+        "\\begin{tabular}{lrl}\n"
+        "\\toprule\n"
+        " & Value & Source \\\\\n"
+        "\\midrule\n"
+        "\\multicolumn{3}{l}{\\textit{Panel A. Inputs}} \\\\\n"
+        + "\n".join(panel_a_rows) + "\n"
+        "\\midrule\n"
+        "\\multicolumn{3}{l}{\\textit{Panel B. Implied magnitudes}} \\\\\n"
+        + "\n".join(panel_b_rows) + "\n"
+        "\\bottomrule\n"
+        "\\end{tabular}\n"
+    )
+
+    out = _wrap_table(
+        tabular,
+        caption=(
+            "Back-of-envelope magnitude calculation: marriages averted "
+            "in high-Catholic counties under the Kulturkampf, "
+            f"{post_year_start}--{post_year_end}"
+        ),
+        label="tab:back_of_envelope",
+        n_cols=3,
+        notes=(
+            "All inputs are computed from the regression panel restricted "
+            f"to {pre_year_start}--{post_year_end}; the DiD coefficient is "
+            "the TWFE specification reported in column~(5) of "
+            "Table~\\ref{tab:baseline_did}. Population aged 15+ is "
+            "interpolated between the 1871, 1882, and 1890 AGE censuses "
+            "(Data Appendix~\\S6.5); the absolute totals inherit this "
+            "measurement uncertainty. Variant~(a) integrates over the "
+            "actual joint distribution of Catholic share and 15+ "
+            "population across treated county-years and is the preferred "
+            "figure for the headline statement. Variant~(b) reports the "
+            "magnitude implied by moving a single county from low (25\\,\\%) "
+            "to high (75\\,\\%) Catholic share over the same exposure, "
+            "matching the cross-section identification thought experiment "
+            "in Table~\\ref{tab:magnitudes}."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
 def pretrends_robustness_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
@@ -3316,6 +3485,9 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "magnitudes.tex")
     magnitudes_table(panel, out_path=written[-1])
+
+    written.append(out_dir / "back_of_envelope.tex")
+    back_of_envelope_table(panel, out_path=written[-1])
 
     # Counterfactual figure: pairs with the magnitudes table.
     from src.visualization.plots import plot_counterfactual_paths
