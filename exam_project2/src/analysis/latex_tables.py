@@ -328,7 +328,8 @@ def descriptive_statistics_table(
         # (column, label, show_in_panel_A, show_in_panel_B)
         ("cbr", "Crude Birth Rate (CBR)", True, True),
         ("legitimate_br", "Legitimate Birth Rate", True, True),
-        ("general_marriage_rate", "General Marriage Rate", True, True),
+        ("general_marriage_rate", "General Marriage Rate (GMR)", True, True),
+        ("gmfr", "General Marital Fertility Rate (GMFR)", True, True),
         ("I_f", "Overall Fertility ($I_f$)", True, True),
         ("I_g", "Marital Fertility ($I_g$)", True, True),
         ("I_m", "Nuptiality ($I_m$)", True, True),
@@ -368,7 +369,7 @@ def descriptive_statistics_table(
         "\\begin{threeparttable}\n"
         "\\caption{Descriptive statistics}\n"
         "\\label{tab:descriptive_statistics}\n"
-        "\\begin{tabular}{l S[table-format=2.2] S[table-format=2.2] c S[table-format=2.2] S[table-format=2.2]}\n"
+        "\\begin{tabular}{l S[table-format=3.2] S[table-format=3.2] c S[table-format=3.2] S[table-format=3.2]}\n"
         "\\toprule\n"
         " & \\multicolumn{2}{c}{\\textbf{Panel A: By Period}} & & "
         "\\multicolumn{2}{c}{\\textbf{Panel B: By Religious Group}} \\\\\n"
@@ -390,15 +391,19 @@ def descriptive_statistics_table(
         "Catholic in 1871; High-Catholic as $> 50\\%$. Panel~A shows the temporal "
         "shift around the 1873 May Laws (full panel of 392 counties, "
         "Pre-1873 vs Post-1873). Panel~B shows the baseline cross-sectional "
-        "differences across the entire 1862--1890 sample period. Birth and "
-        "marriage rates are per 1{,}000 \\emph{mid-year} population. The four "
+        "differences across the entire 1862--1890 sample period. The Crude "
+        "Birth Rate and Legitimate Birth Rate are per 1{,}000 \\emph{mid-year} "
+        "population. The General Marriage Rate (GMR) is marriages per 1{,}000 "
+        "women aged 15--49 and the General Marital Fertility Rate (GMFR) is "
+        "legitimate births per 1{,}000 married women aged 15--49. The four "
         "Princeton EFP / Coale--Watkins indices are Hutterite-normalised and "
         "satisfy the identity $I_f \\approx I_g \\cdot I_m + I_h \\cdot (1 - I_m)$: "
         "$I_f$ is overall fertility, $I_g$ is marital fertility (the headline "
         "outcome in Galloway, Hammel \\& Lee 1994), $I_m$ is the Hutterite-"
         "weighted proportion of women 15--49 who are married, and $I_h$ is "
-        "illegitimate fertility. Married-women and women 15--49 denominators "
-        "are time-varying, piecewise-linearly interpolated between Galloway's "
+        "illegitimate fertility. The married-women and women 15--49 "
+        "denominators used by GMR, GMFR, and the Princeton indices are "
+        "time-varying, piecewise-linearly interpolated between Galloway's "
         "STA1871, AGE1882, and AGE1890 anchors. Share Catholic is time-"
         "invariant (1871 census) and is therefore omitted from Panel~A.\n"
         "\\item \\textit{Source:} Author's calculations from the Galloway "
@@ -1861,6 +1866,264 @@ def magnitudes_table(
     return out
 
 
+def back_of_envelope_table(
+    panel: pd.DataFrame,
+    outcome: str = "general_marriage_rate",
+    pre_year_start: int = 1862,
+    pre_year_end: int = 1872,
+    post_year_start: int = 1873,
+    post_year_end: int = 1890,
+    out_path: Path | None = None,
+) -> str:
+    """Reproducible back-of-envelope: marriages averted under the Kulturkampf.
+
+    Pulls every input directly from the panel so the cells stay
+    consistent with the headline DiD coefficient in
+    ``baseline_did_table`` (column 5 of the rates panel) and with
+    descriptive sample means.
+
+    The "absolute marriages averted" cell uses two variants:
+
+    - **Variant (a)** integrates over the actual joint distribution of
+      Catholic share and 15+ population across treated county-years.
+      This is the preferred figure for the abstract / introduction.
+    - **Variant (b)** rescales to the 25\\,\\%\\,\\(\\to\\)\\,75\\,\\%
+      Catholic-share contrast used elsewhere in the paper's magnitude
+      decomposition. Matches the cross-section identification thought
+      experiment but discards within-treated heterogeneity.
+    """
+    out_path = out_path or TABLES_DIR / "back_of_envelope.tex"
+
+    # Restrict to the regression window (mirrors run_baseline_did's slice).
+    sample = panel[
+        (panel["Year"] >= pre_year_start) & (panel["Year"] <= post_year_end)
+    ].copy()
+    sample["post"] = (sample["Year"] >= post_year_start).astype(int)
+
+    hi = sample[sample["high_cath"] == 1]
+    hi_pre = hi[hi["post"] == 0]
+    hi_post_all = hi[hi["post"] == 1]
+    hi_post = hi_post_all.dropna(
+        subset=["cath_share", "pop_15plus", outcome]
+    )
+
+    # DiD coefficient -- pull from the canonical baseline TWFE column so
+    # this table can never drift from baseline_did_table.
+    did = _did_column(sample, outcome, "twfe")
+    beta = did["coef"]
+
+    # Inputs.
+    mean_cath_share = float(hi_post["cath_share"].mean())
+    pre_outcome = float(hi_pre[outcome].mean())
+    post_outcome = float(hi_post[outcome].mean())
+    observed_change = post_outcome - pre_outcome
+    mean_pop_15plus = float(hi_post["pop_15plus"].mean())
+    n_counties = int(hi["Code"].nunique())
+    n_years_post = post_year_end - post_year_start + 1
+
+    # Implied magnitudes.
+    per_1k_per_year = beta * mean_cath_share
+    marriages_per_county_per_year = per_1k_per_year * mean_pop_15plus / 1_000.0
+    pct_of_baseline = per_1k_per_year / pre_outcome * 100.0
+    pct_of_observed = per_1k_per_year / observed_change * 100.0
+
+    # Variant (a): integrate over actual joint distribution.
+    contribs_a = beta * hi_post["cath_share"] * hi_post["pop_15plus"] / 1_000.0
+    total_a = float(contribs_a.sum())
+
+    # Variant (b): 50pp (25% -> 75%) shift x actual exposure.
+    pop_sum_k = float(hi_post["pop_15plus"].sum()) / 1_000.0
+    total_b = beta * 50.0 * pop_sum_k
+
+    def _fmt_int(x: float) -> str:
+        return f"{int(round(x)):,}".replace(",", "{,}")
+
+    # ---- Panel C: sub-region decomposition of variant (a) ----
+    # The pooled coefficient masks substantial heterogeneity across
+    # sub-regions (Polish provinces, German Catholic, Protestant rest).
+    # Re-running the baseline DiD on each sub-sample yields a sub-region
+    # specific beta, which we apply only within that sub-region. Sub-region
+    # totals are conceptually cleaner than the pooled (a) total because
+    # they avoid the implicit "Catholic share is what matters" assumption.
+    from src.analysis.regressions import SUBREGION_DEFINITIONS
+    polish_rbs = SUBREGION_DEFINITIONS["Polish"]
+    german_rbs = SUBREGION_DEFINITIONS["German Catholic"]
+
+    def _subregion_mask(df, label):
+        if label == "Polish":
+            return df["Rb"].isin(polish_rbs)
+        if label == "German Catholic":
+            return df["Rb"].isin(german_rbs)
+        return ~df["Rb"].isin(tuple(polish_rbs) + tuple(german_rbs))
+
+    panel_c_rows_data = []
+    panel_c_total = 0.0
+    for label in ("Polish", "German Catholic", "Protestant (rest)"):
+        sub_full = sample[_subregion_mask(sample, label)]
+        if sub_full.empty or sub_full["Code"].nunique() < 2:
+            continue
+        sub_did = _did_column(sub_full, outcome, "twfe")
+        beta_sub = sub_did["coef"]
+        p_sub = sub_did["p"]
+        n_clusters = int(sub_full["Code"].nunique())
+
+        sub_hi_post = sub_full[
+            (sub_full["high_cath"] == 1) & (sub_full["post"] == 1)
+        ].dropna(subset=["cath_share", "pop_15plus", outcome])
+        n_hi = int(sub_hi_post["Code"].nunique())
+        if n_hi == 0:
+            averted = 0.0
+        else:
+            averted = float(
+                (beta_sub * sub_hi_post["cath_share"]
+                 * sub_hi_post["pop_15plus"] / 1_000.0).sum()
+            )
+        panel_c_total += averted
+        panel_c_rows_data.append({
+            "label": label,
+            "beta": beta_sub,
+            "p": p_sub,
+            "n_clusters": n_clusters,
+            "n_hi": n_hi,
+            "averted": averted,
+        })
+
+    panel_c_rows = [
+        " & $\\hat{\\beta}_{\\text{sub}}$ ($p$) "
+        "& Marriages averted \\\\",
+        "\\addlinespace",
+    ]
+    for r in panel_c_rows_data:
+        stars = _stars(r['p'])
+        beta_str = f"${r['beta']:+.4f}${stars}"
+        panel_c_rows.append(
+            f"{r['label']} ($G={r['n_clusters']}$, "
+            f"high-Cath\\;$n={r['n_hi']}$) "
+            f"& {beta_str}\\;({r['p']:.3f}) "
+            f"& {_fmt_int(r['averted'])} \\\\"
+        )
+    panel_c_rows.append("\\addlinespace")
+    panel_c_rows.append(
+        f"\\quad\\textbf{{Sub-region total}} & & "
+        f"\\textbf{{{_fmt_int(panel_c_total)}}} \\\\"
+    )
+    panel_c_rows.append(
+        "\\quad\\textit{Memo: pooled (a) from above} & & "
+        f"\\textit{{{_fmt_int(total_a)}}} \\\\"
+    )
+
+    panel_a_rows = [
+        f"DiD coefficient $\\hat{{\\beta}}$ on "
+        f"$\\mathrm{{CathShare}} \\times \\mathrm{{Post}}$ "
+        f"(GMR, per 1{{,}}000 pop.\\ 15+) "
+        f"& {beta:+.4f} & Table~\\ref{{tab:baseline_did}}, col.\\ (5) \\\\",
+        f"Mean Catholic share, high-Catholic counties (post-1873) & "
+        f"{mean_cath_share:.1f} & Sample mean \\\\",
+        f"Pre-Kulturkampf GMR, high-Catholic counties "
+        f"($\\overline{{Y}}_{{{pre_year_start}-{pre_year_end}}}$) "
+        f"& {pre_outcome:.3f} & Sample mean \\\\",
+        f"Post-Kulturkampf GMR, high-Catholic counties "
+        f"($\\overline{{Y}}_{{{post_year_start}-{post_year_end}}}$) "
+        f"& {post_outcome:.3f} & Sample mean \\\\",
+        f"Observed pre-to-post change in high-Catholic counties "
+        f"& {observed_change:+.3f} & post mean $-$ pre mean \\\\",
+        f"Mean population aged 15+, post-1873 (per county-year) & "
+        f"{_fmt_int(mean_pop_15plus)} & AGE1871/82/90 interp. \\\\",
+        f"Number of high-Catholic counties & {n_counties} & "
+        f"\\texttt{{high\\_cath}} indicator \\\\",
+        f"Years in post-treatment window & {n_years_post} & "
+        f"{post_year_start}--{post_year_end} \\\\",
+    ]
+
+    panel_b_rows = [
+        # Per-county-per-year intermediate
+        f"Per-1{{,}}000-pop.-15+ effect at mean Cath.\\ share: "
+        f"$\\hat{{\\beta}} \\times {mean_cath_share:.1f}$ "
+        f"& {per_1k_per_year:+.3f} \\\\",
+        f"\\quad converted to marriages per county per year: "
+        f"$\\times\\;{_fmt_int(mean_pop_15plus)} / 1{{,}}000$ "
+        f"& {marriages_per_county_per_year:+.1f} \\\\",
+        # % of baseline
+        f"Effect as share of pre-1873 baseline: "
+        f"$({per_1k_per_year:+.3f}) / {pre_outcome:.3f}$ "
+        f"& {pct_of_baseline:+.2f}\\,\\% \\\\",
+        # % of observed
+        f"Effect as share of observed pre-to-post decline: "
+        f"$({per_1k_per_year:+.3f}) / ({observed_change:+.3f})$ "
+        f"& {pct_of_observed:+.2f}\\,\\% \\\\",
+        "\\midrule",
+        # Variant (a)
+        f"\\textbf{{Total marriages averted, "
+        f"{post_year_start}--{post_year_end}, high-Catholic counties:}} & \\\\",
+        f"\\quad (a) $\\sum_{{i,t}} \\hat{{\\beta}} \\cdot "
+        f"\\mathrm{{CathShare}}_{{it}} \\cdot \\mathrm{{Pop15+}}_{{it}}/1{{,}}000$ "
+        f"& {_fmt_int(total_a)} \\\\",
+        # Variant (b)
+        f"\\quad (b) 50-pp contrast (25\\,\\% $\\to$ 75\\,\\%): "
+        f"$\\hat{{\\beta}} \\times 50 \\times \\sum_{{i,t}} "
+        f"\\mathrm{{Pop15+}}_{{it}}/1{{,}}000$ "
+        f"& {_fmt_int(total_b)} \\\\",
+    ]
+
+    tabular = (
+        "\\begin{tabular}{lrl}\n"
+        "\\toprule\n"
+        " & Value & Source \\\\\n"
+        "\\midrule\n"
+        "\\multicolumn{3}{l}{\\textit{Panel A. Inputs}} \\\\\n"
+        + "\n".join(panel_a_rows) + "\n"
+        "\\midrule\n"
+        "\\multicolumn{3}{l}{\\textit{Panel B. Implied magnitudes (pooled)}} \\\\\n"
+        + "\n".join(panel_b_rows) + "\n"
+        "\\midrule\n"
+        "\\multicolumn{3}{l}{\\textit{Panel C. Sub-region decomposition of variant (a)}} \\\\\n"
+        + "\n".join(panel_c_rows) + "\n"
+        "\\bottomrule\n"
+        "\\end{tabular}\n"
+    )
+
+    out = _wrap_table(
+        tabular,
+        caption=(
+            "Back-of-envelope magnitude calculation: marriages averted "
+            "in high-Catholic counties under the Kulturkampf, "
+            f"{post_year_start}--{post_year_end}"
+        ),
+        label="tab:back_of_envelope",
+        n_cols=3,
+        notes=(
+            "All inputs are computed from the regression panel restricted "
+            f"to {pre_year_start}--{post_year_end}; the pooled DiD "
+            "coefficient is the TWFE specification reported in column~(5) "
+            "of Table~\\ref{tab:baseline_did}. Population aged 15+ is "
+            "interpolated between the 1871, 1882, and 1890 AGE censuses "
+            "(Data Appendix~\\S6.5); the absolute totals inherit this "
+            "measurement uncertainty. Variant~(a) integrates over the "
+            "actual joint distribution of Catholic share and 15+ "
+            "population across treated county-years. Variant~(b) reports "
+            "the magnitude implied by moving a single county from low "
+            "(25\\,\\%) to high (75\\,\\%) Catholic share over the same "
+            "exposure, matching the cross-section identification thought "
+            "experiment in Table~\\ref{tab:magnitudes}. "
+            "\\textit{Panel C} re-applies the variant~(a) integration "
+            "within each of the three sub-regions used in the wild "
+            "cluster bootstrap (Polish provinces POS/BRO, German Catholic "
+            "KOL/KOB/TRI/AAC/OPP/MUN, and the Protestant rest), using a "
+            "sub-region-specific $\\hat{\\beta}_{\\text{sub}}$ estimated "
+            "separately on each sub-sample with TWFE. Stars: "
+            "$^{*}p<0.10,\\;^{**}p<0.05,\\;^{***}p<0.01$ (asymptotic). "
+            "Wild-cluster bootstrap $p$-values for the same sub-region "
+            "specifications are reported in Table~\\ref{tab:wild_bootstrap} "
+            "and in the choropleth Figure~\\ref{fig:map5_marriage}. "
+            "The sub-region total differs slightly from the pooled "
+            "variant~(a) because the pooled coefficient is not a simple "
+            "convex combination of the sub-region coefficients."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
 def pretrends_robustness_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
@@ -3316,6 +3579,9 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "magnitudes.tex")
     magnitudes_table(panel, out_path=written[-1])
+
+    written.append(out_dir / "back_of_envelope.tex")
+    back_of_envelope_table(panel, out_path=written[-1])
 
     # Counterfactual figure: pairs with the magnitudes table.
     from src.visualization.plots import plot_counterfactual_paths
