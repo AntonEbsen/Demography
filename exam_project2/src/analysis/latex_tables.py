@@ -328,7 +328,8 @@ def descriptive_statistics_table(
         # (column, label, show_in_panel_A, show_in_panel_B)
         ("cbr", "Crude Birth Rate (CBR)", True, True),
         ("legitimate_br", "Legitimate Birth Rate", True, True),
-        ("general_marriage_rate", "General Marriage Rate", True, True),
+        ("general_marriage_rate", "General Marriage Rate (GMR)", True, True),
+        ("gmfr", "General Marital Fertility Rate (GMFR)", True, True),
         ("I_f", "Overall Fertility ($I_f$)", True, True),
         ("I_g", "Marital Fertility ($I_g$)", True, True),
         ("I_m", "Nuptiality ($I_m$)", True, True),
@@ -368,7 +369,7 @@ def descriptive_statistics_table(
         "\\begin{threeparttable}\n"
         "\\caption{Descriptive statistics}\n"
         "\\label{tab:descriptive_statistics}\n"
-        "\\begin{tabular}{l S[table-format=2.2] S[table-format=2.2] c S[table-format=2.2] S[table-format=2.2]}\n"
+        "\\begin{tabular}{l S[table-format=3.2] S[table-format=3.2] c S[table-format=3.2] S[table-format=3.2]}\n"
         "\\toprule\n"
         " & \\multicolumn{2}{c}{\\textbf{Panel A: By Period}} & & "
         "\\multicolumn{2}{c}{\\textbf{Panel B: By Religious Group}} \\\\\n"
@@ -390,15 +391,19 @@ def descriptive_statistics_table(
         "Catholic in 1871; High-Catholic as $> 50\\%$. Panel~A shows the temporal "
         "shift around the 1873 May Laws (full panel of 392 counties, "
         "Pre-1873 vs Post-1873). Panel~B shows the baseline cross-sectional "
-        "differences across the entire 1862--1890 sample period. Birth and "
-        "marriage rates are per 1{,}000 \\emph{mid-year} population. The four "
+        "differences across the entire 1862--1890 sample period. The Crude "
+        "Birth Rate and Legitimate Birth Rate are per 1{,}000 \\emph{mid-year} "
+        "population. The General Marriage Rate (GMR) is marriages per 1{,}000 "
+        "women aged 15--49 and the General Marital Fertility Rate (GMFR) is "
+        "legitimate births per 1{,}000 married women aged 15--49. The four "
         "Princeton EFP / Coale--Watkins indices are Hutterite-normalised and "
         "satisfy the identity $I_f \\approx I_g \\cdot I_m + I_h \\cdot (1 - I_m)$: "
         "$I_f$ is overall fertility, $I_g$ is marital fertility (the headline "
         "outcome in Galloway, Hammel \\& Lee 1994), $I_m$ is the Hutterite-"
         "weighted proportion of women 15--49 who are married, and $I_h$ is "
-        "illegitimate fertility. Married-women and women 15--49 denominators "
-        "are time-varying, piecewise-linearly interpolated between Galloway's "
+        "illegitimate fertility. The married-women and women 15--49 "
+        "denominators used by GMR, GMFR, and the Princeton indices are "
+        "time-varying, piecewise-linearly interpolated between Galloway's "
         "STA1871, AGE1882, and AGE1890 anchors. Share Catholic is time-"
         "invariant (1871 census) and is therefore omitted from Panel~A.\n"
         "\\item \\textit{Source:} Author's calculations from the Galloway "
