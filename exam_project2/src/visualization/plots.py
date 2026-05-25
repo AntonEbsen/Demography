@@ -13,13 +13,26 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
 
-# Consistent style
+# Consistent style. Single source of truth for figure colors — scratch
+# scripts that regenerate paper figures should import COLORS from here
+# rather than redefining local constants.
 COLORS = {
     "catholic": "#C0392B",
     "protestant": "#2471A3",
     "neutral": "#555555",
     "ci": "#D5E8D4",
+    # Pastel tier — used for descriptive trend plots where the policy
+    # phases sit behind a busy raw time series.
     "kulturkampf": "#E8DAEF",
+    "rollback": "#BDC3C7",
+    # Saturated tier — used for event-study and other inference plots
+    # where the policy phases are the focal annotation.
+    "kulturkampf_saturated": "#9B59B6",
+    "rollback_saturated": "#7F8C8D",
+    "treatment_line": "#7B1A1A",
+    # War-context shading (plot_cbr_war_context).
+    "war": "#7F8C8D",
+    "war_dark": "#34495E",
 }
 
 # Kulturkampf timing convention used across all figures:
@@ -35,7 +48,8 @@ KULTURKAMPF_TREATMENT_YEAR = 1873
 
 def _add_treatment_year_line(ax, year: int = KULTURKAMPF_TREATMENT_YEAR,
                              label: str | None = "May Laws (treatment year)",
-                             color: str = "#7B1A1A", linestyle: str = "--",
+                             color: str = COLORS["treatment_line"],
+                             linestyle: str = "--",
                              linewidth: float = 1.2, alpha: float = 0.9):
     """Add a vertical dashed line at the DiD treatment year. Pass
     ``label=None`` to omit from the legend (e.g., when only one panel
@@ -318,23 +332,28 @@ def plot_fertility_trends(
     ylabel: str = "Crude birth rate (per 1,000)",
     title: str = "Fertility trends by Catholic share",
     savepath: str = None,
+    with_rollback: bool = False,
 ):
     """
     Plot average fertility over time for high- vs low-Catholic counties.
     Shades the Kulturkampf period (1871-1878) with the 1873 May Laws marked.
+    If with_rollback=True, also shades the 1880-1887 rollback band.
     """
     fig, ax = plt.subplots(figsize=(10, 6))
-    
+
     for label, mask, color in [
         ("High Catholic (>50%)", df["high_cath"] == 1, COLORS["catholic"]),
         ("Low Catholic (≤50%)", df["high_cath"] == 0, COLORS["protestant"]),
     ]:
         group = df[mask].groupby("Year")[outcome].mean()
         ax.plot(group.index, group.values, color=color, linewidth=2, label=label)
-    
+
     # Shade Kulturkampf period
     ax.axvspan(1871, 1878, alpha=0.15, color=COLORS["kulturkampf"],
                label="Kulturkampf (1871–1878)")
+    if with_rollback:
+        ax.axvspan(1880, 1887, alpha=0.18, color=COLORS["rollback"],
+                   label="Rollback (1880–1887)")
 
     # Treatment-year line for May Laws
     _add_treatment_year_line(ax)
@@ -383,12 +402,12 @@ def plot_event_study(
     # Two-phase Kulturkampf shading.
     ax.axvspan(
         enforcement_years[0] - 0.5, enforcement_years[1] + 0.5,
-        alpha=0.15, color="#9B59B6",
+        alpha=0.15, color=COLORS["kulturkampf_saturated"],
         label=f"Enforcement ({enforcement_years[0]}-{enforcement_years[1]})",
     )
     ax.axvspan(
         rollback_years[0] - 0.5, rollback_years[1] + 0.5,
-        alpha=0.18, color="#7F8C8D",
+        alpha=0.18, color=COLORS["rollback_saturated"],
         label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
     )
     _add_treatment_year_line(ax)
@@ -487,8 +506,8 @@ def plot_event_study_cbr_ig(
          "$I_g$ (Coale marital fertility)",
          "Coefficient on CathShare $\\times$ Year ($I_g$ units)"),
     ]
-    enf_color = "#9B59B6"   # light purple for enforcement
-    roll_color = "#7F8C8D"  # neutral grey for rollback
+    enf_color = COLORS["kulturkampf_saturated"]
+    roll_color = COLORS["rollback_saturated"]
 
     for ax_idx, (ax, coefs, pre, title, ylabel) in enumerate(panels):
         # Enforcement shading (light purple). Use axvspan from
@@ -591,18 +610,18 @@ def plot_cbr_war_context(
     # Shade the two Prussian wars.
     ax.axvspan(
         austro_prussian_year - 0.5, austro_prussian_year + 0.5,
-        alpha=0.25, color="#7F8C8D",
+        alpha=0.25, color=COLORS["war"],
         label=f"Austro-Prussian War ({austro_prussian_year})",
     )
     ax.axvspan(
         franco_prussian_years[0] - 0.5, franco_prussian_years[1] + 0.5,
-        alpha=0.25, color="#34495E",
+        alpha=0.25, color=COLORS["war_dark"],
         label=f"Franco-Prussian War ({franco_prussian_years[0]}-{franco_prussian_years[1]})",
     )
 
     # Vertical line at the Kulturkampf May Laws.
     ax.axvline(
-        kulturkampf_year, color="#C0392B", linestyle="--", linewidth=1.3,
+        kulturkampf_year, color=COLORS["catholic"], linestyle="--", linewidth=1.3,
         label=f"May Laws ({kulturkampf_year})",
     )
 
@@ -684,12 +703,12 @@ def plot_zentrum_event_study(
     # Two-phase Kulturkampf shading.
     ax.axvspan(
         enforcement_years[0] - 0.5, enforcement_years[1] + 0.5,
-        alpha=0.15, color="#9B59B6",
+        alpha=0.15, color=COLORS["kulturkampf_saturated"],
         label=f"Enforcement ({enforcement_years[0]}-{enforcement_years[1]})",
     )
     ax.axvspan(
         rollback_years[0] - 0.5, rollback_years[1] + 0.5,
-        alpha=0.18, color="#7F8C8D",
+        alpha=0.18, color=COLORS["rollback_saturated"],
         label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
     )
     _add_treatment_year_line(ax)
@@ -798,12 +817,12 @@ def plot_zentrum_mobilization(
     # Two-phase Kulturkampf shading.
     ax.axvspan(
         enforcement_years[0] - 0.5, enforcement_years[1] + 0.5,
-        alpha=0.15, color="#9B59B6",
+        alpha=0.15, color=COLORS["kulturkampf_saturated"],
         label=f"Enforcement ({enforcement_years[0]}-{enforcement_years[1]})",
     )
     ax.axvspan(
         rollback_years[0] - 0.5, rollback_years[1] + 0.5,
-        alpha=0.18, color="#7F8C8D",
+        alpha=0.18, color=COLORS["rollback_saturated"],
         label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
     )
     _add_treatment_year_line(ax)
@@ -973,7 +992,7 @@ def plot_imr_by_group(
     # Rollback window (light grey).
     ax.axvspan(
         rollback_years[0], rollback_years[1],
-        alpha=0.10, color="#7F8C8D",
+        alpha=0.10, color=COLORS["rollback_saturated"],
         label=f"Rollback ({rollback_years[0]}-{rollback_years[1]})",
     )
 

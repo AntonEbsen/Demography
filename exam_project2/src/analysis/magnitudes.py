@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 def magnitude_decomposition(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     pre_years: tuple[int, int] = (1862, 1871),
     post_years: tuple[int, int] = (1880, 1889),
     high_cath_threshold: float = 75.0,
