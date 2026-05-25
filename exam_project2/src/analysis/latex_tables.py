@@ -1933,6 +1933,80 @@ def back_of_envelope_table(
     def _fmt_int(x: float) -> str:
         return f"{int(round(x)):,}".replace(",", "{,}")
 
+    # ---- Panel C: sub-region decomposition of variant (a) ----
+    # The pooled coefficient masks substantial heterogeneity across
+    # sub-regions (Polish provinces, German Catholic, Protestant rest).
+    # Re-running the baseline DiD on each sub-sample yields a sub-region
+    # specific beta, which we apply only within that sub-region. Sub-region
+    # totals are conceptually cleaner than the pooled (a) total because
+    # they avoid the implicit "Catholic share is what matters" assumption.
+    from src.analysis.regressions import SUBREGION_DEFINITIONS
+    polish_rbs = SUBREGION_DEFINITIONS["Polish"]
+    german_rbs = SUBREGION_DEFINITIONS["German Catholic"]
+
+    def _subregion_mask(df, label):
+        if label == "Polish":
+            return df["Rb"].isin(polish_rbs)
+        if label == "German Catholic":
+            return df["Rb"].isin(german_rbs)
+        return ~df["Rb"].isin(tuple(polish_rbs) + tuple(german_rbs))
+
+    panel_c_rows_data = []
+    panel_c_total = 0.0
+    for label in ("Polish", "German Catholic", "Protestant (rest)"):
+        sub_full = sample[_subregion_mask(sample, label)]
+        if sub_full.empty or sub_full["Code"].nunique() < 2:
+            continue
+        sub_did = _did_column(sub_full, outcome, "twfe")
+        beta_sub = sub_did["coef"]
+        p_sub = sub_did["p"]
+        n_clusters = int(sub_full["Code"].nunique())
+
+        sub_hi_post = sub_full[
+            (sub_full["high_cath"] == 1) & (sub_full["post"] == 1)
+        ].dropna(subset=["cath_share", "pop_15plus", outcome])
+        n_hi = int(sub_hi_post["Code"].nunique())
+        if n_hi == 0:
+            averted = 0.0
+        else:
+            averted = float(
+                (beta_sub * sub_hi_post["cath_share"]
+                 * sub_hi_post["pop_15plus"] / 1_000.0).sum()
+            )
+        panel_c_total += averted
+        panel_c_rows_data.append({
+            "label": label,
+            "beta": beta_sub,
+            "p": p_sub,
+            "n_clusters": n_clusters,
+            "n_hi": n_hi,
+            "averted": averted,
+        })
+
+    panel_c_rows = [
+        " & $\\hat{\\beta}_{\\text{sub}}$ ($p$) "
+        "& Marriages averted \\\\",
+        "\\addlinespace",
+    ]
+    for r in panel_c_rows_data:
+        stars = _stars(r['p'])
+        beta_str = f"${r['beta']:+.4f}${stars}"
+        panel_c_rows.append(
+            f"{r['label']} ($G={r['n_clusters']}$, "
+            f"high-Cath\\;$n={r['n_hi']}$) "
+            f"& {beta_str}\\;({r['p']:.3f}) "
+            f"& {_fmt_int(r['averted'])} \\\\"
+        )
+    panel_c_rows.append("\\addlinespace")
+    panel_c_rows.append(
+        f"\\quad\\textbf{{Sub-region total}} & & "
+        f"\\textbf{{{_fmt_int(panel_c_total)}}} \\\\"
+    )
+    panel_c_rows.append(
+        "\\quad\\textit{Memo: pooled (a) from above} & & "
+        f"\\textit{{{_fmt_int(total_a)}}} \\\\"
+    )
+
     panel_a_rows = [
         f"DiD coefficient $\\hat{{\\beta}}$ on "
         f"$\\mathrm{{CathShare}} \\times \\mathrm{{Post}}$ "
@@ -1994,8 +2068,11 @@ def back_of_envelope_table(
         "\\multicolumn{3}{l}{\\textit{Panel A. Inputs}} \\\\\n"
         + "\n".join(panel_a_rows) + "\n"
         "\\midrule\n"
-        "\\multicolumn{3}{l}{\\textit{Panel B. Implied magnitudes}} \\\\\n"
+        "\\multicolumn{3}{l}{\\textit{Panel B. Implied magnitudes (pooled)}} \\\\\n"
         + "\n".join(panel_b_rows) + "\n"
+        "\\midrule\n"
+        "\\multicolumn{3}{l}{\\textit{Panel C. Sub-region decomposition of variant (a)}} \\\\\n"
+        + "\n".join(panel_c_rows) + "\n"
         "\\bottomrule\n"
         "\\end{tabular}\n"
     )
@@ -2011,19 +2088,31 @@ def back_of_envelope_table(
         n_cols=3,
         notes=(
             "All inputs are computed from the regression panel restricted "
-            f"to {pre_year_start}--{post_year_end}; the DiD coefficient is "
-            "the TWFE specification reported in column~(5) of "
-            "Table~\\ref{tab:baseline_did}. Population aged 15+ is "
+            f"to {pre_year_start}--{post_year_end}; the pooled DiD "
+            "coefficient is the TWFE specification reported in column~(5) "
+            "of Table~\\ref{tab:baseline_did}. Population aged 15+ is "
             "interpolated between the 1871, 1882, and 1890 AGE censuses "
             "(Data Appendix~\\S6.5); the absolute totals inherit this "
             "measurement uncertainty. Variant~(a) integrates over the "
             "actual joint distribution of Catholic share and 15+ "
-            "population across treated county-years and is the preferred "
-            "figure for the headline statement. Variant~(b) reports the "
-            "magnitude implied by moving a single county from low (25\\,\\%) "
-            "to high (75\\,\\%) Catholic share over the same exposure, "
-            "matching the cross-section identification thought experiment "
-            "in Table~\\ref{tab:magnitudes}."
+            "population across treated county-years. Variant~(b) reports "
+            "the magnitude implied by moving a single county from low "
+            "(25\\,\\%) to high (75\\,\\%) Catholic share over the same "
+            "exposure, matching the cross-section identification thought "
+            "experiment in Table~\\ref{tab:magnitudes}. "
+            "\\textit{Panel C} re-applies the variant~(a) integration "
+            "within each of the three sub-regions used in the wild "
+            "cluster bootstrap (Polish provinces POS/BRO, German Catholic "
+            "KOL/KOB/TRI/AAC/OPP/MUN, and the Protestant rest), using a "
+            "sub-region-specific $\\hat{\\beta}_{\\text{sub}}$ estimated "
+            "separately on each sub-sample with TWFE. Stars: "
+            "$^{*}p<0.10,\\;^{**}p<0.05,\\;^{***}p<0.01$ (asymptotic). "
+            "Wild-cluster bootstrap $p$-values for the same sub-region "
+            "specifications are reported in Table~\\ref{tab:wild_bootstrap} "
+            "and in the choropleth Figure~\\ref{fig:map5_marriage}. "
+            "The sub-region total differs slightly from the pooled "
+            "variant~(a) because the pooled coefficient is not a simple "
+            "convex combination of the sub-region coefficients."
         ),
     )
     _write(out_path, out)
