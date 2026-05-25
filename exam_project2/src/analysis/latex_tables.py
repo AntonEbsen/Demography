@@ -300,126 +300,91 @@ def descriptive_statistics_table(
     panel: pd.DataFrame,
     out_path: Path | None = None,
 ) -> str:
-    """Compact two-panel descriptive statistics for the paper's front matter.
+    """Cross-sectional descriptive statistics by Catholic share.
 
-    Format follows the standard JEH/Population Studies layout: a single
-    means-only table with Panel A (Pre- vs Post-Kulturkampf, on the full
-    sample period) and Panel B (Low-Cath vs High-Cath, across the same
-    full panel). The intention is to motivate the DiD by showing both
-    (i) the *temporal* shift around the 1873 May Laws and (ii) the
-    *cross-sectional* religious gap that the DiD identifies off changes
-    in.
+    Single panel: unconditional means of the headline outcomes for
+    Low-Catholic vs High-Catholic counties, pooled across the full
+    1862--1890 window. Temporal dynamics are deferred to the time-series
+    figures in the descriptive-evidence section; the table's purpose is
+    to fix the baseline cross-sectional gap that the DiD identifies off.
 
     Requires the following LaTeX preamble in the paper:
     ``\\usepackage{booktabs, threeparttable, siunitx}``.
     """
     out_path = out_path or TABLES_DIR / "descriptive_statistics.tex"
     df = panel.copy()
-    df["period_lbl"] = np.where(df["Year"] >= 1873, "Post", "Pre")
     df["group_lbl"] = np.where(df["high_cath"] == 1, "HighCath", "LowCath")
 
-    # The outcomes we want as rows. The four Coale indices give the
-    # demography-aware reader the full Princeton EFP decomposition:
-    # I_f decomposes into I_g (marital fertility) and I_m (nuptiality)
-    # via I_f = I_g * I_m + I_h * (1 - I_m). Reporting all four at the
-    # descriptive stage lets the reader see immediately which component
-    # moves around the Kulturkampf treatment.
-    row_specs: list[tuple[str, str, bool, bool]] = [
-        # (column, label, show_in_panel_A, show_in_panel_B)
-        ("cbr", "Crude Birth Rate (CBR)", True, True),
-        ("legitimate_br", "Legitimate Birth Rate", True, True),
-        ("general_marriage_rate", "General Marriage Rate (GMR)", True, True),
-        ("gmfr", "General Marital Fertility Rate (GMFR)", True, True),
-        ("I_f", "Overall Fertility ($I_f$)", True, True),
-        ("I_g", "Marital Fertility ($I_g$)", True, True),
-        ("I_m", "Nuptiality ($I_m$)", True, True),
-        ("I_h", "Illegitimate Fertility ($I_h$)", True, True),
-        ("cath_share", "Share Catholic (\\%)", False, True),
+    row_specs: list[tuple[str, str]] = [
+        ("cbr", "Crude Birth Rate (CBR)"),
+        ("legitimate_br", "Legitimate Birth Rate"),
+        ("illegitimacy_ratio", "Illegitimacy ratio (\\%)"),
+        ("general_marriage_rate", "General Marriage Rate (GMR)"),
+        ("gmfr", "General Marital Fertility Rate (GMFR)"),
+        ("cath_share", "Share Catholic (\\%)"),
     ]
 
     def _mean(mask: pd.Series, col: str) -> str:
         v = df.loc[mask, col].mean()
         return f"{v:.2f}" if pd.notna(v) else "{-}"
 
-    pre_mask = df["period_lbl"] == "Pre"
-    post_mask = df["period_lbl"] == "Post"
     low_mask = df["group_lbl"] == "LowCath"
     high_mask = df["group_lbl"] == "HighCath"
 
     body_rows: list[str] = []
-    for col, label, in_a, in_b in row_specs:
+    for col, label in row_specs:
         if col not in df.columns:
             continue
-        a1 = _mean(pre_mask, col) if in_a else "{-}"
-        a2 = _mean(post_mask, col) if in_a else "{-}"
-        b1 = _mean(low_mask, col) if in_b else "{-}"
-        b2 = _mean(high_mask, col) if in_b else "{-}"
-        body_rows.append(f"{label}   & {a1} & {a2} & & {b1} & {b2} \\\\")
+        b1 = _mean(low_mask, col)
+        b2 = _mean(high_mask, col)
+        body_rows.append(f"{label}   & {b1} & {b2} \\\\")
 
-    # Footer: county counts and observation counts.
-    n_pre_counties = int(df.loc[pre_mask, "Code"].nunique())
-    n_post_counties = int(df.loc[post_mask, "Code"].nunique())
     n_low_counties = int(df.loc[low_mask, "Code"].nunique())
     n_high_counties = int(df.loc[high_mask, "Code"].nunique())
-    n_pre = int(pre_mask.sum())
-    n_post = int(post_mask.sum())
     n_total = len(df)
 
     body = (
         "\\begin{threeparttable}\n"
-        "\\caption{Descriptive statistics}\n"
+        "\\caption{Descriptive statistics by Catholic share}\n"
         "\\label{tab:descriptive_statistics}\n"
-        "\\begin{tabular}{l S[table-format=3.2] S[table-format=3.2] c S[table-format=3.2] S[table-format=3.2]}\n"
+        "\\begin{tabular}{l S[table-format=3.2] S[table-format=3.2]}\n"
         "\\toprule\n"
-        " & \\multicolumn{2}{c}{\\textbf{Panel A: By Period}} & & "
-        "\\multicolumn{2}{c}{\\textbf{Panel B: By Religious Group}} \\\\\n"
-        "\\cmidrule(lr){2-3} \\cmidrule(lr){5-6}\n"
-        " & {Pre-1873} & {Post-1873} & & {Low-Cath} & {High-Cath} \\\\\n"
-        "\\textbf{Variable} & {Mean} & {Mean} & & {Mean} & {Mean} \\\\\n"
+        "\\textbf{Variable} & {Low-Cath} & {High-Cath} \\\\\n"
+        " & {Mean} & {Mean} \\\\\n"
         "\\midrule\n"
         + "\n".join(body_rows) + "\n"
         "\\midrule\n"
-        f"Counties (N) & {{{n_pre_counties}}} & {{{n_post_counties}}} & & "
-        f"{{{n_low_counties}}} & {{{n_high_counties}}} \\\\\n"
-        f"Observations ($N \\times T$) & \\multicolumn{{2}}{{c}}{{{n_pre:,} / {n_post:,}}} "
-        f"& & \\multicolumn{{2}}{{c}}{{{n_total:,} (Total)}} \\\\\n"
+        f"Counties (N) & {{{n_low_counties}}} & {{{n_high_counties}}} \\\\\n"
+        f"Observations ($N \\times T$) & \\multicolumn{{2}}{{c}}{{{n_total:,} (Total)}} \\\\\n"
         "\\bottomrule\n"
         "\\end{tabular}\n"
         "\\begin{tablenotes}\n"
         "\\footnotesize\n"
-        "\\item \\textit{Note:} Low-Catholic counties defined as $\\le 50\\%$ "
-        "Catholic in 1871; High-Catholic as $> 50\\%$. Panel~A shows the temporal "
-        "shift around the 1873 May Laws (full panel of 392 counties, "
-        "Pre-1873 vs Post-1873). Panel~B shows the baseline cross-sectional "
-        "differences across the entire 1862--1890 sample period. The Crude "
-        "Birth Rate and Legitimate Birth Rate are per 1{,}000 \\emph{mid-year} "
-        "population. The General Marriage Rate (GMR) is marriages per 1{,}000 "
-        "women aged 15--49 and the General Marital Fertility Rate (GMFR) is "
-        "legitimate births per 1{,}000 married women aged 15--49. The four "
-        "Princeton EFP / Coale--Watkins indices are Hutterite-normalised and "
-        "satisfy the identity $I_f \\approx I_g \\cdot I_m + I_h \\cdot (1 - I_m)$: "
-        "$I_f$ is overall fertility, $I_g$ is marital fertility (the headline "
-        "outcome in Galloway, Hammel \\& Lee 1994), $I_m$ is the Hutterite-"
-        "weighted proportion of women 15--49 who are married, and $I_h$ is "
-        "illegitimate fertility. The married-women and women 15--49 "
-        "denominators used by GMR, GMFR, and the Princeton indices are "
+        "\\item \\textit{Note:} Low-Catholic counties are defined as $\\le 50\\%$ "
+        "Catholic in the 1871 census; High-Catholic as $> 50\\%$. Means are "
+        "pooled across the full 1862--1890 panel. The Crude Birth Rate and "
+        "Legitimate Birth Rate are per 1{,}000 \\emph{mid-year} inhabitants; "
+        "the illegitimacy ratio is illegitimate births as a percentage of all "
+        "births; the General Marriage Rate (GMR) is marriages per 1{,}000 "
+        "women aged 15--49; and the General Marital Fertility Rate (GMFR) is "
+        "legitimate births per 1{,}000 married women aged 15--49. The "
+        "married-women and women 15--49 denominators of GMR and GMFR are "
         "time-varying, piecewise-linearly interpolated between Galloway's "
-        "STA1871, AGE1882, and AGE1890 anchors. Share Catholic is time-"
-        "invariant (1871 census) and is therefore omitted from Panel~A.\n"
+        "STA1871, AGE1882, and AGE1890 anchors. Temporal dynamics for each "
+        "variable are shown in the time-series figures of the "
+        "descriptive-evidence section.\n"
         "\\item \\textit{Source:} Author's calculations from the Galloway "
         "Prussia Database \\citep{Galloway2007}; mid-year population "
         "constructed via linear interpolation between consecutive December "
-        "censuses (see \\citealp{GallowayHammelLee1994}).\n"
+        "censuses.\n"
         "\\end{tablenotes}\n"
         "\\end{threeparttable}\n"
     )
 
-    # Manually wrap (do not use _wrap_table because threeparttable replaces
-    # the standard caption / label scaffolding).
     out = (
         "% Auto-generated by src/analysis/latex_tables.py -- do not edit by hand.\n"
         "% LaTeX preamble required: \\usepackage{booktabs, threeparttable, siunitx}\n"
-        "% Citations used: \\citep{Galloway2007}, \\citealp{GallowayHammelLee1994}.\n"
+        "% Citations used: \\citep{Galloway2007}.\n"
         "\\begin{table}[htbp]\n"
         "\\centering\n"
         "\\small\n"
