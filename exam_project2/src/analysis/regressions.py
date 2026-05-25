@@ -82,6 +82,17 @@ def run_baseline_did(
     treatment : str
         'continuous' → uses cath_share_x_post (Catholic share × Post)
         'binary' → uses treat_x_post (HighCath × Post)
+        'zentrum' → uses zentrum_share_x_post
+                    (catholic_party_share_1871 × Post). Religiosity-vs-
+                    doctrine robustness: replaces nominal Catholic share
+                    with the 1871 Zentrum+Polen vote share, the canonical
+                    revealed-preference measure of *mobilised* Catholic
+                    religious-political identity. Counties with high
+                    Catholic population but low Zentrum share are nominal
+                    Catholics; high Catholic + high Zentrum are devout
+                    Catholics. If the headline coefficient survives, the
+                    result reflects Catholic institutional/doctrinal
+                    exposure rather than nominal denomination alone.
     controls : list, optional
         Additional time-varying controls. Default: ``[]`` (no controls).
         ``ln_pop`` was previously the default but is now opt-in: since
@@ -114,8 +125,26 @@ def run_baseline_did(
         treat_var = "cath_share_x_post"
     elif treatment == "binary":
         treat_var = "treat_x_post"
+    elif treatment == "zentrum":
+        if "catholic_party_share_1871" not in panel.columns:
+            raise KeyError(
+                "treatment='zentrum' requires 'catholic_party_share_1871' "
+                "(Zentrum+Polen vote share in the 1871 Reichstag election) "
+                "in the panel."
+            )
+        if "zentrum_share_x_post" not in panel.columns:
+            panel = panel.assign(
+                zentrum_share_x_post=(
+                    panel["catholic_party_share_1871"]
+                    * panel["post_kulturkampf"]
+                )
+            )
+        treat_var = "zentrum_share_x_post"
     else:
-        raise ValueError(f"treatment must be 'continuous' or 'binary', got {treatment}")
+        raise ValueError(
+            f"treatment must be 'continuous', 'binary', or 'zentrum'; "
+            f"got {treatment}"
+        )
     
     # Build regressor matrix
     exog_vars = [treat_var] + [c for c in controls if c in panel.columns]
