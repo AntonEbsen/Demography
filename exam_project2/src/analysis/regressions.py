@@ -263,7 +263,7 @@ def run_kulturkampf_phase_sensitivity(
     df: pd.DataFrame,
     outcomes: Sequence[str] = (
         "cbr", "legitimate_br", "gmfr_static_1871",
-        "illegitimacy_ratio", "marriage_rate", "I_g",
+        "illegitimacy_ratio", "general_marriage_rate", "I_g",
     ),
     cutoffs: Sequence[int] = (1871, 1872, 1873, 1874, 1875, 1876),
     treatment: str = "continuous",
@@ -684,7 +684,7 @@ SUBREGION_DEFINITIONS = {
 
 def run_subregion_did(
     df: pd.DataFrame,
-    outcome: str = "marriage_rate",
+    outcome: str = "general_marriage_rate",
     n_boot: int = 999,
     seed: int = 42,
 ) -> pd.DataFrame:
@@ -743,7 +743,7 @@ def run_subregion_did(
 
 def run_rb_specific_did(
     df: pd.DataFrame,
-    outcome: str = "marriage_rate",
+    outcome: str = "general_marriage_rate",
     min_counties: int = 5,
     min_cath_share_sd: float = 5.0,
 ) -> pd.DataFrame:
@@ -820,7 +820,7 @@ def run_rb_specific_did(
 
 def run_subsample_decomposition(
     df: pd.DataFrame,
-    outcomes: tuple[str, ...] = ("cbr", "marriage_rate"),
+    outcomes: tuple[str, ...] = ("cbr", "general_marriage_rate"),
 ) -> pd.DataFrame:
     """
     Decompose the headline DiD coefficient by sample. The full-panel
@@ -877,7 +877,7 @@ def run_subsample_decomposition(
 
 def run_pretreatment_trends_robustness(
     df: pd.DataFrame,
-    outcomes: tuple[str, ...] = ("cbr", "marriage_rate"),
+    outcomes: tuple[str, ...] = ("cbr", "general_marriage_rate"),
     form: str = "year_dummies",
 ) -> pd.DataFrame:
     """
@@ -977,7 +977,7 @@ def run_pretreatment_trends_robustness(
 
 def run_emigration_robustness(
     df: pd.DataFrame,
-    outcomes: tuple[str, ...] = ("cbr", "marriage_rate"),
+    outcomes: tuple[str, ...] = ("cbr", "general_marriage_rate"),
 ) -> pd.DataFrame:
     """
     Robustness specifications addressing the post-1885 Polish-province
@@ -1102,7 +1102,7 @@ def run_count_marriage_did(
 
 def run_jewish_placebo(
     df: pd.DataFrame,
-    outcomes: tuple[str, ...] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: tuple[str, ...] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     controls: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
@@ -1142,7 +1142,7 @@ def run_jewish_placebo(
 
 def run_fake_treatment_placebo(
     df: pd.DataFrame,
-    outcomes: tuple[str, ...] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: tuple[str, ...] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     fake_post_year: int = 1865,
     sample_end_year: int = 1871,
 ) -> pd.DataFrame:

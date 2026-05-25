@@ -389,7 +389,7 @@ class SDIDResult:
 
 def run_sdid(
     df: pd.DataFrame,
-    outcome: str = "marriage_rate",
+    outcome: str = "general_marriage_rate",
     treat_col: str = "high_cath",
     treatment_year: int = 1873,
     year_start: int = 1862,
@@ -545,7 +545,7 @@ def _placebo_distribution(
 def run_sdid_threshold_sweep(
     df: pd.DataFrame,
     thresholds: Sequence[float] = (40.0, 50.0, 60.0),
-    outcomes: Sequence[str] = ("marriage_rate", "cbr"),
+    outcomes: Sequence[str] = ("general_marriage_rate", "cbr"),
     treatment_year: int = 1873,
     year_start: int = 1862,
     year_end: int = 1885,
@@ -613,6 +613,7 @@ def plot_synthetic_vs_treated(
     pre-trends line up by construction.
     """
     import matplotlib.pyplot as plt
+    from src.visualization.plots import COLORS
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 4.5))
 
@@ -621,8 +622,9 @@ def plot_synthetic_vs_treated(
     Y_co_syn = Y_co_syn + res.omega0  # apply fitted intercept shift
 
     years = np.array(res.years)
-    ax.plot(years, Y_tr, marker="o", color="C3", label="Treated (mean)")
-    ax.plot(years, Y_co_syn, marker="s", color="C0",
+    ax.plot(years, Y_tr, marker="o", color=COLORS["catholic"],
+            label="Treated (mean)")
+    ax.plot(years, Y_co_syn, marker="s", color=COLORS["protestant"],
             label="Synthetic control (ω̂)")
     ax.axvline(res.treatment_year, color="black", linestyle="--",
                linewidth=1, label=f"Treatment ({res.treatment_year})")
@@ -640,13 +642,8 @@ def plot_synthetic_vs_treated(
                 edgecolor="none", zorder=0,
             )
 
-    se = f"{res.se:.3f}" if res.se is not None else "n/a"
-    if title is None:
-        title = (
-            f"SDID — {res.outcome} | {res.treat_col} | "
-            f"τ̂={res.tau_hat:+.3f} (SE {se})"
-        )
-    ax.set_title(title)
+    if title is not None:
+        ax.set_title(title)
     ax.set_xlabel("Year")
     ax.set_ylabel(res.outcome)
     ax.legend(loc="best", frameon=False)

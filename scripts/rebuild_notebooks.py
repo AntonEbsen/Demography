@@ -189,16 +189,17 @@ print(f"Counties <25% Catholic: {(panel.drop_duplicates('Code')['cath_share'] < 
     md("""## 5. Raw fertility and marriage trends over time
 
 Before any fixed-effects estimation, plotting raw means by group is the single most informative diagnostic. *Parallel trends* requires that the high- and low-Catholic groups would have evolved similarly absent the Kulturkampf. We check this visually for each outcome."""),
-    code("""for outcome, ylabel, fname in [
-    ("cbr", "Crude birth rate (per 1,000)", "fig2_fertility_trends.png"),
-    ("legitimate_br", "Legitimate birth rate (per 1,000)", "fig3_legit_fertility_trends.png"),
-    ("marriage_rate", "Marriage rate (per 1,000)", "fig_marriage_trends.png"),
+    code("""for outcome, ylabel, fname, rollback in [
+    ("cbr", "Crude birth rate (per 1,000)", "fig2_fertility_trends.png", False),
+    ("legitimate_br", "Legitimate birth rate (per 1,000)", "fig3_legit_fertility_trends.png", False),
+    ("marriage_rate", "Marriage rate (per 1,000)", "fig_marriage_trends.png", True),
 ]:
     if outcome in panel.columns and panel[outcome].notna().any():
         fig, ax = plot_fertility_trends(
             panel, outcome=outcome, ylabel=ylabel,
             title=f"{ylabel} by Catholic share",
             savepath=str(OUTPUTS / fname),
+            with_rollback=rollback,
         )
         plt.show()"""),
     md("""**Interpretation — the parallel-trends puzzle.** The trends are emphatically *not* parallel:

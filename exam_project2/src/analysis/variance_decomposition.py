@@ -60,7 +60,7 @@ def _fit_demeaning(y: np.ndarray, code_inv: np.ndarray, year_inv: np.ndarray,
 
 def variance_decomposition(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
 ) -> pd.DataFrame:
     """Return one row per outcome with R^2 of nested specifications."""
     rows = []

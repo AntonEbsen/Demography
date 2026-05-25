@@ -229,7 +229,7 @@ def _write(path: Path, content: str) -> None:
 
 def summary_statistics_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """Means and SDs by treatment group × period."""
@@ -328,7 +328,7 @@ def descriptive_statistics_table(
         # (column, label, show_in_panel_A, show_in_panel_B)
         ("cbr", "Crude Birth Rate (CBR)", True, True),
         ("legitimate_br", "Legitimate Birth Rate", True, True),
-        ("marriage_rate", "Marriage Rate", True, True),
+        ("general_marriage_rate", "General Marriage Rate", True, True),
         ("I_f", "Overall Fertility ($I_f$)", True, True),
         ("I_g", "Marital Fertility ($I_g$)", True, True),
         ("I_m", "Nuptiality ($I_m$)", True, True),
@@ -666,7 +666,7 @@ def baseline_did_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
         "cbr", "legitimate_br", "gmfr_static_1871",
-        "illegitimacy_ratio", "marriage_rate",
+        "illegitimacy_ratio", "general_marriage_rate",
     ),
     out_path: Path | None = None,
     *,
@@ -680,16 +680,18 @@ def baseline_did_table(
     ),
     label: str = "tab:baseline_did",
     extra_note: str = (
-        "Crude rates use mid-year total population in the denominator "
+        "Crude birth rates use mid-year total population in the denominator "
         "and therefore conflate age structure, marital structure, and "
-        "within-marriage fertility. The Coale--Watkins decomposition in "
-        "Table~\\ref{tab:baseline_did_indices} addresses this directly."
+        "within-marriage fertility. The general marriage rate uses pop.\\ aged "
+        "15+ (Newell 1988), netting out the under-15 share. The Coale--Watkins "
+        "decomposition in Table~\\ref{tab:baseline_did_indices} addresses the "
+        "remaining birth-rate decomposition directly."
     ),
 ) -> str:
     """Multi-outcome baseline DiD with TWFE and stricter Year x Rb FE columns.
 
-    Default outcomes are the four conventional rates (CBR, legitimate
-    birth rate, illegitimacy ratio, marriage rate). The companion
+    Default outcomes are CBR, legitimate birth rate, illegitimacy ratio,
+    and the general marriage rate. The companion
     ``baseline_did_indices_table`` reports the Coale--Watkins indices
     ($I_f$, $I_g$, $I_m$, $I_h$) that decompose the rates by age
     structure and nuptiality. Rates and indices live in separate tables
@@ -908,11 +910,14 @@ def baseline_did_table(
         "clustered at the county level in parentheses. "
     )
     notes_rates = (
-        "Birth and marriage rates "
-        "per 1{,}000 \\emph{mid-year} population; illegitimacy ratio in percent. "
+        "Birth rates per 1{,}000 \\emph{mid-year} population; "
+        "the general marriage rate per 1{,}000 mid-year population aged 15+ "
+        "(Newell 1988); illegitimacy ratio in percent. "
         "Mid-year population is constructed by linearly interpolating between "
         "consecutive December census anchors and evaluating at July 1 of each "
-        "calendar year (standard demographic convention). "
+        "calendar year (standard demographic convention); the 15+ share is "
+        "interpolated between the 1871 and 1890 AGE censuses with the 1882 "
+        "AGE anchor used where available. "
     )
     notes_carryforward = (
         "The ``Galloway "
@@ -1018,7 +1023,7 @@ def kulturkampf_phase_sensitivity_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
         "cbr", "legitimate_br", "gmfr_static_1871",
-        "illegitimacy_ratio", "marriage_rate", "I_g",
+        "illegitimacy_ratio", "general_marriage_rate", "I_g",
     ),
     cutoffs: Sequence[int] = (1871, 1872, 1873, 1874, 1875, 1876),
     placebo_cutoff: int | None = 1870,
@@ -1043,14 +1048,14 @@ def kulturkampf_phase_sensitivity_table(
 
     - Whether the marriage-rate effect is specifically about the 1874
       Civil Marriage Act (vs the broader 1873 May Laws): compare the
-      ``marriage_rate`` row's 1873 column to its 1874 column. A sharp
-      strengthening at 1874 (and only at 1874) points to the Civil
+      ``general_marriage_rate`` row's 1873 column to its 1874 column. A
+      sharp strengthening at 1874 (and only at 1874) points to the Civil
       Marriage Act as the operative channel; flat or monotonic-from-
       1873 patterns indicate the marriage response is part of the
       broader May-Laws-era shock.
     - Whether fertility effects pick up a different phase from
       marriage (e.g.\\ 1876 episcopal expulsions for ``cbr`` vs 1874
-      for ``marriage_rate``): rows should be read independently.
+      for ``general_marriage_rate``): rows should be read independently.
     - The 1871 placebo column should yield small / insignificant
       coefficients for outcomes where the post-1873 effect is causal;
       a significant placebo coefficient is a pre-trends signal
@@ -1145,11 +1150,11 @@ def kulturkampf_phase_sensitivity_table(
 
     # Sample-size footer (cutoff-invariant in the balanced panel, but
     # not literally identical because the post indicator changes
-    # affects which years are "treated"; we report the marriage_rate
+    # affects which years are "treated"; we report the general_marriage_rate
     # row's N as a representative figure since the n is identical
     # across cutoffs within an outcome).
     n_row_outcome = (
-        "marriage_rate" if "marriage_rate" in pivot.index else outcomes[0]
+        "general_marriage_rate" if "general_marriage_rate" in pivot.index else outcomes[0]
     )
     n_cells = []
     for c in ordered_cutoffs:
@@ -1359,7 +1364,7 @@ def channels_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
 
 def polish_german_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "I_g", "gmfr", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "I_g", "gmfr", "general_marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """Heterogeneity by sub-region (Polish vs German Catholic vs Protestant).
@@ -1460,7 +1465,7 @@ def polish_german_table(
 
 def iv_results_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """OLS vs 2SLS estimates using distance to Wittenberg as an instrument."""
@@ -1575,7 +1580,7 @@ def iv_results_table(
 
 def conley_robustness_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     cutoff_km: float = 200.0,
     out_path: Path | None = None,
 ) -> str:
@@ -1677,7 +1682,7 @@ def conley_robustness_table(
 
 def headline_summary_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """One-stop headline table: TWFE / Year x Rb FE / 2SLS / long-diff side-by-side."""
@@ -1793,7 +1798,7 @@ def headline_summary_table(
 
 def magnitudes_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """IV-implied vs observed differential change between high- and low-Catholic counties."""
@@ -1858,7 +1863,7 @@ def magnitudes_table(
 
 def pretrends_robustness_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """Sample-restriction sensitivity + Honest DiD breakdown M values."""
@@ -2008,7 +2013,7 @@ def dcdh_diagnostic_table(
 
 def variance_decomposition_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """R^2 of nested specifications: county FE / year FE / both / + treatment."""
@@ -2138,7 +2143,7 @@ def cohort_translation_table(
 
 def falsifications_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """Three falsification checks: Jewish-share placebo + fake-treatment + triple-diff."""
@@ -2229,7 +2234,7 @@ def falsifications_table(
 
 def heterogeneity_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "marriage_rate", "I_g"),
+    outcomes: Sequence[str] = ("cbr", "general_marriage_rate", "I_g"),
     moderators: tuple[str, ...] = (
         "school1517", "attend_rate_1849_baseline", "f_urban",
         "zentrum_share_1871", "polen_share_1871",
@@ -2332,7 +2337,7 @@ def heterogeneity_table(
 
 def iv_overid_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     out_path: Path | None = None,
 ) -> str:
     """2SLS with Wittenberg + Bishop instruments and Wooldridge over-id test."""
@@ -2416,7 +2421,7 @@ def iv_overid_table(
 def wild_bootstrap_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = (
-        "cbr", "marriage_rate", "I_g", "gmfr_static_1871",
+        "cbr", "general_marriage_rate", "I_g", "gmfr_static_1871",
     ),
     out_path: Path | None = None,
 ) -> str:
@@ -2664,10 +2669,10 @@ def emigration_robustness_table(
     """
     out_path = out_path or TABLES_DIR / "emigration_robustness.tex"
 
-    full = run_emigration_robustness(panel, outcomes=("cbr", "marriage_rate"))
+    full = run_emigration_robustness(panel, outcomes=("cbr", "general_marriage_rate"))
     polish = run_emigration_robustness(
         panel[panel["Rb"].isin(["POS", "BRO"])],
-        outcomes=("cbr", "marriage_rate"),
+        outcomes=("cbr", "general_marriage_rate"),
     )
     counts = run_count_marriage_did(panel)
 
@@ -2675,11 +2680,11 @@ def emigration_robustness_table(
         out = (
             f"\\multicolumn{{4}}{{l}}{{\\textit{{{header_label}}}}} \\\\\n"
         )
-        # Group by spec; within each spec, two outcomes (cbr, marriage_rate)
+        # Group by spec; within each spec, two outcomes (cbr, general_marriage_rate)
         for spec in rows["spec"].drop_duplicates():
             sub = rows[rows["spec"] == spec]
             cbr_row = sub[sub["outcome"] == "cbr"].iloc[0] if len(sub[sub["outcome"] == "cbr"]) else None
-            mar_row = sub[sub["outcome"] == "marriage_rate"].iloc[0] if len(sub[sub["outcome"] == "marriage_rate"]) else None
+            mar_row = sub[sub["outcome"] == "general_marriage_rate"].iloc[0] if len(sub[sub["outcome"] == "general_marriage_rate"]) else None
             cbr_str = (_fmt_coef(cbr_row["coef"], cbr_row["p"], digits=4) if cbr_row is not None else "")
             cbr_se = (_fmt_se(cbr_row["se"], digits=4) if cbr_row is not None else "")
             mar_str = (_fmt_coef(mar_row["coef"], mar_row["p"], digits=4) if mar_row is not None else "")
@@ -2791,7 +2796,7 @@ def pretreatment_trends_table(
     out_path = out_path or TABLES_DIR / "pretreatment_trends.tex"
 
     outcome_keys = (
-        "cbr", "marriage_rate", "general_marriage_rate", "I_g", "gmfr",
+        "cbr", "general_marriage_rate", "I_g", "gmfr",
     )
     df = run_pretreatment_trends_robustness(
         panel, outcomes=outcome_keys, form="linear",
@@ -2898,13 +2903,13 @@ def subsample_decomposition_table(
     Catholic--Protestant comparison.
     """
     out_path = out_path or TABLES_DIR / "subsample_decomposition.tex"
-    df = run_subsample_decomposition(panel, outcomes=("cbr", "marriage_rate"))
+    df = run_subsample_decomposition(panel, outcomes=("cbr", "general_marriage_rate"))
 
     rows: list[str] = []
     for name in df["sample"].drop_duplicates():
         sub = df[df["sample"] == name]
         cbr_sub = sub[sub["outcome"] == "cbr"]
-        mar_sub = sub[sub["outcome"] == "marriage_rate"]
+        mar_sub = sub[sub["outcome"] == "general_marriage_rate"]
         cbr = cbr_sub.iloc[0] if len(cbr_sub) else None
         mar = mar_sub.iloc[0] if len(mar_sub) else None
         cbr_coef = _fmt_coef(cbr["coef"], cbr["p"], digits=4) if cbr is not None else ""
@@ -3068,7 +3073,7 @@ def sdid_results_table(
         work[col] = (work["cath_share"] > thr).astype(int)
         panels[thr] = {
             "cmr": run_sdid(
-                work, outcome="marriage_rate", treat_col=col,
+                work, outcome="general_marriage_rate", treat_col=col,
                 treatment_year=treatment_year,
                 year_start=year_start, year_end=year_end,
                 n_placebo=n_placebo, seed=seed,
@@ -3214,7 +3219,7 @@ def sdid_donor_counties_table(
         eff_n = 1.0 / float((res.omega ** 2).sum())
         return "\n".join(rows), eff_n, float(res.omega.max())
 
-    cmr_rows, cmr_eff_n, cmr_max_w = _donor_rows("marriage_rate")
+    gmr_rows, gmr_eff_n, gmr_max_w = _donor_rows("general_marriage_rate")
     cbr_rows, cbr_eff_n, cbr_max_w = _donor_rows("cbr")
 
     body = (
@@ -3222,10 +3227,10 @@ def sdid_donor_counties_table(
         "\\toprule\n"
         " & Kreis & Rb & Cath.\\ share (\\%) & $\\hat\\omega$ \\\\\n"
         "\\midrule\n"
-        "\\multicolumn{5}{l}{\\textit{Panel A: Marriage-rate synthetic control}} \\\\\n"
-        + cmr_rows + "\n"
-        f"\\midrule\\multicolumn{{5}}{{l}}{{Effective number of donors $1/\\sum_i \\hat\\omega_i^2 = {cmr_eff_n:.1f}$; "
-        f"max $\\hat\\omega = {cmr_max_w:.4f}$}} \\\\\n"
+        "\\multicolumn{5}{l}{\\textit{Panel A: General marriage rate synthetic control}} \\\\\n"
+        + gmr_rows + "\n"
+        f"\\midrule\\multicolumn{{5}}{{l}}{{Effective number of donors $1/\\sum_i \\hat\\omega_i^2 = {gmr_eff_n:.1f}$; "
+        f"max $\\hat\\omega = {gmr_max_w:.4f}$}} \\\\\n"
         "\\midrule\n"
         "\\multicolumn{5}{l}{\\textit{Panel B: CBR synthetic control}} \\\\\n"
         + cbr_rows + "\n"
@@ -3413,7 +3418,7 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
         )
         gdf = load_prussia_shapefile(shp_path)
         for outcome, label in [
-            ("marriage_rate", "Marriage rate"),
+            ("general_marriage_rate", "General marriage rate"),
             ("cbr", "Crude birth rate"),
         ]:
             sr = run_subregion_did(panel, outcome=outcome)

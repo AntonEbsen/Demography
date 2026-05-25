@@ -75,7 +75,7 @@ def dcdh_weights(
 
 def diagnostic(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "marriage_rate"),
+    outcomes: Sequence[str] = ("cbr", "legitimate_br", "illegitimacy_ratio", "general_marriage_rate"),
     treatment: str = "cath_share_x_post",
 ) -> pd.DataFrame:
     """Compute the negative-weight diagnostic for the baseline DiD."""
