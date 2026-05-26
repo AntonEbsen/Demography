@@ -298,6 +298,7 @@ def run_kulturkampf_phase_sensitivity(
     treatment: str = "continuous",
     fe_design: str = "twfe",
     placebo_cutoff: int | None = 1870,
+    sample_year_range: tuple[int, int] = (1862, 1890),
 ) -> pd.DataFrame:
     """
     Treatment-cutoff sensitivity by Kulturkampf legislative phase.
@@ -381,6 +382,10 @@ def run_kulturkampf_phase_sensitivity(
     """
     if placebo_cutoff is not None and placebo_cutoff not in cutoffs:
         cutoffs = (placebo_cutoff,) + tuple(cutoffs)
+
+    if sample_year_range is not None:
+        y_lo, y_hi = sample_year_range
+        df = df[df["Year"].between(y_lo, y_hi)].copy()
 
     rows: list[dict] = []
     for cutoff in cutoffs:
@@ -1206,6 +1211,209 @@ def run_fake_treatment_placebo(
             "n": int(res.nobs),
         })
     return pd.DataFrame(rows)
+
+
+def run_continuous_polish_decomposition(
+    df: pd.DataFrame,
+    outcome: str = "cbr",
+    polen_var: str = "polen_share_1871",
+) -> Dict[str, Union[PanelEffectsResults, float, int]]:
+    """
+    Decompose the apparent Kulturkampf effect into a religion-only and an
+    ethnicity-only channel using the continuous Polish-nationalist vote
+    share in the 1871 Reichstag election.
+
+    Specification
+    -------------
+    Y_it = beta_1 (CathShare_i x Post_t)
+         + beta_2 (PolenShare_i x Post_t)
+         + alpha_i + delta_t + epsilon_it
+
+    Interpretation. beta_1 is identified off counties with zero Polish
+    vote share -- i.e.\\ German-Catholic counties of Rheinland, Westphalia,
+    Bavarian-Silesia. It is the pure Catholic-religion-only effect of the
+    post-1873 window, with the Polish-ethnicity channel netted out by the
+    second interaction. beta_2 is the additional response per percentage-
+    point of Polish-nationalist vote share, identified off variation in
+    Polish mobilisation that is orthogonal to Catholic share at the level
+    captured by cath_share_x_post.
+
+    This is the continuous analogue of ``run_triple_difference_polish``;
+    it uses within-Polish-province variation as well as the German-
+    Catholic vs Polish-Catholic contrast, so it is strictly more
+    efficient when the Polenpartei vote share is available.
+    """
+    sub = df[["Code", "Year", outcome, "cath_share", "post_kulturkampf",
+              polen_var]].dropna().copy()
+    sub["cath_share_x_post"] = sub["cath_share"] * sub["post_kulturkampf"]
+    sub["polen_share_x_post"] = sub[polen_var] * sub["post_kulturkampf"]
+    sub = sub.set_index(["Code", "Year"])
+
+    y = sub[outcome]
+    X = sub[["cath_share_x_post", "polen_share_x_post"]]
+    valid = y.notna() & X.notna().all(axis=1)
+    y, X = y[valid], X[valid]
+
+    mod = PanelOLS(y, X, entity_effects=True, time_effects=True)
+    res = mod.fit(cov_type="clustered", cluster_entity=True)
+
+    return {
+        "result": res,
+        "cath_coef": float(res.params["cath_share_x_post"]),
+        "cath_se": float(res.std_errors["cath_share_x_post"]),
+        "cath_p": float(res.pvalues["cath_share_x_post"]),
+        "polen_coef": float(res.params["polen_share_x_post"]),
+        "polen_se": float(res.std_errors["polen_share_x_post"]),
+        "polen_p": float(res.pvalues["polen_share_x_post"]),
+        "n": int(res.nobs),
+        "r2_within": float(res.rsquared_within),
+    }
+
+
+def run_kulturkampf_vs_polenpolitik_timing(
+    df: pd.DataFrame,
+    outcome: str = "cbr",
+    polish_rbs: tuple[str, ...] = ("POS", "BRO"),
+    enforcement_years: tuple[int, int] = (1873, 1878),
+    rollback_years: tuple[int, int] = (1880, 1887),
+    post_rollback_start: int = 1888,
+) -> Dict[str, Union[PanelEffectsResults, float, int]]:
+    """
+    Identify whether the apparent ``Catholic share x Post`` response in
+    Polish counties tracks the Kulturkampf legislative phases (peaking
+    1873--78) or the Polenpolitik regime (peaking 1885--87 with the
+    Polenausweisungen and 1888+ with the Settlement Commission).
+
+    Specification (run on Polish sub-sample, RB in POS/BRO):
+
+    Y_it = sum_{phase in {enf, rollback, postroll}}
+              beta_phase (CathShare_i x 1[Year in phase_window])
+         + alpha_i + delta_t + epsilon_it
+
+    Reading. The Kulturkampf hypothesis predicts beta_enf is the largest
+    coefficient (this is when the May Laws were enforced) and
+    beta_postroll is smallest (the laws were repealed). The Polenpolitik
+    hypothesis predicts the opposite ordering -- beta_postroll is
+    largest, since the Polenausweisungen (1885--86) and Settlement
+    Commission (1886+) escalate exactly when Kulturkampf is being
+    repealed.
+
+    Note: this is *not* run on the German-Catholic sub-sample, because
+    the differential-timing argument is specifically about Polish
+    counties. The pooled-panel version is captured by
+    ``polish_german_table`` columns 1 and 2.
+    """
+    sub = df.copy()
+    sub = sub[sub["Rb"].isin(polish_rbs)].copy()
+    enf_lo, enf_hi = enforcement_years
+    roll_lo, roll_hi = rollback_years
+    sub["cath_enf"] = sub["cath_share"] * (
+        (sub["Year"] >= enf_lo) & (sub["Year"] <= enf_hi)
+    ).astype(int)
+    sub["cath_rollback"] = sub["cath_share"] * (
+        (sub["Year"] >= roll_lo) & (sub["Year"] <= roll_hi)
+    ).astype(int)
+    sub["cath_postroll"] = sub["cath_share"] * (
+        sub["Year"] >= post_rollback_start
+    ).astype(int)
+    sub = sub.set_index(["Code", "Year"])
+
+    y = sub[outcome]
+    X = sub[["cath_enf", "cath_rollback", "cath_postroll"]]
+    valid = y.notna() & X.notna().all(axis=1)
+    y, X = y[valid], X[valid]
+
+    mod = PanelOLS(y, X, entity_effects=True, time_effects=True)
+    res = mod.fit(cov_type="clustered", cluster_entity=True)
+
+    return {
+        "result": res,
+        "enf_coef": float(res.params["cath_enf"]),
+        "enf_se": float(res.std_errors["cath_enf"]),
+        "enf_p": float(res.pvalues["cath_enf"]),
+        "rollback_coef": float(res.params["cath_rollback"]),
+        "rollback_se": float(res.std_errors["cath_rollback"]),
+        "rollback_p": float(res.pvalues["cath_rollback"]),
+        "postroll_coef": float(res.params["cath_postroll"]),
+        "postroll_se": float(res.std_errors["cath_postroll"]),
+        "postroll_p": float(res.pvalues["cath_postroll"]),
+        "n": int(res.nobs),
+        "r2_within": float(res.rsquared_within),
+    }
+
+
+def run_polenausweisungen_event_study(
+    df: pd.DataFrame,
+    outcome: str = "cbr",
+    polish_rbs: tuple[str, ...] = ("POS", "BRO"),
+    ref_year: int = 1884,
+    sample_year_range: tuple[int, int] = (1862, 1890),
+) -> Dict[str, Union[PanelEffectsResults, pd.DataFrame]]:
+    """
+    Event study around the 1885--86 Polenausweisungen (mass expulsion of
+    ~32{,}000 Polish-nationality residents from Posen/Bromberg) on the
+    Polish sub-sample only. The shock is sharp, dated, ethnically
+    targeted, and has no Catholic-religion content. If the Polish-county
+    fertility/marriage response is the Kulturkampf, this event study
+    should show no discontinuity at 1885; if it is the Polenpolitik /
+    Germanization regime, it should.
+
+    Specification
+    -------------
+    Y_it = sum_{t != ref_year} beta_t (CathShare_i x 1[Year=t])
+         + alpha_i + delta_t + epsilon_it
+
+    estimated on counties with RB in {POS, BRO}. The reference year is
+    1884 (the last year before the Polenausweisungen begin in earnest in
+    late 1885).
+    """
+    sub = df.copy()
+    sub = sub[sub["Rb"].isin(polish_rbs)].copy()
+    if sample_year_range is not None:
+        y_lo, y_hi = sample_year_range
+        sub = sub[sub["Year"].between(y_lo, y_hi)].copy()
+
+    sub = sub[["Code", "Year", outcome, "cath_share"]].dropna()
+    panel = sub.set_index(["Code", "Year"])
+
+    years = sorted(panel.index.get_level_values("Year").unique())
+    interact_years = [yr for yr in years if yr != ref_year]
+    for yr in interact_years:
+        col = f"treat_x_{yr}"
+        year_dummy = (panel.index.get_level_values("Year") == yr).astype(float)
+        panel[col] = year_dummy * panel["cath_share"].values
+
+    y = panel[outcome]
+    X = panel[[f"treat_x_{yr}" for yr in interact_years]]
+    valid = y.notna() & X.notna().all(axis=1)
+    y, X = y[valid], X[valid]
+
+    mod = PanelOLS(y, X, entity_effects=True, time_effects=True)
+    res = mod.fit(cov_type="clustered", cluster_entity=True)
+
+    coef_data = []
+    for yr in interact_years:
+        col = f"treat_x_{yr}"
+        beta = float(res.params[col])
+        se = float(res.std_errors[col])
+        coef_data.append({
+            "Year": int(yr),
+            "beta": beta,
+            "se": se,
+            "ci_lo": beta - 1.96 * se,
+            "ci_hi": beta + 1.96 * se,
+        })
+    coef_data.append({"Year": ref_year, "beta": 0.0, "se": 0.0,
+                      "ci_lo": 0.0, "ci_hi": 0.0})
+    coefs = pd.DataFrame(coef_data).sort_values("Year").reset_index(drop=True)
+
+    return {
+        "result": res,
+        "coefs": coefs,
+        "ref_year": ref_year,
+        "n_counties": int(panel.index.get_level_values("Code").nunique()),
+        "n_obs": int(res.nobs),
+    }
 
 
 def run_triple_difference_polish(

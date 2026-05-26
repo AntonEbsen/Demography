@@ -4,29 +4,29 @@
 \small
 \caption{Baseline difference-in-differences: Kulturkampf and conventional demographic rates}
 \label{tab:baseline_did}
-\begin{tabular}{l*{10}{c}}
+\begin{tabular}{l*{8}{c}}
 \toprule
- & \multicolumn{5}{c}{Panel A: County + Year FE} & \multicolumn{5}{c}{Panel B: County + (Year $\times$ Rb) FE} \\
-\cmidrule(lr){2-6}\cmidrule(lr){7-11}
- & Crude birth rate & Legit.\ birth rate & GMFR$^{1871}$ (per 1k mar.\ women, static prev.) & Illegitimacy ratio & Gen.\ marriage rate & Crude birth rate & Legit.\ birth rate & GMFR$^{1871}$ (per 1k mar.\ women, static prev.) & Illegitimacy ratio & Gen.\ marriage rate \\
- & (1) & (2) & (3) & (4) & (5) & (6) & (7) & (8) & (9) & (10) \\
+ & \multicolumn{4}{c}{Panel A: County + Year FE} & \multicolumn{4}{c}{Panel B: County + (Year $\times$ Rb) FE} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+ & Crude birth rate & GMFR$^{1871}$ (per 1k mar.\ women, static prev.) & Illeg.\ fert.\ rate$^{1871}$ (per 1k unmar.\ women, static prev.) & Gen.\ marriage rate & Crude birth rate & GMFR$^{1871}$ (per 1k mar.\ women, static prev.) & Illeg.\ fert.\ rate$^{1871}$ (per 1k unmar.\ women, static prev.) & Gen.\ marriage rate \\
+ & (1) & (2) & (3) & (4) & (5) & (6) & (7) & (8) \\
 \midrule
-CathShare $\times$ Post & 0.010$^{***}$ & 0.012$^{***}$ & 0.107$^{***}$ & -0.006$^{***}$ & -0.007$^{***}$ & 0.006 & 0.007 & 0.081 & -0.002 & -0.004$^{*}$ \\
- & (0.004) & (0.004) & (0.033) & (0.002) & (0.002) & (0.006) & (0.006) & (0.052) & (0.003) & (0.002) \\
+CathShare $\times$ Post & -0.004 & 0.023 & -0.021$^{***}$ & -0.008$^{***}$ & 0.000 & 0.034 & -0.004 & -0.001 \\
+ & (0.003) & (0.028) & (0.006) & (0.002) & (0.005) & (0.043) & (0.008) & (0.002) \\
 \midrule
-County FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
-Year FE & Yes & Yes & Yes & Yes & Yes & -- & -- & -- & -- & -- \\
-Year $\times$ Rb FE & -- & -- & -- & -- & -- & Yes & Yes & Yes & Yes & Yes \\
-Observations & 18,182 & 18,182 & 18,176 & 18,182 & 18,192 & 18,182 & 18,182 & 18,176 & 18,182 & 18,192 \\
-Within $R^{2}$ & -0.016 & -0.016 & 0.004 & 0.024 & 0.029 & -0.009 & -0.008 & 0.005 & 0.011 & 0.017 \\
+County FE & Yes & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\
+Year FE & Yes & Yes & Yes & Yes & -- & -- & -- & -- \\
+Year $\times$ Rb FE & -- & -- & -- & -- & Yes & Yes & Yes & Yes \\
+Observations & 10,777 & 10,776 & 10,783 & 10,783 & 10,777 & 10,776 & 10,783 & 10,783 \\
+Within $R^{2}$ & -0.002 & 0.010 & 0.001 & 0.028 & 0.000 & 0.014 & 0.003 & 0.004 \\
 \midrule
-\multicolumn{11}{l}{\textit{Galloway carry-forward robustness} (rate $=$ count $/$ raw Galloway \texttt{Poptot}; previous Dec.\ census carried forward in inter-census years)} \\
-\quad CathShare $\times$ Post (Galloway carry-forward) & 0.013$^{***}$ & 0.015$^{***}$ & -- & -- & -- & 0.006 & 0.007 & -- & -- & -- \\
- & (0.004) & (0.004) &  &  &  & (0.006) & (0.006) &  &  &  \\
+\multicolumn{9}{l}{\textit{Galloway carry-forward robustness} (rate $=$ count $/$ raw Galloway \texttt{Poptot}; previous Dec.\ census carried forward in inter-census years)} \\
+\quad CathShare $\times$ Post (Galloway carry-forward) & -0.000 & -- & -- & -- & -0.000 & -- & -- & -- \\
+ & (0.003) &  &  &  & (0.005) &  &  &  \\
 \midrule
-Pre-trends $\chi^{2}$ $p$ & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\
+Pre-trends $\chi^{2}$ $p$ & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 \\
 \addlinespace
-\multicolumn{11}{l}{\textit{Pre-trends Wald $\chi^{2}$ on $I_g$ (Coale marital fertility, Galloway-tradition headline)}: $\chi^{2} = 80.95$, df $= 10$, $p = 0.000$} \\
+\multicolumn{9}{l}{\textit{Pre-trends Wald $\chi^{2}$ on $I_g$ (Coale marital fertility, Galloway-tradition headline)}: $\chi^{2} = 72.72$, df $= 10$, $p = 0.000$} \\
 \bottomrule
 \end{tabular}
 \begin{minipage}{\linewidth}

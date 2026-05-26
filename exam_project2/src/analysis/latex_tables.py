@@ -58,6 +58,9 @@ from src.analysis.regressions import (
     run_start_year_sensitivity,
     run_subsample_decomposition,
     run_triple_difference_polish,
+    run_continuous_polish_decomposition,
+    run_kulturkampf_vs_polenpolitik_timing,
+    run_polenausweisungen_event_study,
     run_kulturkampf_phase_sensitivity,
     KULTURKAMPF_PHASE_LABELS,
 )
@@ -78,6 +81,31 @@ TABLES_DIR = PROJECT_ROOT / "outputs" / "tables"
 FIGURES_DIR = PROJECT_ROOT / "outputs" / "figures"
 PANEL_PATH = PROJECT_ROOT / "data" / "processed" / "analysis_panel.parquet"
 
+# Main-text outcome set. Four outcomes covering the relevant demographic
+# margins with denominator-purified rates throughout:
+#   - cbr                          aggregate fertility (per 1k mid-year pop)
+#   - gmfr_static_1871             within-marriage fertility (per 1k married
+#                                  women 15-49, denominator fixed at 1871)
+#   - illegitimate_br_static_1871  non-marital fertility (per 1k *unmarried*
+#                                  women 15-49, denominator fixed at 1871).
+#                                  The symmetric counterpart of GMFR-static;
+#                                  purges the marriage-prevalence channel
+#                                  that contaminates `illegitimacy_ratio`
+#                                  and `illegitimate_br` (mid-year-pop
+#                                  denominator).
+#   - general_marriage_rate        extensive margin (per 1k aged 15+)
+# Composition-contaminated outcomes (legitimate_br, illegitimacy_ratio) are
+# moved to the appendix robustness table.
+MAIN_OUTCOMES: tuple[str, ...] = (
+    "cbr",
+    "gmfr_static_1871",
+    "illegitimate_br_static_1871",
+    "general_marriage_rate",
+)
+APPENDIX_OUTCOMES: tuple[str, ...] = (
+    "legitimate_br", "illegitimacy_ratio",
+)
+
 # Display labels for outcomes and regressors. Edit here to retitle in tables.
 OUTCOME_LABELS: dict[str, str] = {
     # Headline rates use the mid-year-interpolated denominator (standard
@@ -88,6 +116,9 @@ OUTCOME_LABELS: dict[str, str] = {
     "legitimate_br": "Legit.\\ birth rate",
     "illegitimate_br": "Illegit.\\ birth rate",
     "illegitimacy_ratio": "Illegitimacy ratio",
+    "illegitimate_br_static_1871": (
+        "Illeg.\\ fert.\\ rate$^{1871}$ (per 1k unmar.\\ women, static prev.)"
+    ),
     "marriage_rate": "Marriage rate",
     "general_marriage_rate": "Gen.\\ marriage rate",
     "gfr": "GFR (per 1k women 15--49)",
@@ -635,10 +666,7 @@ def _did_column(panel: pd.DataFrame, outcome: str, fe_design: str) -> dict:
 
 def baseline_did_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = (
-        "cbr", "legitimate_br", "gmfr_static_1871",
-        "illegitimacy_ratio", "general_marriage_rate",
-    ),
+    outcomes: Sequence[str] = MAIN_OUTCOMES,
     out_path: Path | None = None,
     *,
     show_carryforward: bool = True,
@@ -934,6 +962,171 @@ def baseline_did_table(
     return out
 
 
+def cath_polen_identification_table(
+    panel: pd.DataFrame,
+    polish_rbs: tuple[str, ...] = ("POS", "BRO"),
+    german_cath_rbs: tuple[str, ...] = (
+        "KOL", "KOB", "TRI", "AAC", "OPP", "MUN",
+    ),
+    out_path: Path | None = None,
+) -> str:
+    """Identification-support diagnostic for the religion vs ethnicity
+    decomposition. Reports cross-county correlation between the 1871
+    Catholic share and the 1871 Polenpartei vote share by sub-sample,
+    documenting (i) that the full-panel correlation is modest, so the
+    continuous decomposition has identifying content; and (ii) that
+    within the Polish provinces the two variables are essentially
+    collinear, so a within-Posen religion-vs-ethnicity statement is
+    impossible. The German-Catholic sub-sample has zero variation in
+    Polenpartei vote share, so those counties contribute only to the
+    identification of the religion-only coefficient.
+    """
+    out_path = out_path or TABLES_DIR / "cath_polen_identification.tex"
+
+    cs = panel.dropna(subset=["polen_share_1871"]).drop_duplicates("Code").copy()
+
+    def _cls(rb: str) -> str:
+        if rb in polish_rbs:
+            return "Polish (POS, BRO)"
+        if rb in german_cath_rbs:
+            return "German Catholic (KOL, KOB, TRI, AAC, OPP, MUN)"
+        return "Protestant remainder"
+
+    cs["region"] = cs["Rb"].apply(_cls)
+
+    rows: list[tuple[str, int, float | None, float | None, float, float]] = []
+    for label in (
+        "Polish (POS, BRO)",
+        "German Catholic (KOL, KOB, TRI, AAC, OPP, MUN)",
+        "Protestant remainder",
+    ):
+        sub = cs[cs["region"] == label]
+        n = len(sub)
+        cath_mean = float(sub["cath_share"].mean()) if n else float("nan")
+        polen_mean = float(sub["polen_share_1871"].mean()) if n else float("nan")
+        if n >= 2 and sub["polen_share_1871"].std() > 0:
+            corr = float(sub[["cath_share", "polen_share_1871"]].corr().iloc[0, 1])
+        else:
+            corr = None  # undefined when one variable has zero variance
+        rows.append((label, n, corr, cath_mean, polen_mean, 0.0))
+
+    # Full panel row
+    n_full = len(cs)
+    cath_mean_full = float(cs["cath_share"].mean())
+    polen_mean_full = float(cs["polen_share_1871"].mean())
+    corr_full = float(
+        cs[["cath_share", "polen_share_1871"]].corr().iloc[0, 1]
+    )
+
+    def _fmt_corr(c: float | None) -> str:
+        return f"{c:+.3f}" if c is not None else "n/a"
+
+    body = (
+        r"\begin{tabular}{lcccc}" + "\n"
+        + r"\toprule" + "\n"
+        + r"Sub-sample & Counties & Mean cath. & Mean Polen. & corr(cath, polen) \\" + "\n"
+        + r"\midrule" + "\n"
+    )
+    for label, n, corr, cath_mean, polen_mean, _ in rows:
+        body += (
+            f"{label} & {n} & {cath_mean:.1f} & {polen_mean:.1f} & {_fmt_corr(corr)} \\\\\n"
+        )
+    body += (
+        r"\midrule" + "\n"
+        + f"Full panel & {n_full} & {cath_mean_full:.1f} & {polen_mean_full:.1f} & {corr_full:+.3f} \\\\\n"
+        + r"\bottomrule" + "\n"
+        + r"\end{tabular}" + "\n"
+    )
+
+    out = _wrap_table(
+        body,
+        caption=(
+            "Identification support for the religion vs ethnicity "
+            "decomposition: cross-county correlation between the 1871 "
+            "Catholic share and the 1871 Polenpartei vote share, by "
+            "sub-sample"
+        ),
+        label="tab:cath_polen_identification",
+        n_cols=5,
+        notes=(
+            "Each row reports county-level means and the cross-county "
+            "correlation between \\texttt{cath\\_share} (1871 Catholic "
+            "population share) and \\texttt{polen\\_share\\_1871} (1871 "
+            "Polenpartei Reichstag vote share) on the relevant sub-sample. "
+            "The full-panel correlation of $+0.26$ is modest, so the "
+            "continuous decomposition in "
+            "Table~\\ref{tab:continuous_polish_decomposition} has "
+            "identifying content. Within the Polish provinces (Posen, "
+            "Bromberg) the correlation is $+0.93$ -- nearly collinear -- "
+            "so the decomposition cannot tell apart religion from "
+            "ethnicity \\emph{within} that sub-sample. The German "
+            "Catholic counties have zero variance in Polenpartei voting "
+            "(no county in those Regierungsbezirke recorded any Koło "
+            "Polskie vote), so the within-group correlation is "
+            "undefined; these counties contribute only to identifying "
+            "the religion-only coefficient $\\beta_1$. The Protestant "
+            "remainder correlation of $+0.30$ comes from a small number "
+            "of Danzig and Marienwerder counties with non-zero Polish "
+            "vote share but low Catholic share. See "
+            "Figure~\\ref{fig:cath_polen_scatter} in the appendix for "
+            "the corresponding county-level scatter."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
+def conventional_rates_appendix_table(
+    panel: pd.DataFrame,
+    outcomes: Sequence[str] = APPENDIX_OUTCOMES,
+    out_path: Path | None = None,
+) -> str:
+    """Appendix robustness: the two composition-contaminated rates dropped
+    from the main-text headline table.
+
+    Reports the same baseline DiD on the legitimate birth rate (mid-year
+    total-population denominator) and the illegitimacy ratio
+    (illegitimate / total births). Both outcomes mix behavioural fertility
+    with marriage-prevalence composition: ``legitimate_br`` falls
+    mechanically if the population becomes less married even at constant
+    marital fertility, and ``illegitimacy_ratio`` rises mechanically if
+    marriages fall even at constant marital and non-marital fertility.
+    Reported for transparency; the denominator-purified replacements
+    ``gmfr_static_1871`` (within-marriage) and
+    ``illegitimate_br_static_1871`` (non-marital) appear in the main-text
+    headline table.
+    """
+    out_path = out_path or TABLES_DIR / "conventional_rates_appendix.tex"
+    return baseline_did_table(
+        panel,
+        outcomes=outcomes,
+        out_path=out_path,
+        show_carryforward=False,
+        show_ig_pretrends_line=False,
+        caption=(
+            "Composition-contaminated rate outcomes "
+            "(robustness, not headline): legitimate birth rate and "
+            "illegitimacy ratio"
+        ),
+        label="tab:conventional_rates_appendix",
+        extra_note=(
+            "Both outcomes are mechanically affected by marriage-"
+            "prevalence composition: the legitimate birth rate uses a "
+            "total-population denominator that falls when the unmarried "
+            "share rises, and the illegitimacy ratio rises mechanically "
+            "if marriages decline at constant marital and non-marital "
+            "fertility behaviour. The headline table replaces these "
+            "with denominator-purified static-1871 rates: "
+            "$\\text{GMFR}^{1871}$ (per 1k married women 15--49, "
+            "denominator pinned at 1871) and the symmetric "
+            "$\\text{Illeg.\\ FR}^{1871}$ (per 1k unmarried women "
+            "15--49, denominator pinned at 1871). The composition-"
+            "free versions isolate fertility behaviour on the marital "
+            "and non-marital margins respectively."
+        ),
+    )
+
+
 def baseline_did_indices_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = ("I_f", "I_g", "I_m", "I_h"),
@@ -992,12 +1185,10 @@ def baseline_did_indices_table(
 
 def kulturkampf_phase_sensitivity_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = (
-        "cbr", "legitimate_br", "gmfr_static_1871",
-        "illegitimacy_ratio", "general_marriage_rate", "I_g",
-    ),
+    outcomes: Sequence[str] = MAIN_OUTCOMES,
     cutoffs: Sequence[int] = (1871, 1872, 1873, 1874, 1875, 1876),
     placebo_cutoff: int | None = 1870,
+    sample_year_range: tuple[int, int] = (1862, 1890),
     out_path: Path | None = None,
     digits_coef: int = 4,
     digits_se: int = 4,
@@ -1040,6 +1231,7 @@ def kulturkampf_phase_sensitivity_table(
         outcomes=outcomes,
         cutoffs=cutoffs,
         placebo_cutoff=placebo_cutoff,
+        sample_year_range=sample_year_range,
     )
     if res.empty:
         raise RuntimeError(
@@ -1066,9 +1258,13 @@ def kulturkampf_phase_sensitivity_table(
     def _fmt_se(row: pd.Series) -> str:
         return f"({row['se']:.{digits_se}f})"
 
-    # Header
+    # Header. Use centred ``c`` columns rather than siunitx ``S`` columns:
+    # the cells contain LaTeX (signed coefficients, significance stars,
+    # parenthesised standard errors) that siunitx cannot parse as bare
+    # numbers, which produced "Invalid numerical input" errors when the
+    # table was compiled.
     n_cols = len(ordered_cutoffs)
-    col_spec = "l" + "S" * n_cols
+    col_spec = "l" + "c" * n_cols
     head_year = " & ".join(
         f"{{{int(c)}{'$^{P}$' if c == placebo else ''}}}"
         for c in ordered_cutoffs
@@ -1135,11 +1331,19 @@ def kulturkampf_phase_sensitivity_table(
 
     body = "\n".join(body_lines)
 
+    sample_note = (
+        rf"Sample restricted to {sample_year_range[0]}--{sample_year_range[1]} "
+        r"(headline Kulturkampf window) so estimates are not contaminated "
+        r"by the post-1887 rollback recovery. "
+        if sample_year_range is not None
+        else ""
+    )
     note = (
         r"\textit{Notes:} Two-way fixed-effects estimates of "
         r"$Y_{it} = \beta\,(\text{cath\_share}_i \times \mathbb{1}["
         r"\text{Year} \geq c]) + \alpha_i + \delta_t + \varepsilon_{it}$ "
-        r"for each candidate cutoff $c$. County and year fixed effects "
+        r"for each candidate cutoff $c$. " + sample_note +
+        r"County and year fixed effects "
         r"throughout; standard errors clustered at the county level in "
         r"parentheses. The six non-placebo cutoffs correspond to "
         r"distinct legislative phases of the Kulturkampf: \textbf{1871} "
@@ -1169,7 +1373,7 @@ def kulturkampf_phase_sensitivity_table(
 
     out = (
         "% Auto-generated by src/analysis/latex_tables.py -- do not edit by hand.\n"
-        "% LaTeX preamble required: \\usepackage{booktabs, threeparttable, siunitx}\n"
+        "% LaTeX preamble required: \\usepackage{booktabs, threeparttable, makecell}\n"
         "\\begin{table}[htbp]\n"
         "\\centering\n"
         "\\footnotesize\n"
@@ -1335,7 +1539,7 @@ def channels_table(panel: pd.DataFrame, out_path: Path | None = None) -> str:
 
 def polish_german_table(
     panel: pd.DataFrame,
-    outcomes: Sequence[str] = ("cbr", "I_g", "gmfr", "general_marriage_rate"),
+    outcomes: Sequence[str] = MAIN_OUTCOMES,
     out_path: Path | None = None,
 ) -> str:
     """Heterogeneity by sub-region (Polish vs German Catholic vs Protestant).
@@ -2802,6 +3006,192 @@ def falsifications_table(
     return out
 
 
+def continuous_polish_decomposition_table(
+    panel: pd.DataFrame,
+    outcomes: Sequence[str] = MAIN_OUTCOMES,
+    out_path: Path | None = None,
+) -> str:
+    """Continuous Polish-mobilisation decomposition table.
+
+    Replaces the binary ``Polish`` dummy in ``falsifications_table``
+    Panel C with the continuous 1871 Polenpartei vote share. The
+    coefficient on ``cath_share x Post`` is then identified off
+    counties with zero Polish-party voting -- the German-Catholic
+    heartland -- and is the pure Catholic-religion effect with the
+    ethnic-Polish channel netted out by the second interaction.
+    """
+    out_path = out_path or TABLES_DIR / "continuous_polish_decomposition.tex"
+
+    cols = [run_continuous_polish_decomposition(panel, outcome=o) for o in outcomes]
+    n = len(cols)
+
+    def _stars(p: float) -> str:
+        return ("$^{***}$" if p < 0.01 else "$^{**}$" if p < 0.05
+                else "$^{*}$" if p < 0.10 else "")
+
+    cath_coefs = " & ".join(
+        f"{c['cath_coef']:+.4f}{_stars(c['cath_p'])}" for c in cols
+    )
+    cath_ses = " & ".join(f"({c['cath_se']:.4f})" for c in cols)
+    polen_coefs = " & ".join(
+        f"{c['polen_coef']:+.4f}{_stars(c['polen_p'])}" for c in cols
+    )
+    polen_ses = " & ".join(f"({c['polen_se']:.4f})" for c in cols)
+    obs = " & ".join(f"{c['n']:,}" for c in cols)
+
+    body = (
+        f"\\begin{{tabular}}{{l*{{{n}}}{{c}}}}\n"
+        "\\toprule\n"
+        "Dependent variable: & "
+        + " & ".join(_outcome_label(o) for o in outcomes)
+        + r" \\" + "\n"
+        " & " + " & ".join(f"({i+1})" for i in range(n)) + r" \\" + "\n"
+        "\\midrule\n"
+        f"CathShare $\\times$ Post & {cath_coefs} \\\\\n"
+        f" & {cath_ses} \\\\\n"
+        "\\addlinespace\n"
+        f"PolenShare$_{{1871}}$ $\\times$ Post & {polen_coefs} \\\\\n"
+        f" & {polen_ses} \\\\\n"
+        "\\midrule\n"
+        f"Observations & {obs} \\\\\n"
+        "County FE & " + " & ".join(["Yes"] * n) + r" \\" + "\n"
+        "Year FE & " + " & ".join(["Yes"] * n) + r" \\" + "\n"
+        "\\bottomrule\n"
+        "\\end{tabular}\n"
+    )
+
+    out = _wrap_table(
+        body,
+        caption=(
+            "Continuous Polish-mobilisation decomposition: separating "
+            "Catholic religion from Polish ethnicity"
+        ),
+        label="tab:continuous_polish_decomposition",
+        n_cols=n + 1,
+        notes=(
+            "Each column estimates a single regression with two "
+            "interactions: $\\text{CathShare}_i \\times \\text{Post}_t$ "
+            "and $\\text{PolenShare}_i \\times \\text{Post}_t$, where "
+            "$\\text{PolenShare}_i$ is the Polish-nationalist party "
+            "(Ko\\l{}o Polskie) vote share in the 1871 Reichstag "
+            "election. The CathShare coefficient is identified off "
+            "counties with zero Polish-party vote share -- the "
+            "German-Catholic heartland of Rheinland, Westphalia, "
+            "Bavarian-Silesia -- and isolates the religion-only "
+            "channel. The PolenShare coefficient is the additional "
+            "ethnic-Polish response per percentage point of 1871 "
+            "Polenpartei vote share, capturing the overlapping "
+            "Germanization regime (1872 Schulaufsichtsgesetz, "
+            "1885--86 Polenausweisungen, 1886 Settlement Commission). "
+            "Sample 1862--1890, two-way fixed effects, standard errors "
+            "clustered at the county level. "
+            "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
+def kulturkampf_vs_polenpolitik_timing_table(
+    panel: pd.DataFrame,
+    outcomes: Sequence[str] = MAIN_OUTCOMES,
+    out_path: Path | None = None,
+) -> str:
+    """Timing-decomposition table on the Polish sub-sample.
+
+    Splits the post-1873 indicator into three windows -- Kulturkampf
+    enforcement (1873--1878), rollback (1880--1887), and post-rollback
+    (1888+) -- on the Polish counties only. The Kulturkampf hypothesis
+    predicts the enforcement coefficient is largest. The Polenpolitik
+    hypothesis predicts the post-rollback coefficient is largest
+    (Polenausweisungen 1885--86, Settlement Commission 1886+).
+    """
+    out_path = out_path or TABLES_DIR / "kulturkampf_vs_polenpolitik_timing.tex"
+
+    cols = [run_kulturkampf_vs_polenpolitik_timing(panel, outcome=o) for o in outcomes]
+    n = len(cols)
+
+    def _stars(p: float) -> str:
+        return ("$^{***}$" if p < 0.01 else "$^{**}$" if p < 0.05
+                else "$^{*}$" if p < 0.10 else "")
+
+    def _coef_row(key_coef: str, key_se: str, key_p: str, label: str) -> str:
+        coefs = " & ".join(
+            f"{c[key_coef]:+.4f}{_stars(c[key_p])}" for c in cols
+        )
+        ses = " & ".join(f"({c[key_se]:.4f})" for c in cols)
+        return (
+            f"{label} & {coefs} \\\\\n"
+            f" & {ses} \\\\\n"
+        )
+
+    body = (
+        f"\\begin{{tabular}}{{l*{{{n}}}{{c}}}}\n"
+        "\\toprule\n"
+        "Dependent variable: & "
+        + " & ".join(_outcome_label(o) for o in outcomes)
+        + r" \\" + "\n"
+        " & " + " & ".join(f"({i+1})" for i in range(n)) + r" \\" + "\n"
+        "\\midrule\n"
+        + _coef_row(
+            "enf_coef", "enf_se", "enf_p",
+            r"CathShare $\times$ Kulturkampf enforcement (1873--78)",
+        )
+        + "\\addlinespace\n"
+        + _coef_row(
+            "rollback_coef", "rollback_se", "rollback_p",
+            r"CathShare $\times$ Rollback (1880--87)",
+        )
+        + "\\addlinespace\n"
+        + _coef_row(
+            "postroll_coef", "postroll_se", "postroll_p",
+            r"CathShare $\times$ Post-rollback (1888--90)",
+        )
+        + "\\midrule\n"
+        + "Observations & "
+        + " & ".join(f"{c['n']:,}" for c in cols) + r" \\" + "\n"
+        + "County FE & " + " & ".join(["Yes"] * n) + r" \\" + "\n"
+        + "Year FE & " + " & ".join(["Yes"] * n) + r" \\" + "\n"
+        + "Sample & "
+        + " & ".join(["Polish (POS/BRO)"] * n) + r" \\" + "\n"
+        "\\bottomrule\n"
+        "\\end{tabular}\n"
+    )
+
+    out = _wrap_table(
+        body,
+        caption=(
+            "Differential timing on the Polish sub-sample: "
+            "Kulturkampf enforcement vs Polenpolitik escalation"
+        ),
+        label="tab:kulturkampf_vs_polenpolitik_timing",
+        n_cols=n + 1,
+        notes=(
+            "Sample restricted to the 24 counties of Regierungsbezirke "
+            "Posen (POS) and Bromberg (BRO). Each column splits the "
+            "post-1873 window into three legislative phases: "
+            "\\emph{enforcement} (1873--1878), when the May Laws, "
+            "Brotkorbgesetz, and episcopal expulsions were in force; "
+            "\\emph{rollback} (1880--1887), when the Kulturkampf laws "
+            "were progressively repealed under Leo XIII; and "
+            "\\emph{post-rollback} (1888--1890), after most Kulturkampf "
+            "legislation had been struck down. The Polenpolitik regime, "
+            "by contrast, escalates across these windows: the 1885--86 "
+            "\\emph{Polenausweisungen} (mass expulsion of $\\approx 32{,}000$ "
+            "Polish-nationality residents) and the 1886 Prussian "
+            "Settlement Commission's German-colonisation programme "
+            "fall in the rollback and post-rollback windows. The "
+            "Kulturkampf hypothesis predicts the enforcement coefficient "
+            "is the largest in absolute value; the Polenpolitik "
+            "hypothesis predicts the post-rollback coefficient is the "
+            "largest. Standard errors clustered at the county level. "
+            "$^{*}\\,p<0.10$, $^{**}\\,p<0.05$, $^{***}\\,p<0.01$."
+        ),
+    )
+    _write(out_path, out)
+    return out
+
+
 def heterogeneity_table(
     panel: pd.DataFrame,
     outcomes: Sequence[str] = ("cbr", "general_marriage_rate", "I_g"),
@@ -3848,8 +4238,30 @@ def _normal_cdf(z: float) -> float:
 # Entry point
 # ---------------------------------------------------------------------------
 
-def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Path]:
-    """Generate every table in the suite. Returns the paths written."""
+def generate_all(
+    panel: pd.DataFrame,
+    out_dir: Path = TABLES_DIR,
+    sample_year_range: tuple[int, int] | None = (1862, 1890),
+) -> Iterable[Path]:
+    """Generate every table in the suite. Returns the paths written.
+
+    ``sample_year_range`` clips the panel to the headline Kulturkampf
+    window before any table is built, so every downstream estimator sees
+    the same sample. The on-disk panel extends to 1910 to support
+    auxiliary outcomes (election-year cross-sections, post-rollback
+    diagnostics), but the headline DiD, event study and phase-sensitivity
+    estimates all live in 1862--1890; including the post-1887 rollback
+    recovery contaminates the post indicator with the late-empire
+    fertility decline. Pass ``None`` to disable.
+    """
+    if sample_year_range is not None:
+        y_lo, y_hi = sample_year_range
+        panel = panel[panel["Year"].between(y_lo, y_hi)].copy()
+        logger.info(
+            "generate_all: restricted panel to %d--%d (%d obs)",
+            y_lo, y_hi, len(panel),
+        )
+
     written: list[Path] = []
     written.append(out_dir / "headline_summary.tex")
     headline_summary_table(panel, out_path=written[-1])
@@ -3865,6 +4277,9 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "baseline_did.tex")
     baseline_did_table(panel, out_path=written[-1])
+
+    written.append(out_dir / "conventional_rates_appendix.tex")
+    conventional_rates_appendix_table(panel, out_path=written[-1])
 
     written.append(out_dir / "baseline_did_indices.tex")
     baseline_did_indices_table(panel, out_path=written[-1])
@@ -3919,6 +4334,75 @@ def generate_all(panel: pd.DataFrame, out_dir: Path = TABLES_DIR) -> Iterable[Pa
 
     written.append(out_dir / "falsifications.tex")
     falsifications_table(panel, out_path=written[-1])
+
+    # Sharper Polish-vs-religion identification: continuous Polenpartei
+    # interaction (within-Polish-province variation) and a timing
+    # decomposition that contrasts Kulturkampf enforcement vs Polenpolitik
+    # escalation on the Polish sub-sample.
+    written.append(out_dir / "continuous_polish_decomposition.tex")
+    continuous_polish_decomposition_table(panel, out_path=written[-1])
+
+    # Identification-support appendix: correlation table + scatter plot
+    # documenting where the religion-vs-ethnicity decomposition has
+    # identifying content (cross-province) and where it does not
+    # (within Polish provinces).
+    written.append(out_dir / "cath_polen_identification.tex")
+    cath_polen_identification_table(panel, out_path=written[-1])
+    try:
+        from src.visualization.plots import plot_cath_polen_scatter
+        from pathlib import Path as _Path
+        fig_dir = _Path(out_dir).parent / "figures"
+        fig_dir.mkdir(parents=True, exist_ok=True)
+        plot_cath_polen_scatter(
+            panel,
+            savepath=str(fig_dir / "fig_cath_polen_scatter.png"),
+        )
+        logger.info("Wrote %s", fig_dir / "fig_cath_polen_scatter.png")
+    except Exception as exc:
+        logger.warning("Skipped cath/polen scatter: %s", exc)
+
+    written.append(out_dir / "kulturkampf_vs_polenpolitik_timing.tex")
+    kulturkampf_vs_polenpolitik_timing_table(panel, out_path=written[-1])
+
+    # Polenausweisungen event study on the Polish sub-sample: a clean
+    # break at 1887+ (not at 1873) is evidence that the apparent Polish-
+    # county response is the Germanization regime, not the Kulturkampf.
+    try:
+        from src.visualization.plots import plot_event_study
+        es_pol_cbr = run_polenausweisungen_event_study(panel, outcome="cbr")
+        es_pol_mr = run_polenausweisungen_event_study(
+            panel, outcome="general_marriage_rate",
+        )
+        from pathlib import Path as _Path
+        fig_dir = _Path(out_dir).parent / "figures"
+        fig_dir.mkdir(parents=True, exist_ok=True)
+        plot_event_study(
+            es_pol_cbr["coefs"], ref_year=es_pol_cbr["ref_year"],
+            title=("Polenausweisungen event study, Polish sub-sample (CBR): "
+                   "shock at 1885--86, not 1873"),
+            ylabel="Coefficient on CathShare $\\times$ Year (CBR)",
+            enforcement_years=(1873, 1878),
+            rollback_years=(1885, 1887),  # Polenpolitik escalation window
+            end_year=1890,
+            savepath=str(fig_dir / "fig_polenausweisungen_es_cbr.png"),
+        )
+        plot_event_study(
+            es_pol_mr["coefs"], ref_year=es_pol_mr["ref_year"],
+            title=("Polenausweisungen event study, Polish sub-sample "
+                   "(marriage rate): shock at 1885--86, not 1873"),
+            ylabel="Coefficient on CathShare $\\times$ Year (marriage rate)",
+            enforcement_years=(1873, 1878),
+            rollback_years=(1885, 1887),
+            end_year=1890,
+            savepath=str(fig_dir / "fig_polenausweisungen_es_marriage.png"),
+        )
+        logger.info(
+            "Polenausweisungen event study: %d counties, %d obs, ref %d",
+            es_pol_cbr["n_counties"], es_pol_cbr["n_obs"],
+            es_pol_cbr["ref_year"],
+        )
+    except Exception as exc:
+        logger.warning("Skipped Polenausweisungen event study: %s", exc)
 
     written.append(out_dir / "heterogeneity.tex")
     heterogeneity_table(panel, out_path=written[-1])

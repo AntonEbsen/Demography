@@ -58,6 +58,101 @@ def _add_treatment_year_line(ax, year: int = KULTURKAMPF_TREATMENT_YEAR,
                alpha=alpha, label=label, zorder=3)
 
 
+def plot_cath_polen_scatter(
+    panel: pd.DataFrame,
+    polish_rbs: tuple[str, ...] = ("POS", "BRO"),
+    german_cath_rbs: tuple[str, ...] = (
+        "KOL", "KOB", "TRI", "AAC", "OPP", "MUN",
+    ),
+    savepath: str | None = None,
+):
+    """Cross-county scatter of the 1871 Catholic share against the 1871
+    Polish-nationalist party (Koło Polskie) vote share, coloured by
+    Regierungsbezirk grouping.
+
+    The figure visualises the identification structure of the religion-vs-
+    ethnicity decomposition in Table~\\ref{tab:continuous_polish_decomposition}.
+    Three clusters are visible:
+
+    - **German Catholic** counties (Rhineland, Westphalia, Bavarian-Silesia)
+      cluster at high cath_share / zero polen_share. They identify the
+      religion-only coefficient $\\beta_1$ off the contrast with the
+      Protestant remainder.
+    - **Polish Catholic** counties (Posen, Bromberg) cluster at high
+      cath_share / high polen_share. Within this cluster the two
+      variables are nearly perfectly correlated.
+    - **Protestant remainder** counties sit along the bottom at low
+      cath_share / low polen_share.
+
+    The cross-cluster contrast identifies the ethnic-Polish coefficient
+    $\\beta_2$; the within-Polish-cluster collinearity is what makes
+    a within-Posen religion-vs-ethnicity statement impossible.
+    """
+    cs = panel.dropna(subset=["polen_share_1871"]).drop_duplicates("Code").copy()
+
+    def _cls(rb: str) -> str:
+        if rb in polish_rbs:
+            return "Polish (POS, BRO)"
+        if rb in german_cath_rbs:
+            return "German Catholic"
+        return "Protestant remainder"
+
+    cs["region"] = cs["Rb"].apply(_cls)
+
+    fig, ax = plt.subplots(figsize=(7.5, 6))
+    palette = {
+        "Polish (POS, BRO)": COLORS["catholic"],
+        "German Catholic": COLORS["kulturkampf_saturated"],
+        "Protestant remainder": COLORS["protestant"],
+    }
+    markers = {
+        "Polish (POS, BRO)": "s",
+        "German Catholic": "o",
+        "Protestant remainder": ".",
+    }
+    sizes = {
+        "Polish (POS, BRO)": 70,
+        "German Catholic": 55,
+        "Protestant remainder": 18,
+    }
+    alphas = {
+        "Polish (POS, BRO)": 0.85,
+        "German Catholic": 0.75,
+        "Protestant remainder": 0.55,
+    }
+
+    for label in (
+        "Protestant remainder",  # plot first so it sits behind
+        "German Catholic",
+        "Polish (POS, BRO)",
+    ):
+        sub = cs[cs["region"] == label]
+        if sub.empty:
+            continue
+        ax.scatter(
+            sub["cath_share"], sub["polen_share_1871"],
+            s=sizes[label], marker=markers[label],
+            color=palette[label], alpha=alphas[label],
+            edgecolor="white", linewidth=0.5,
+            label=f"{label} (n={len(sub)})",
+        )
+
+    ax.axhline(0, color="grey", linewidth=0.6, linestyle=":")
+    ax.axvline(50, color="grey", linewidth=0.6, linestyle=":")
+
+    ax.set_xlabel("1871 Catholic share (\\%)", fontsize=11)
+    ax.set_ylabel("1871 Polenpartei vote share (\\%)", fontsize=11)
+    ax.set_xlim(-2, 102)
+    ax.set_ylim(-3, 100)
+    ax.legend(loc="upper left", frameon=True, fontsize=9)
+    ax.grid(alpha=0.25)
+
+    plt.tight_layout()
+    if savepath:
+        fig.savefig(savepath, dpi=300, bbox_inches="tight")
+    return fig, ax
+
+
 def plot_population_and_migration(
     panel: pd.DataFrame,
     enforcement_years: tuple[int, int] = (1871, 1878),
@@ -376,6 +471,7 @@ def plot_event_study(
     ylabel: str = "Coefficient on CathShare × Year",
     enforcement_years: tuple[int, int] = (1871, 1878),
     rollback_years: tuple[int, int] = (1880, 1887),
+    end_year: int = 1890,
     savepath: str = None,
 ):
     """
@@ -396,7 +492,12 @@ def plot_event_study(
         Reference (omitted) event-study year, marked with a diamond.
     enforcement_years, rollback_years : (int, int)
         Inclusive year ranges for the two shaded policy windows.
+    end_year : int
+        Last year shown on the x-axis; coefficients are clipped to
+        ``Year <= end_year`` before plotting.
     """
+    coefs = coefs[coefs["Year"] <= end_year].copy()
+
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Two-phase Kulturkampf shading.
@@ -434,6 +535,7 @@ def plot_event_study(
         marker="D", label=f"Reference year ({ref_year})",
     )
 
+    ax.set_xlim(coefs["Year"].min() - 0.5, end_year + 0.5)
     ax.set_xlabel("Year", fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
     ax.legend(loc="best", frameon=True, fontsize=9)
@@ -453,6 +555,7 @@ def plot_event_study_cbr_ig(
     ref_year: int = 1872,
     enforcement_years: tuple[int, int] = (1871, 1878),
     rollback_years: tuple[int, int] = (1880, 1887),
+    end_year: int = 1890,
     savepath: str | None = None,
 ):
     """
@@ -495,7 +598,13 @@ def plot_event_study_cbr_ig(
         Inclusive year ranges for the two shaded policy windows.
     savepath : str, optional
         Where to write the PNG.
+    end_year : int
+        Last year shown on the x-axis; coefficients are clipped to
+        ``Year <= end_year`` before plotting.
     """
+    coefs_cbr = coefs_cbr[coefs_cbr["Year"] <= end_year].copy()
+    coefs_ig = coefs_ig[coefs_ig["Year"] <= end_year].copy()
+
     fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharex=True)
 
     panels = [
@@ -556,6 +665,7 @@ def plot_event_study_cbr_ig(
                 bbox=dict(boxstyle="round", facecolor="white",
                           edgecolor="grey", alpha=0.85),
             )
+        ax.set_xlim(coefs["Year"].min() - 0.5, end_year + 0.5)
         ax.set_xlabel("Year", fontsize=11)
         ax.set_ylabel(ylabel, fontsize=10)
         ax.grid(axis="y", alpha=0.3)
