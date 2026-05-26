@@ -494,6 +494,21 @@ def compute_coale_indices(
             df["Birlegtot"] / (W * Fbar_mar_static),
             np.nan,
         )
+        # Symmetric static-1871 illegitimate-fertility rate. Illegitimate
+        # births per 1{,}000 *unmarried* women 15-49 with the unmarried
+        # share fixed at its 1871 county-specific level. This is the
+        # mechanical analogue of gmfr_static_1871 on the non-marital
+        # margin: it purges (i) the total-population denominator that
+        # contaminates `illegitimate_br` and (ii) the marriage-prevalence
+        # composition shock that contaminates the `illegitimacy_ratio`.
+        # If the Kulturkampf moved marriage formation, only this static
+        # rate isolates the behavioural non-marital fertility response.
+        U_static_1871 = (1.0 - mu_1871_series).clip(lower=0.0) * W
+        df["illegitimate_br_static_1871"] = np.where(
+            U_static_1871 > 0,
+            df["Birbastot"] / U_static_1871 * 1000.0,
+            np.nan,
+        )
     # General fertility rate (GFR): total births per 1,000 women aged
     # 15-49 mid-year. The standard demographic textbook fertility
     # measure (Newell 1988): strips out the under-15 / over-49 / male

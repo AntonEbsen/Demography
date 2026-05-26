@@ -56,6 +56,14 @@ PANEL_SCHEMA = DataFrameSchema(
         # responding to the Kulturkampf marriage-formation shock.
         "Ig_static_1871": Column(float, Check.in_range(0, 1.5), nullable=True),
         "gmfr_static_1871": Column(float, Check.in_range(0, 600), nullable=True),
+        # Symmetric static-1871 illegitimate-fertility rate: illegitimate
+        # births per 1,000 *unmarried* women 15-49 with the unmarried share
+        # locked at the 1871 county-specific baseline. The non-marital
+        # analogue of gmfr_static_1871; purges marriage-prevalence
+        # composition from the illegitimacy outcome.
+        "illegitimate_br_static_1871": Column(
+            float, Check.in_range(0, 200), nullable=True
+        ),
         # Headline IMR: total infant deaths / total live births x 1000.
         # 1875+ only (Galloway's Dth<1bas column starts in 1875).
         "infant_mortality_rate": Column(
