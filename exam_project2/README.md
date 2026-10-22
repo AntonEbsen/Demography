@@ -1,27 +1,40 @@
-# The Kulturkampf and Catholic Fertility in Prussia
+# Bismarck’s Lost Battle: code and data
 
-This project analyzes whether Bismarck's anti-Catholic Kulturkampf legislation (1872–1878) affected the Catholic–Protestant fertility differential in Prussian counties. It leverages the Galloway Prussia Database (1861–1914) and the iPEHD (1871) dataset.
+The submitted course paper covers **1867–1890**. The rolling analysis has since expanded, including a default **1862–1910** panel. Current outputs are not an exact reproduction of the submitted manuscript.
 
-📑 **[Data Appendix](DATA_APPENDIX.md)** — variable definitions, formulas, sources, sample-construction rules, and estimation specifications.
+Start with the [paper and project page](https://www.antonebsen.com/en/projects/demography-project), [Figure 4.1 validation report](reports/figure_4_1_validation.md), or [evolving data appendix](DATA_APPENDIX.md).
 
-## Project Structure
+## Reproduce the narrow validation
 
-- `data/`: Contains raw data and processed datasets.
-- `notebooks/`: Jupyter notebooks for interactive analysis.
-- `src/`: Python source code organized by concern:
-  - `data/`: Loading and harmonising raw files.
-  - `analysis/`: Running regressions and exploratory data analysis.
-  - `visualization/`: Plotting trends and spatial mapping.
-- `outputs/`: Output figures and tables from the analysis.
-- `reports/`: Research reports or project write-ups.
-- `scratch/`: For temporary scripts and explorations.
-
-## Setup
-
-It is recommended to run this project in a dedicated Python environment.
+From the repository root, using a separate environment with Python 3.12 or newer:
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
+# Activate .venv using your shell's activation command.
+python -m pip install -r exam_project2/requirements-validation.txt
+python -m unittest discover -s tests -p test_figure_4_1_validation.py -v
+cd exam_project2
+python -m src.validation.figure_4_1
 ```
 
-You can execute the entire pipeline by running the cells in `notebooks/exam_project2.ipynb` or by exploring the `src/exam_project_notebook.py` file.
+The check reads source workbooks without editing them and writes JSON results, an input-hash manifest, runtime versions, and a reproduced PNG under `outputs/validation/figure_4_1/`. It reports a known prose discrepancy: **92/392 = 23.47%**, rather than approximately 22%, of counties have Catholic shares between 20% and 80%. The submitted PDF is unchanged. Optional `--paper /path/to/submitted.pdf` verifies the recorded PDF hash.
+
+## Broader analysis
+
+From the repository root:
+
+```bash
+python -m pip install -e "./exam_project2[dev]"
+```
+
+The broader package uses minimum-version constraints, not a fully locked environment. It has additional data and optional-dependency requirements; installation is not a claim that every notebook or historical output has been reproduced. See [notebook roles](notebooks/README.md), [test scope](../tests/README.md), and the appendix before running the evolving pipeline.
+
+## Structure
+
+- `data/raw/`: third-party sources; preserve originals and source conditions.
+- `data/processed/`: generated panels, not a frozen manuscript dataset.
+- `src/data/`, `src/analysis/`, `src/visualization/`: loaders, analysis, and plots.
+- `src/validation/`: narrow source-level manuscript checks.
+- `notebooks/`: exploratory and analytical notebooks.
+- `outputs/`: results, including separate validation artifacts.
+- `reports/`: explanatory notes and validation reports.

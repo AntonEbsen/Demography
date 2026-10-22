@@ -1,0 +1,25 @@
+name: Submitted figure validation
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+jobs:
+  figure-4-1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: exam_project2/requirements-validation.txt
+      - run: python -m pip install -r exam_project2/requirements-validation.txt
+      - run: python -m unittest discover -s tests -p test_figure_4_1_validation.py -v
+      - name: Reproduce submitted Figure 4.1 from raw workbooks
+        working-directory: exam_project2
+        run: python -m src.validation.figure_4_1 --output-dir "$RUNNER_TEMP/figure-4-1"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: figure-4-1-validation
+          path: ${{ runner.temp }}/figure-4-1

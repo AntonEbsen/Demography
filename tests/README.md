@@ -1,21 +1,17 @@
-# Automated Test Suite
+# Test scope
 
-This directory contains the verification suite for the research projects.
+Software tests do not validate every empirical result or causal identification.
 
-## Test Coverage
+## Submitted Figure 4.1
 
-- `test_exam_project2.py`: 13 specialized tests for the Kulturkampf analysis, including:
-  - Data integrity checks (no negative birth rates, year ranges).
-  - Econometric validation (correct DiD coefficients on dummy data).
-  - Merge consistency (ensuring no county-code loss during processing).
+From the repository root, after installing `exam_project2/requirements-validation.txt`:
 
-## Execution
-
-Tests are run automatically on every GitHub push via **GitHub Actions**. To run locally:
 ```bash
-pytest tests/
+python -m unittest discover -s tests -p test_figure_4_1_validation.py -v
 ```
 
-## Significance
+These cover column normalization, equivalent/conflicting workbook variants, county weighting, thresholds, invalid/duplicate inputs, actual-year filtering, and manuscript comparison precision. The separate `Submitted figure validation` workflow runs the real-data reproduction and uploads artifacts. See the [validation report](../exam_project2/reports/figure_4_1_validation.md) for the known prose discrepancy.
 
-Automated testing in a research repository signals a "production-grade" commitment to accuracy and structural integrity, crucial for peer review and replication.
+## Broader tests
+
+`test_exam_project2.py` and other modules exercise parts of the evolving analysis, including synthetic-data behavior. After installing relevant package/development dependencies, run `pytest tests/` to discover them. Test counts and workflow coverage change; inspect `.github/workflows/` rather than assuming every test runs on every push. Passing synthetic tests alone does not establish reproduction of submitted tables.

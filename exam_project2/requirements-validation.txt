@@ -1,0 +1,7 @@
+# Narrow Figure 4.1 check, independent of the full regression/GIS environment.
+# Tested locally with Python 3.14; dedicated CI uses Python 3.12.
+numpy==2.4.1
+pandas==2.3.3
+matplotlib==3.10.8
+openpyxl==3.1.5
+xlrd==2.0.2
