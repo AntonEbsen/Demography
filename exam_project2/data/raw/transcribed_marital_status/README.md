@@ -3,10 +3,12 @@
 This folder holds the CSV templates and ingest infrastructure for the
 Galloway 1994 GMFR replication. The denominator (married women aged
 15–49) must be transcribed from *Preußische Statistik* directly because
-the populationspast.org electronic Galloway database includes the
+the electronic [Galloway Prussia Database](https://www.patrickrgalloway.com/prussia.htm) includes the
 marital-status table only for 1871 (`STA1871.XLS`).
 
 ## Source-volume mapping (confirmed from Galloway 2007 *Description Tables*, Table 4, p. 5)
+
+**Validation status:** the volume mappings, age ranges, transcription rules, and denominator claims below were not audited by the Figure 4.1 check. This is later exploratory transcription documentation, not a certified source appendix for the submitted paper. Resolve the differing part numbers in the mapping and citation sections against the actual scanned title/table pages before transcribing or citing them; do not infer that a 15–44 cell measures 15–49.
 
 | Census | *Preußische Statistik* volume | Per-Kreis cell available |
 |---|---|---|

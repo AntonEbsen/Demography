@@ -1,87 +1,38 @@
-# Demography & Economics Research Repository
-[![Python Tests](https://github.com/AntonEbsen/Demography/actions/workflows/test.yml/badge.svg)](https://github.com/AntonEbsen/Demography/actions/workflows/test.yml)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AntonEbsen/Demography/main?urlpath=lab)
+# Historical demography: research code and coursework
 
-Welcome to the research repository for the **MSc Economics - Demography** course at the University of Copenhagen. This repository hosts two primary research projects exploring the intersection of institutions and demography.
+Anton Meier Ebsen Jørgensen · MSc student in Economics, University of Copenhagen
 
----
+## Bismarck’s Lost Battle
 
-## 🏛️ Project 1: The "Iron & Altar" (Kulturkampf)
-**Institutional Conflict and the Demographic Transition in 19th-Century Prussia**
+**Marriage, Fertility, and the Kulturkampf in Prussia, 1867–1890** is a completed demography course paper submitted on 29 May 2026, not a peer-reviewed publication.
 
-- **🌐 Digital Monograph:** [https://AntonEbsen.github.io/Demography/kulturkampf](https://AntonEbsen.github.io/Demography/kulturkampf)
-- **📁 Research Hub:** [exam_project2/](./exam_project2/)
-- **🛠️ Methodology:** Two-Way Fixed Effects (TWFE), Event Studies, Triple-Differences.
+- [Paper and project overview](https://www.antonebsen.com/en/projects/demography-project)
+- [Submitted paper (PDF)](https://www.antonebsen.com/en/projects/demography-project.pdf)
+- [Research code and setup](exam_project2/README.md)
+- [Figure 4.1 validation: results and discrepancy](exam_project2/reports/figure_4_1_validation.md)
+- [Data appendix for the evolving analysis](exam_project2/DATA_APPENDIX.md)
 
-## 🏭 Project 2: The "Cost of Quality" (Factory Acts) [ARCHIVED]
-**Legislative Shocks to Child Labor and the Fertility Transition in 19th-Century Britain**
+The repository also contains later exploratory extensions, including longer time windows and additional methods. Current notebooks, the digital monograph, and cached outputs are **not a frozen replication package for the submitted paper**. The Figure 4.1 check validates one descriptive figure and related sample counts, not the regressions or causal interpretation.
 
-- **📊 Archived Website:** [archived/portfolio/](archived/portfolio/)
-- **🛠️ Methodology:** Difference-in-Differences (DiD).
+## Repository guide
 
----
+| Directory | Contents |
+|---|---|
+| `exam_project2/` | Data loaders, analysis modules, notebooks, and validation |
+| `kulturkampf_site/` | Digital monograph source; may reflect later extensions |
+| `tests/` | Software checks; see the test README for scope |
+| `lectures/` | Course materials and notes |
+| `translation_of_STATA_code/` | Python translations of econometric examples |
+| `archived/` | Earlier coursework, including the Factory Acts project |
 
-## 📖 Course Information: AØKA08197U Demography
+Third-party data retain their source conditions; the software license does not relicense them. See [data provenance](exam_project2/data/README.md).
 
-**Volume:** 2024/2025  
-**Level:** MSc Economics – Elective Course  
-**Credits:** 7.5 ECTS  
+## AI assistance and responsibility
 
-### 📚 Core Topics
-1. **Fertility**: Measures, economic and social determinants.
-2. **Mortality**: Life tables and economic determinants.
-3. **Demographic Transitions**: Macro/Micro causes and consequences.
-4. **Migration**: Measures and consequences.
+Earlier repository professionalization used the AI coding agent **Antigravity** for the monograph architecture, automation, package structure, Binder configuration, and technical documentation. That acknowledgment is retained; configuration alone is not evidence that every workflow currently works. The author supplied the research specifications, historical interpretation, and domain expertise, and remains responsible for the work.
 
-### 🎯 Learning Outcomes
-- Discuss economic theories of the Demographic Transition.
-- Construct demographic measures using population census and vital statistics.
-- Master methods to analyze interaction between demographic and economic changes.
+The Figure 4.1 validation code and documentation cleanup were developed with Codex assistance. Automated tests are not evidence of causal validity.
 
----
+## Contact
 
-## 🛠️ Repository Structure
-
-- `exam_project2/`: Main research project files, including data, analysis, and DVC pipeline.
-- `kulturkampf_site/`: Astro-based digital monograph and research hub.
-- `lectures/`: Course lecture materials and notes.
-- `translation_of_STATA_code/`: Python implementations of econometric models originally in STATA.
-- `archived/`: Legacy projects and archived code.
-
----
-
-## 📫 Contact
-
-**Anton Meier Ebsen Jørgensen**  
-MSc Student, Economics @ University of Copenhagen  
-**Email:** anton.ebsen@gmail.com
-
----
-
-## 🤖 AI Transparency & Collaboration
-In the interest of academic integrity and digital transparency, this repository was professionalized with the assistance of an **AI Coding Agent (Antigravity)**. 
-
-While the econometric specifications, historical interpretation, and demographic domain expertise were provided by the author, the AI was utilized as a technical research partner for:
-- **Monograph Architecture**: Implementing the Astro-based digital monograph and high-fidelity SVG components.
-- **CI/CD & Automation**: Configuring GitHub Actions, unit tests, and the installable Python package structure.
-- **Reproducibility**: Developing the Binder cloud-environment and Mermaid data lineage.
-- **Professionalization**: Drafting technical documentation and optimizing repo-wide PWA/SEO performance.
-
----
-
-## 👨‍🔬 Author Profile: Anton Meier Ebsen Jørgensen
-**MSc Student in Economics | University of Copenhagen**
-
-I am a quantitative researcher specializing in **Historical Demography** and **Institutional Economics**. My work focuses on using high-granularity archival data to understand how state-building and institutional shocks drive long-run demographic transitions.
-
-### 🎯 Research Interests
-- **Secularization**: The impact of institutional religious shifts on family limitation.
-- **Human Capital**: The "Quantity-Quality" trade-off during the industrial revolution.
-- **Prussian Economic History**: Regional development and bureaucratic expansion in the 19th century.
-
-### 🚀 The PhD Quest
-I am currently developing this repository as a flagship demonstration of my research capabilities for **PhD applications** in 2026. If you are a recruiter, professor, or fellow researcher interested in the intersection of history and econometrics, I would love to connect.
-
-- **LinkedIn:** [Anton Ebsen](https://linkedin.com/in/antonebsen)
-- **Portfolio:** [https://AntonEbsen.github.io/Demography](https://AntonEbsen.github.io/Demography)
-- **ORCID:** [0000-0000-0000-0000](https://orcid.org)
+[Personal website](https://www.antonebsen.com/en) · [LinkedIn](https://www.linkedin.com/in/antonebsen/) · anton.ebsen@gmail.com

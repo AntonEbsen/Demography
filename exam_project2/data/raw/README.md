@@ -1,18 +1,14 @@
-# Raw Data Archives
+# Raw data archives
 
-This directory contains the immutable source files for the Prussian Kulturkampf research.
+Preserve source files unchanged. Perform cleaning in code and record exclusions rather than silently correcting raw cells.
 
-## Data Sources
+- `galloway_data/`: Galloway Prussia Database 1861 to 1914; VIT annual vital statistics, POP census files, and REL1871 religion counts.
+- `ipehd_data/`: iPEHD-related county data and Becker–Woessmann replication files.
 
-1. **Galloway Prussia Database (1862–1914)**:
-   - `VIT*.xlsx`: Annual vital statistics (Births, Deaths, Marriages) for 450+ counties.
-   - `POP*.xlsx`: Population census files used for denominator interpolation.
-   - `REL1871.xlsx`: The 1871 Religion Census used to define the cross-sectional treatment intensity.
+See [primary-source citations and reuse conditions](../README.md). The software license does not relicense these data.
 
-2. **iPEHD (Becker-Woessmann)**:
-   - `ipehd_1849_indu_trans.csv`: Industrialization and occupational controls.
-   - `ipehd_qje2009_master.dta`: Reference data for the 1871 baseline.
+## Workbook conventions
 
-## Preservation Note
+Extensions and column casing vary. VIT1875–VIT1878 each have both `.XLS` and `.xlsx` versions. The Figure 4.1 check prefers `.xlsx`, requires every cell to agree with alternatives (ignoring storage dtype), and records hashes of both. Missing files or conflicting conversions fail the check.
 
-Files in this directory should **never be modified manually**. All cleaning and harmonization must be performed programmatically via the `src/data/` package to ensure a 100% reproducible audit trail.
+Select the window using the actual `Year` field, not only the filename. One matched record in VIT1867 has `Year = 1866` (Code 545, ISERLOHN). The narrow validation excludes it from 1867–1890 without relabeling it. This does not correct the raw file or certify all other data fields.

@@ -1,48 +1,38 @@
-# Reproducibility Guide
+# Reproducibility: verified scope and broader analysis
 
-This document provides step-by-step instructions for reproducing the results of the Kulturkampf fertility study.
+The repository is an evolving analysis, not a frozen replication package for the submitted May 2026 paper. Passing software tests does not certify archival data, every result, or causal identification.
 
-## 1. Prerequisites
+## Verified source-level check: submitted Figure 4.1
 
-- Python 3.9 or higher.
-- Git.
-- (Optional) [Binder](https://mybinder.org/v2/gh/AntonEbsen/Demography/main?urlpath=lab) for one-click cloud reproduction.
-
-## 2. Environment Setup
-
-Clone the repository and install the package in editable mode with development dependencies:
+See the [validation report](exam_project2/reports/figure_4_1_validation.md) for the reference PDF hash, sample rules, results, and known prose discrepancy. From the repository root in an activated Python 3.12+ environment:
 
 ```bash
-git clone https://github.com/AntonEbsen/Demography.git
-cd Demography
-pip install -e "./exam_project2[dev]"
+python -m pip install -r exam_project2/requirements-validation.txt
+python -m unittest discover -s tests -p test_figure_4_1_validation.py -v
+cd exam_project2
+python -m src.validation.figure_4_1
 ```
 
-## 3. Data Verification
+This reads raw sources without editing them, writes separate validation artifacts, and reports **92/392 = 23.47%**, not approximately 22%, in the 20–80% Catholic-share interval. Seven matching figure/sample claims pass; regression estimates are not checked. The submitted PDF remains unchanged.
 
-Run the automated data integrity suite to ensure the archival files are correctly loaded and mapped:
+## Broader analysis: not certified by that check
+
+Use a separate checkout and environment to avoid overwriting ongoing work. From the repository root:
 
 ```bash
-pytest tests/test_exam_project2.py
+python -m pip install -e "./exam_project2[dev]"
+python -m pytest tests/
 ```
 
-## 4. Running the Analysis
+The full package has minimum-version constraints rather than a complete lockfile. Some modules require additional dependencies or generated data. Skipped tests are not evidence that those checks passed.
 
-Open the analysis notebooks to regenerate all regressions and figures:
+See the [current notebook list](exam_project2/notebooks/README.md) and [data appendix](exam_project2/DATA_APPENDIX.md) for evolving analysis entry points. Their longer windows and specifications can differ from the submitted 1867–1890 paper. Neither a successful full notebook run nor a working Binder launch is established here.
 
-```bash
-jupyter-lab exam_project2/notebooks/02_main_analysis.ipynb
-```
+## Provenance and audit trail
 
-Alternatively, run the raw source scripts:
+- [Primary data providers and reuse conditions](exam_project2/data/README.md).
+- [Raw-file preservation and workbook conventions](exam_project2/data/raw/README.md).
+- [Validation code](exam_project2/src/validation/figure_4_1.py).
+- [Recorded statistics, hashes, and environment](exam_project2/outputs/validation/figure_4_1/).
 
-```bash
-python -m exam_project2.src.data.build_dataset
-python -m exam_project2.src.analysis.regressions
-```
-
-## 5. Audit Trail
-
-- **Provenance**: See `exam_project2/data/README.md` for raw data sources.
-- **Lineage**: See the Data Hub on the [Digital Monograph](https://AntonEbsen.github.io/Demography/kulturkampf/data) for the visual lineage graph.
-- **Computation**: All fixed-effects models utilize the `linearmodels` package with entity-clustered standard errors to match standard Stata `reghdfe` implementations.
+Inspect the workflow results as well as local tests. No existing lint, type-check, data-pipeline, or empirical checks have been weakened to make the narrow validation pass.

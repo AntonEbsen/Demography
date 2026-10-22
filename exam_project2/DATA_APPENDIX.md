@@ -2,9 +2,11 @@
 
 *The Kulturkampf and Catholic Fertility in Prussia, 1862–1910*
 
-This appendix documents every variable, data source, sample-construction rule, and estimation specification used in the empirical analysis. It is written so a reader can answer the three transparency questions for any number that appears in the paper: **what is it**, **how is it computed**, and **where does it come from?**
+**Status:** this is documentation of the evolving analysis, including later extensions, not a frozen appendix to the submitted May 2026 paper (1867–1890). Numerical results below have not all been independently reproduced. See the [Figure 4.1 validation report](reports/figure_4_1_validation.md) for one checked figure, related sample counts, and a known prose discrepancy. No regression estimates are certified by that check.
 
-The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **18,192 county-year observations** spanning **392 Prussian counties** over **49 years (1862–1910)**, with **~110 columns**. The default window was extended from 1862–1890 to 1862–1910 in order to address the secular-fertility-transition critique: if Protestant counties entered the European fertility transition during the original 1862–1890 window (as documented in Galloway, Hammel \& Lee 1994 and Knodel 1974), the post-1873 differential identified by the headline DiD could partly reflect differential transition timing rather than the Kulturkampf institutional shock. The long window lets the post-1890 trajectory distinguish the two interpretations. Headline regressions still anchor on the 1862–1890 sub-sample for clean Kulturkampf identification; the 1891–1910 extension is used for the long-run / secular-transition robustness analyses documented in §8.
+This appendix describes variables, sources, sample construction, and specifications in the rolling code. Its purpose is to explain **what is computed**, **how**, and **from which source**; current-build claims must be checked against the relevant code version and inputs.
+
+The build pipeline entry point is [`build_analysis_panel()`](src/data/build_dataset.py:22), which writes the analysis dataset to [`data/processed/analysis_panel.parquet`](data/processed/analysis_panel.parquet). On the current snapshot the panel contains **18,192 county-year observations** spanning **392 Prussian counties** over **49 years (1862–1910)**, with **~110 columns**. The default window was extended from 1862–1890 to 1862–1910 in order to address the secular-fertility-transition critique: if Protestant counties entered the European fertility transition during the original 1862–1890 window (as documented in Galloway, Hammel \& Lee 1994 and Knodel 1974), the post-1873 differential identified by the headline DiD could partly reflect differential transition timing rather than the Kulturkampf institutional shock. The long window lets the post-1890 trajectory distinguish the two interpretations. The rolling code also reports estimates on the 1862–1890 sub-sample, whose causal interpretation still requires identification checks; the 1891–1910 extension is used for the long-run / secular-transition robustness analyses documented in §8.
 
 ---
 
@@ -39,14 +41,15 @@ The build pipeline entry point is [`build_analysis_panel()`](src/data/build_data
 
 | Source | Provider | URL | Coverage | Files (under `data/raw/`) |
 |---|---|---|---|---|
-| **Galloway Prussia Database** — Vital Statistics (VIT) | Patrick Galloway / *Population Past* (CAMPOP, Cambridge) | <https://www.populationspast.org/> | Annual county-level vital statistics, 1862–1914 (we use 1862–1910) | `galloway_data/VIT{1862…1914}.{xls,xlsx,XLS}` |
-| **Galloway** — Population Census (POP) | Galloway / *Population Past* | <https://www.populationspast.org/> | Census-year population by county (1861, 1864, 1867, 1871, 1875, 1880, 1885, 1890, …) | `galloway_data/POP{1861,…,1890}.xls` |
-| **Galloway** — Religion Census (REL1871) | Galloway / *Population Past* | <https://www.populationspast.org/> | Cross-sectional 1871 population by denomination | `galloway_data/REL1871.xlsx` |
-| **iPEHD** — Integrated Population-Economic-Historical Database | Sascha Becker & Ludger Woessmann, replication for *QJE* (2009) | <https://www.cesifo.org/en/ipehd> | 452 county cross-section, 1871 Prussian census variables | `ipehd_data/ipehd_qje2009_master.dta` |
+| **Galloway Prussia Database** — Vital Statistics (VIT) | Patrick R. Galloway | <https://www.patrickrgalloway.com/prussia.htm> | Annual county-level vital statistics, 1862–1914 (rolling analysis uses 1862–1910) | `galloway_data/VIT{1862…1914}.{xls,xlsx,XLS}` |
+| **Galloway** — Population Census (POP) | Patrick R. Galloway | <https://www.patrickrgalloway.com/prussia.htm> | Census-year population by county (1861, 1864, 1867, 1871, 1875, 1880, 1885, 1890, …) | `galloway_data/POP{1861,…,1890}.xls` |
+| **Galloway** — Religion Census (REL1871) | Patrick R. Galloway | <https://www.patrickrgalloway.com/prussia.htm> | Cross-sectional 1871 population by denomination | `galloway_data/REL1871.xlsx` |
+| **iPEHD** — ifo Prussian Economic History Database | ifo; this file is Becker & Woessmann's *QJE* (2009) replication | <https://www.ifo.de/en/welcome-ipehd-ifo-prussian-economic-history-database> | 452 county cross-section, 1871 Prussian census variables | `ipehd_data/ipehd_qje2009_master.dta` |
 | **German Empire 1871** shapefile | (community shapefile, EPSG:32633 / UTM 33N) | distributed in repo | County polygons, 1871 borders | `gis_data/German_Empire_1871_v.1.0.{shp,dbf,shx,prj}` |
 
 **Citations.**
-- Galloway, P.R. *Prussian Census and Vital Statistics, 1820–1934.* CAMPOP / *Population Past*.
+- Galloway, Patrick R. (2007). *Galloway Prussia Database 1861 to 1914*. www.patrickrgalloway.com.
+- Becker, S.O., Cinnirella, F., Hornung, E., and Woessmann, L. (2014). "iPEHD – The ifo Prussian Economic History Database." *Historical Methods* 47(2), 57–66.
 - Becker, S.O., and Woessmann, L. (2009). "Was Weber Wrong? A Human Capital Theory of Protestant Economic History." *Quarterly Journal of Economics* 124(2), 531–596.
 
 **Loaders.** Each source is loaded by a dedicated function. The relevant entry points are:
@@ -738,6 +741,8 @@ A short, honest accounting. Each item is annotated with where it bites.
 
 ## 10. Reproducibility
 
+For the submitted Figure 4.1 only, follow the [validated recipe and discrepancy report](reports/figure_4_1_validation.md). The commands below concern the broader evolving analysis and were not executed as part of that narrow check. Work in a separate checkout because builds can overwrite generated panels and outputs.
+
 ### Build the analysis dataset
 
 ```bash
@@ -747,11 +752,11 @@ python -m src.data.audit_schema        # validates with Pandera
 python -m src.data.centroids           # builds centroids.parquet (optional, for Conley SE & maps)
 ```
 
-Or, equivalently, `dvc repro` if DVC is installed (stages defined in [`dvc.yaml`](dvc.yaml); pinned outputs in [`dvc.lock`](dvc.lock)).
+The repository also contains DVC stages in [`dvc.yaml`](dvc.yaml) and a [`dvc.lock`](dvc.lock). Their existence does not certify current remote availability or agreement with the submitted paper.
 
 ### Reproduce the analysis
 
-The four numbered notebooks under [`notebooks/`](notebooks/) consume `analysis_panel.parquet` and produce every figure and table in the paper:
+The numbered notebooks under [`notebooks/`](notebooks/) implement parts of the evolving analysis. They are not certified here to reproduce every submitted figure and table:
 
 | Notebook | Role |
 |---|---|
@@ -759,10 +764,11 @@ The four numbered notebooks under [`notebooks/`](notebooks/) consume `analysis_p
 | [`02_baseline_regressions.ipynb`](notebooks/02_baseline_regressions.ipynb) | Baseline DiD, event study, Honest DiD, permutation, Anderson FDR |
 | [`03_extensions_and_mechanisms.ipynb`](notebooks/03_extensions_and_mechanisms.ipynb) | Heterogeneity, channels, falsifications, emigration, Bai/Hsiao trends, sub-sample decomposition |
 | [`04_spatial_analysis.ipynb`](notebooks/04_spatial_analysis.ipynb) | Choropleths, sub-region maps, IV, Conley HAC |
+| [`05_synthetic_did.ipynb`](notebooks/05_synthetic_did.ipynb) | Synthetic difference-in-differences extension |
 
 ### Environment
 
-Python ≥ 3.9. Core dependencies: `pandas`, `numpy`, `linearmodels` (PanelOLS, IV2SLS, clustered SE), `statsmodels`, `geopandas`, `pyproj`, `pyarrow`, `pandera`, `matplotlib`, `seaborn`. Pinned in [`pyproject.toml`](pyproject.toml).
+The broader package declares Python ≥ 3.9 and minimum-version dependency constraints in [`pyproject.toml`](pyproject.toml), not a fully pinned environment. Some modules need additional dependencies such as Pandera. The separate [`requirements-validation.txt`](requirements-validation.txt) pins only the small Figure 4.1 environment (Python 3.12+); it does not lock the full analysis.
 
 ```bash
 pip install -r requirements.txt
@@ -770,7 +776,8 @@ pip install -r requirements.txt
 
 ### Citations referenced in the analysis
 
-- **Galloway, P.R.** *Prussian Census and Vital Statistics, 1820–1934* — primary data, distributed via *Population Past* (CAMPOP, Cambridge).
+- **Galloway, Patrick R. (2007).** *Galloway Prussia Database 1861 to 1914*. [Provider and codebook](https://www.patrickrgalloway.com/prussia.htm). Commercial use requires the provider's permission; software licensing does not override data conditions.
+- **Becker, S.O., Cinnirella, F., Hornung, E. & Woessmann, L. (2014).** "iPEHD – The ifo Prussian Economic History Database." *Historical Methods* 47(2), 57–66. [Official source](https://www.ifo.de/en/welcome-ipehd-ifo-prussian-economic-history-database).
 - **Galloway, P.R., Hammel, E.A. & Lee, R.D.** (1994). "Fertility Decline in Prussia, 1875–1910: A Pooled Cross-Section Time Series Analysis." *Population Studies* 48(1), 135–158. — Canonical Prussian fertility paper; we follow their conventions on mid-year population (linearly interpolated between consecutive December censuses) and adopt the Princeton EFP framework as our headline marital-fertility measure (`I_g` and the unnormalised `gmfr`).
 - **Coale, A.J. & Watkins, S.C., eds.** (1986). *The Decline of Fertility in Europe*. Princeton University Press. — Princeton EFP framework, $I_f$ / $I_g$ / $I_h$ / $I_m$ definitions.
 - **Coale, A.J.** (1969). "The decline of fertility in Europe from the French Revolution to World War II," in *Fertility and Family Planning*. — Hutterite age-specific fertility schedule.
