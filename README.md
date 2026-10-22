@@ -10,6 +10,7 @@ Anton Meier Ebsen Jørgensen · MSc student in Economics, University of Copenhag
 - [Submitted paper (PDF)](https://www.antonebsen.com/en/projects/demography-project.pdf)
 - [Research code and setup](exam_project2/README.md)
 - [Figure 4.1 validation: results and discrepancy](exam_project2/reports/figure_4_1_validation.md)
+- [One-command Figure 4.1 reproduction (Python 3.12)](reproduction/figure-4-1/README.md)
 - [Data appendix for the evolving analysis](exam_project2/DATA_APPENDIX.md)
 
 The repository also contains later exploratory extensions, including longer time windows and additional methods. Current notebooks, the digital monograph, and cached outputs are **not a frozen replication package for the submitted paper**. The Figure 4.1 check validates one descriptive figure and related sample counts, not the regressions or causal interpretation.

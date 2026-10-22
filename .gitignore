@@ -117,6 +117,8 @@ exam_project_legacy.zip
 
 # Local dev scratchpad
 scratch/
+.venv-figure-4-1/
+reproduction-runs/
 
 # DVC-managed analytical artifacts (regenerate via `dvc repro`)
 exam_project2/data/processed/*.parquet
