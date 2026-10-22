@@ -1,17 +1,22 @@
 """Wrapper safeguards; these synthetic fixtures are not historical evidence."""
+
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
-spec = importlib.util.spec_from_file_location("reproduce", Path(__file__).resolve().parents[1] / "scripts/reproduce_figure_4_1.py")
+spec = importlib.util.spec_from_file_location(
+    "reproduce", Path(__file__).resolve().parents[1] / "scripts/reproduce_figure_4_1.py"
+)
 reproduce = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reproduce)
 
 
 class ReproductionPackageTests(unittest.TestCase):
     def test_exact_counts_and_discrepancy_cannot_drift(self):
-        reproduce.compare_report({"count": 392, "share": 23.4693877551}, {"count": 392, "share": 23.469387755102})
+        reproduce.compare_report(
+            {"count": 392, "share": 23.4693877551}, {"count": 392, "share": 23.469387755102}
+        )
         for actual in [{"count": 393, "share": 23.469387755102}, {"count": 392, "share": 22.0}]:
             with self.assertRaisesRegex(ValueError, "Mismatch|mismatch"):
                 reproduce.compare_report(actual, {"count": 392, "share": 23.469387755102})
