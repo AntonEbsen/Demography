@@ -80,6 +80,7 @@ celerybeat-schedule
 
 # virtualenv
 .venv
+.venv-table-6-1/
 venv/
 ENV/
 env/
