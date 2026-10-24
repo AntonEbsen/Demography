@@ -21,6 +21,11 @@ The check reads source workbooks without editing them and writes JSON results, a
 
 ## Broader analysis
 
+A separate [Table 6.1 audit](../reproducibility/table-6-1/README.md) rebuilds the
+submitted paper's eight baseline model columns and separate pre-trends tests.
+It has its own pinned Python 3.12 environment and source manifest. This does not
+validate all later analyses or resolve the paper's identification limitations.
+
 From the repository root:
 
 ```bash
